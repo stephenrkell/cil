@@ -704,6 +704,7 @@ addTest("testrun/compound2");
 addTest("testrun/large_unsigned_long");
 
 addTest("test/shell-escape SHELL_ESCAPE=1");
+addTest("testpipe/simple");
 
 # c99 readiness tests
 addTest("testrunc99/c99-bool");

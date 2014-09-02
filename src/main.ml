@@ -168,8 +168,9 @@ let theMain () =
               " The name of the output CIL file. The cilly script sets this for you.";
           "--mergedout", Arg.String (openFile "merged output"
                                        (fun oc -> mergedChannel := Some oc)),
-              " Specify the name of the merged file";
-          "--load", Arg.String ignore, "" (* ignore --load because they have been processed above already *)
+              " specify the name of the merged file";
+          "--load", Arg.String ignore, ""; (* ignore --load because they have been processed above already *)
+          "-", Arg.Unit (fun () -> Ciloptions.recordFile "-"), "" (* Permit the string "-" as an input file, denoting stdin *)
         ]
         @ F.args @ featureArgs in
   begin
