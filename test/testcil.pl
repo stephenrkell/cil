@@ -567,6 +567,7 @@ addTest("test/sync-3 _GNUCC=1");
 addTest("testrun/comparisons");
 addTest("testrun/assign");
 addTest("test/vector_compound_init");
+addTest("testrun/preempt-builtin");    
 
 
 
