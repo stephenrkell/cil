@@ -211,9 +211,8 @@ addTest("testrun/percentm");
 addTest("testrun/percent400");
 addTest("testrun/do_while_cont");
 addTest("testrun/caserange _GNUCC=1");
-
 addTest("testrun/attr-in-decllist");
-
+addTest("testrun/alias");
 addTest("test/attr2 _GNUCC=1");
 addTest("test/attr3 _GNUCC=1");
 addTest("testrun/attr4 _GNUCC=1");

@@ -6238,28 +6238,6 @@ and createLocal ?allow_var_decl:(allow_var_decl=true) ((_, sto, _, _) as specs)
       end
     end
 
-and doAliasFun vtype (thisname:string) (othername:string)
-  (sname:single_name) (loc: cabsloc) : unit =
-  (* This prototype declares that name is an alias for
-     othername, which must be defined in this file *)
-(*   E.log "%s is alias for %s at %a\n" thisname othername  *)
-(*     d_loc !currentLoc; *)
-  let rt, formals, isva, _ = splitFunctionType vtype in
-  let args = Util.list_map 
-               (fun (n,_,_) -> A.VARIABLE n)
-               (argsToList formals) in
-  let call = A.CALL (A.VARIABLE othername, args) in
-  let stmt = if isVoidType rt then A.COMPUTATION(call, loc)
-                              else A.RETURN(call, loc, loc)
-  in
-  let body = { A.blabels = []; A.battrs = []; A.bstmts = [stmt] } in
-  let fdef = A.FUNDEF (sname, body, loc, loc) in
-  ignore (doDecl true false fdef); (* doAliasFun only called for isglobal by guard *)
-  (* get the new function *)
-  let v,_ = try lookupGlobalVar thisname
-            with Not_found -> E.s (bug "error in doDecl") in
-  v.vattr <- dropAttribute "alias" v.vattr
-
 
 (* Do one declaration *)
 and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
@@ -6289,26 +6267,14 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
         if isglobal then begin
           let spec_res = match spec_res with Some s -> s | _ -> failwith "Option.get" in
           let bt,_,_,attrs = spec_res in
-          let vtype, nattr = doType (AttrName false) bt (A.PARENTYPE(attrs, ndt, a)) in
-          (match filterAttributes "alias" nattr with
-             [] -> (* ordinary prototype. *)
-               ignore (createGlobal spec_res name)
-              (*  E.log "%s is not aliased\n" name *)
-           | [Attr("alias", [AStr othername])] ->
-               if not (isFunctionType vtype) then begin
-                 ignore (warn
-                   "%a: CIL only supports attribute((alias)) for functions.\n"
-                   d_loc !currentLoc);
-                 ignore (createGlobal spec_res name)
-               end else
-                 doAliasFun vtype n othername (s, (n,ndt,a,l)) loc
-           | _ -> E.s (error "Bad alias attribute at %a" d_loc !currentLoc)
-          );
-          acc
-        end else
-          match spec_res with
-          | Some spec_res -> acc @@ createLocal spec_res name
-          | None -> acc @@ createAutoLocal name
+          let _, _ = 
+            doType (AttrName false) bt (A.PARENTYPE(attrs, ndt, a)) in
+            ignore (createGlobal spec_res name);
+            acc
+        end else 
+          acc @@ (match spec_res with
+                  | Some s -> createLocal s name
+                  | None -> createAutoLocal name)
       in
       let res = List.fold_left doOneDeclarator empty nl in
 (*
