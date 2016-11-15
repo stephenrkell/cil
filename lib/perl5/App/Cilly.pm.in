@@ -1559,7 +1559,8 @@ sub new {
 	    '-Wp,' => { TYPE => 'EARLY_PREPROC' },
 	    '-Wl,--(no-)?whole-archive$' => { TYPE => 'OSOURCE' },
             '-Wl,' => { TYPE => 'LINK' },
-
+            '-Wa,' => { TYPE => 'CC' },
+	    
 	    # Warning Options
             "-pedantic\$" => { TYPE => 'ALLARGS' },
             "-pedantic-errors\$" => { TYPE => 'ALLARGS' },
