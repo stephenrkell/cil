@@ -208,6 +208,8 @@ let init_lexicon _ =
       ("__int32", fun loc -> INT loc);
       ("__int64", fun _ -> INT64 (currentLoc ()));
       ("__int128", fun _ -> INT128 (currentLoc ()));
+      (* GCC non-standard __int128 aliases (not typedefs!) *)
+      ("__int128_t", fun _ -> INT128 (currentLoc ()));
       ("__declspec", fun loc -> DECLSPEC loc);
       ("__forceinline", fun loc -> INLINE loc); (* !! we turn forceinline
                                                    into inline *)
