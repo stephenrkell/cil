@@ -6245,9 +6245,7 @@ and doAliasFun vtype (thisname:string) (othername:string)
 (*   E.log "%s is alias for %s at %a\n" thisname othername  *)
 (*     d_loc !currentLoc; *)
   let rt, formals, isva, _ = splitFunctionType vtype in
-  if isva then E.s (error "%a: alias unsupported with varargs."
-                      d_loc !currentLoc);
-  let args = Util.list_map
+  let args = Util.list_map 
                (fun (n,_,_) -> A.VARIABLE n)
                (argsToList formals) in
   let call = A.CALL (A.VARIABLE othername, args) in
