@@ -465,6 +465,75 @@ let currentReturnType : typ ref = ref (TVoid([]))
 let currentFunctionFDEC: fundec ref = ref dummyFunDec
 
 
+(* We want the same struct definition, in the same header, to always get the
+ * same anonymous name. So we canonicalize filenames to equalise "x.h" with
+ * "./x.h", say.
+ * Ideally we would canonicalize more strongly. Using the canonical absolute
+ * path, eliminating symlinks and ".." and so on, isn't right: it exposes
+ * details of the build filesystem that the compiler doesn't want to know,
+ * since it would generate debuginfo that is peculiar to the build system
+ * e.g. if the build developer symlinked a source tree into the "right place").
+ * So for now, do something weaker: we just ensure relative paths are always
+ * implicit, i.e. never begin with ".". And the same for "./" embedded in the
+ * middle -- we want get rid of those too. *)
+let rec canonicalizeFilename fn =
+    let expectedPrefix = Filename.current_dir_name ^ Filename.dir_sep in
+    let expectedPrefixLen = String.length expectedPrefix in
+    if Filename.is_relative fn && not (Filename.is_implicit fn)
+        (* "Explicit" also includes "../", which we leave alone. *)
+        && not (
+            let parentPrefixLength = (String.length Filename.dir_sep
+                + String.length Filename.parent_dir_name) in
+            String.length fn >= parentPrefixLength &&
+                String.sub fn 0 parentPrefixLength
+                 = Filename.parent_dir_name ^ Filename.dir_sep)
+    then (* "Explicit case" -- means it begins with "./" or the system's
+          * equivalent, which we want to get rid of. *)
+        let matches = try (expectedPrefix = String.sub fn 0 expectedPrefixLen)
+            with Invalid_argument(_) -> false
+        in
+        if not matches then failwith ("did not understand path: " ^ fn)
+        else (* it begins with something else *)
+        canonicalizeFilename (
+            String.sub fn expectedPrefixLen (String.length fn - expectedPrefixLen)
+        )
+    else (* it's absolute or a non-implicit relative or "../"something.
+          * We don't do anything about ../ components for now. *)
+        (* The first component is okay, but what about "./" in the middle?
+         * We can't use String.index or split_on_char directly because
+         * dir_sep is allowed to be more than one char. I probably should just
+         * have bailed that case... oh well. *)
+        if fn= "" then ""
+        else
+        let sepLength = String.length Filename.dir_sep in
+        let rec sepOffset fn off =
+            let sepFirstChar = String.get Filename.dir_sep 0 in
+            let firstCharPosFromStartOff = String.index_from fn off sepFirstChar
+            in
+            if String.sub fn firstCharPosFromStartOff sepLength = Filename.dir_sep
+            then (* match *) firstCharPosFromStartOff
+            else (* keep looking for sep; earliest it could start is +1 *)
+            sepOffset fn (firstCharPosFromStartOff + 1)
+        in
+        try
+        (* if we're absolute, search from *after* the initial "/" *)
+        let searchStartOffset = if Filename.is_relative fn then 0 else sepLength in
+        let firstSepOffset = sepOffset fn searchStartOffset in
+        let rest = String.sub fn (firstSepOffset + sepLength)
+            ((String.length fn) - firstSepOffset - sepLength)
+        in
+        let rec stripLeadingSeparators s =
+            if String.length s >= sepLength
+                && String.sub s 0 sepLength = Filename.dir_sep
+            then let rest = (String.sub s sepLength (String.length s - sepLength))
+                in stripLeadingSeparators rest
+            else s
+        in
+        let strippedRest = stripLeadingSeparators rest in
+        Filename.concat (String.sub fn 0 firstSepOffset) (canonicalizeFilename strippedRest)
+        with Not_found -> (* did not find sep offset *) fn
+          |  Invalid_argument(_) -> (* could not find sep, e.g. empty string *) fn 
+
 (* Generate unique ids for structs, with a best-effort to base them on the
    structure of the type, so that the same anonymous struct in different
    compilation units gets the same name - this is important to preserve
@@ -484,10 +553,13 @@ let newStructId id =
   structIds := id' :: !structIds ;
   id'
 let anonStructName (k: string) (suggested: string) (context: 'a) =
-  let id = newStructId (Hashtbl.hash_param 100 1000 context) in
+  let fileCanonical = canonicalizeFilename !currentLoc.file in
+  let id = newStructId (Hashtbl.hash_param 100 1000
+  (fileCanonical, !currentLoc.line)) in
+  (* let _ = output_string Pervasives.stderr ("At " ^ !currentLoc.file ^ " (canonicalized: " ^
+    fileCanonical ^ ") generated a new struct id: " ^ (string_of_int id) ^ "\n") in *)
   "__anon" ^ k ^ (if suggested <> "" then "_"  ^ suggested else "")
   ^ "_" ^ (string_of_int id)
-
 
 let constrExprId = ref 0
 
