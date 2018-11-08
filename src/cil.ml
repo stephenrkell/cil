@@ -294,6 +294,9 @@ and fkind =
     FFloat      (** [float] *)
   | FDouble     (** [double] *)
   | FLongDouble (** [long double] *)
+  | FComplexFloat (** [float _Complex] *)
+  | FComplexDouble (** [double _Complex] *)
+  | FComplexLongDouble (** [long double _Complex] *)
 
 (** An attribute has a name and some optional parameters *)
 and attribute = Attr of string * attrparam list
@@ -1250,6 +1253,9 @@ let uintPtrType = TPtr(uintType, [])
 let boolPtrType = TPtr(boolType, [])
 
 let doubleType = TFloat(FDouble, [])
+let complexFlotaType = TFloat(FComplexFloat, [])
+let complexDoubleType = TFloat(FComplexDouble, [])
+let complexLongDoubleType = TFloat(FComplexLongDouble, [])
 
 
 (* An integer type that fits pointers. Initialized by initCIL *)
@@ -1653,6 +1659,9 @@ let d_fkind () = function
     FFloat -> text "float"
   | FDouble -> text "double"
   | FLongDouble -> text "long double"
+  | FComplexFloat -> text "float _Complex"
+  | FComplexDouble -> text "double _Complex"
+  | FComplexLongDouble -> text "long double _Complex"
 
 let d_storage () = function
     NoStorage -> nil
@@ -1742,7 +1751,8 @@ let d_const () c =
       (match fsize with
          FFloat -> chr 'f'
        | FDouble -> nil
-       | FLongDouble -> chr 'L')
+       | FLongDouble -> chr 'L'
+       | _ -> failwith "impossible: CReal constant gave _Complex result")
   | CEnum(_, s, ei) -> text s
 
 
@@ -2146,6 +2156,9 @@ let rec alignOf_int t =
     | TFloat(FFloat, _) -> !M.theMachine.M.alignof_float 
     | TFloat(FDouble, _) -> !M.theMachine.M.alignof_double
     | TFloat(FLongDouble, _) -> !M.theMachine.M.alignof_longdouble
+    | TFloat(FComplexFloat, _) -> !M.theMachine.M.alignof_complex_float 
+    | TFloat(FComplexDouble, _) -> !M.theMachine.M.alignof_complex_double
+    | TFloat(FComplexLongDouble, _) -> !M.theMachine.M.alignof_complex_longdouble
     | TNamed (t, _) -> alignOf_int t.ttype
     | TArray (t, _, _) -> alignOf_int t
     | TPtr _ | TBuiltin_va_list _ -> !M.theMachine.M.alignof_ptr
@@ -2403,9 +2416,12 @@ and bitsSizeOf t =
     E.s (E.error "You did not call Cil.initCIL before using the CIL library");
   match t with 
   | TInt (ik,_) -> 8 * (bytesSizeOfInt ik)
+  | TFloat(FFloat, _) -> 8 * !M.theMachine.M.sizeof_float
   | TFloat(FDouble, _) -> 8 * !M.theMachine.M.sizeof_double
   | TFloat(FLongDouble, _) -> 8 * !M.theMachine.M.sizeof_longdouble
-  | TFloat _ -> 8 * !M.theMachine.M.sizeof_float
+  | TFloat(FComplexFloat, _) -> 8 * !M.theMachine.M.sizeof_complex_float
+  | TFloat(FComplexDouble, _) -> 8 * !M.theMachine.M.sizeof_complex_double
+  | TFloat(FComplexLongDouble, _) -> 8 * !M.theMachine.M.sizeof_complex_longdouble
   | TEnum (ei, _) -> bitsSizeOf (TInt(ei.ekind, []))
   | TPtr _ -> 8 * !M.theMachine.M.sizeof_ptr
   | TBuiltin_va_list _ -> 8 * !M.theMachine.M.sizeof_ptr

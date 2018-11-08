@@ -1335,6 +1335,7 @@ let rec integralPromotion (t : typ) : typ = (* c.f. ISO 6.3.1.1 *)
 let defaultArgumentPromotion (t : typ) : typ = (* c.f. ISO 6.5.2.2:6 *)
   match unrollType t with
   | TFloat (FFloat, a) -> TFloat (FDouble, a)
+  | TFloat (FComplexFloat, a) -> TFloat (FComplexDouble, a) (* *)
   | _ -> if isIntegralType t then integralPromotion t else t
 
 let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
@@ -1347,6 +1348,10 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
   | _, TFloat (FDouble, _) -> t2
   | TFloat(FFloat, _), _ -> t1
   | _, TFloat (FFloat, _) -> t2
+  | TFloat(FComplexDouble, _), _ -> t1
+  | _, TFloat (FComplexDouble, _) -> t2
+  | TFloat(FComplexFloat, _), _ -> t1
+  | _, TFloat (FComplexFloat, _) -> t2
   | _, _ -> begin
       let t1' = integralPromotion t1 in
       let t2' = integralPromotion t2 in
@@ -2467,7 +2472,8 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
       | A.Tfloat -> 8
       | A.Tdouble -> 9
       | A.Tint128 -> 10
-      | _ -> 11 (* There should be at most one of the others *)
+      | A.Tcomplex -> 11
+      | _ -> 12 (* There should be at most one of the others *)
     in
     List.stable_sort (fun ts1 ts2 -> compare (order ts1) (order ts2)) tspecs' 
   in
@@ -2541,8 +2547,12 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
 
     | [A.Tfloat] -> TFloat(FFloat, [])
     | [A.Tdouble] -> TFloat(FDouble, [])
+    | [A.Tfloat; A.Tcomplex] -> TFloat(FComplexFloat, [])
+    | [A.Tdouble; A.Tcomplex] -> TFloat(FComplexDouble, [])
+    | [A.Tcomplex] -> TFloat(FComplexDouble, [])
 
     | [A.Tlong; A.Tdouble] -> TFloat(FLongDouble, [])
+    | [A.Tlong; A.Tdouble; A.Tcomplex] -> TFloat(FComplexLongDouble, [])
 
      (* Now the other type specifiers *)
     | [A.Tnamed n] -> begin

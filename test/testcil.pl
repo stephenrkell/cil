@@ -726,6 +726,8 @@ addTest("testrun/inline-srk-gnu89 $gcc");
 addTest("testrun/inline-srk-c11 $gcc");
 addTest("testrun/inline-srk-c11+oldinline $gcc");
 
+addTest("test/complex");
+
 # ---------------- c-torture -------------
 ## if we have the c-torture tests add them
 ## But only if the ctorture group was specfied

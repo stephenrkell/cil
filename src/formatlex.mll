@@ -68,6 +68,7 @@ let init ~(prog: string) : Lexing.lexbuf =
       ("extern", EXTERN);
       ("long", LONG);
       ("short", SHORT);
+      ("_Complex", COMPLEX);
       ("signed", SIGNED);
       ("unsigned", UNSIGNED);
       ("volatile", VOLATILE);

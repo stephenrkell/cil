@@ -256,7 +256,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token EOF
 %token<Cabs.cabsloc> CHAR INT BOOL DOUBLE FLOAT VOID INT128 INT64 INT32
 %token<Cabs.cabsloc> ENUM STRUCT TYPEDEF UNION
-%token<Cabs.cabsloc> SIGNED UNSIGNED LONG SHORT
+%token<Cabs.cabsloc> SIGNED UNSIGNED LONG SHORT COMPLEX
 %token<Cabs.cabsloc> VOLATILE EXTERN STATIC CONST RESTRICT AUTO REGISTER
 %token<Cabs.cabsloc> THREAD
 
@@ -973,6 +973,7 @@ type_spec:   /* ISO 6.7.2 */
     VOID            { Tvoid, $1}
 |   CHAR            { Tchar, $1 }
 |   BOOL            { Tbool, $1 }
+|   COMPLEX         { Tcomplex, $1 }
 |   SHORT           { Tshort, $1 }
 |   INT             { Tint, $1 }
 |   LONG            { Tlong, $1 }

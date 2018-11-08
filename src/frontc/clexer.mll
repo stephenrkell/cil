@@ -124,6 +124,7 @@ let init_lexicon _ =
       ("long", fun loc -> LONG loc);
       ("short", fun loc -> SHORT loc);
       ("register", fun loc -> REGISTER loc);
+      ("_Complex", fun loc -> COMPLEX loc);
       ("signed", fun loc -> SIGNED loc);
       ("__signed", fun loc -> SIGNED loc);
       ("unsigned", fun loc -> UNSIGNED loc);
