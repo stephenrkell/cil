@@ -293,12 +293,28 @@ and ikind =
 (** Various kinds of floating-point numbers*)
 and fkind = 
     FFloat      (** [float] *)
+  | FShortFloat (** [short float] *)
   | FDouble     (** [double] *)
   | FLongDouble (** [long double] *)
   | FFloat128   (** [__float128] *)
+  | FComplexShortFloat (** [float short _Complex] *)
   | FComplexFloat (** [float _Complex] *)
   | FComplexDouble (** [double _Complex] *)
   | FComplexLongDouble (** [long double _Complex] *)
+  | FComplexFloat128 (** [__float128 _Complex] *)
+  (* We support _Float32, _Float64 etc by mapping them to one of the
+   * above. This could be a problem on platforms where there is a hole
+   * in that mapping.
+   * By contrast, _Float32x and friends cannot be mapped onto the above,
+   * because they are by definition not compatible with any other type. *)
+  | FFloat16x
+  | FFloat32x
+  | FFloat64x
+  | FFloat128x
+  | FComplexFloat16x
+  | FComplexFloat32x
+  | FComplexFloat64x
+  | FComplexFloat128x
 
 
 (** {b Attributes.} *)
@@ -2526,9 +2542,12 @@ val commonIntKind : ikind -> ikind -> ikind
  * is true). Raises Not_found if no such kind exists *)
 val intKindForSize : int -> bool -> ikind
 
-(** The float kind for a given size. Raises Not_found
- *  if no such kind exists *)
-val floatKindForSize : int-> fkind
+(** The float kind for a given size in bytes.
+ * We can ask for _Complex types, in which case the size refers
+ * to the re/im components' individual size, just as in C
+ * e.g. __float128 _Complex is a 256-bit type. Raises Not_found
+ * if no such kind exists *)
+val floatKindForSize : ?complex:bool -> int -> fkind
 
 (** The size in bytes of the given int kind. *)
 val bytesSizeOfInt: ikind -> int 

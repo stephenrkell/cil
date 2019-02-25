@@ -1350,11 +1350,35 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
   | _, TFloat (FDouble, _) -> t2
   | TFloat(FFloat, _), _ -> t1
   | _, TFloat (FFloat, _) -> t2
+  | TFloat(FShortFloat, _), _ -> t1
+  | _, TFloat (FShortFloat, _) -> t2
+  (* XXX: not sure this conversion is the right treatment for the _x types,
+   * since they are "not compatible" with others? *)
+  | TFloat(FFloat64x, _), _ -> t1
+  | _, TFloat(FFloat64x, _) -> t2
+  | TFloat(FFloat32x, _), _ -> t1
+  | _, TFloat(FFloat32x, _) -> t2
+  | TFloat(FFloat16x, _), _ -> t1
+  | _, TFloat(FFloat16x, _) -> t2
+  | TFloat(FComplexFloat128, _), _ -> t1
+  | _, TFloat (FComplexFloat128, _) -> t2
   | TFloat(FComplexDouble, _), _ -> t1
   | _, TFloat (FComplexDouble, _) -> t2
   | TFloat(FComplexFloat, _), _ -> t1
   | _, TFloat (FComplexFloat, _) -> t2
-  | _, _ -> begin
+  | TFloat(FComplexShortFloat, _), _ -> t1
+  | _, TFloat (FComplexShortFloat, _) -> t2
+  (* XXX: not sure this conversion is the right treatment for the _x types,
+   * since they are "not compatible" with others? *)
+  | TFloat(FComplexFloat128x, _), _ -> t1
+  | _, TFloat (FComplexFloat128x, _) -> t2
+  | TFloat(FComplexFloat64x, _), _ -> t1
+  | _, TFloat (FComplexFloat64x, _) -> t2
+  | TFloat(FComplexFloat32x, _), _ -> t1
+  | _, TFloat (FComplexFloat32x, _) -> t2
+  | TFloat(FComplexFloat16x, _), _ -> t1
+  | _, TFloat (FComplexFloat16x, _) -> t2
+ | _, _ -> begin
       let t1' = integralPromotion t1 in
       let t2' = integralPromotion t2 in
       match unrollType t1', unrollType t2' with
@@ -2476,7 +2500,14 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
       | A.Tint128 -> 10
       | A.Tcomplex -> 11
       | A.Tfloat128 -> 12
-      | _ -> 13 (* There should be at most one of the others *)
+      | A.Tfloat64 -> 13
+      | A.Tfloat32 -> 14
+      | A.Tfloat16 -> 15
+      | A.Tfloat128x -> 16
+      | A.Tfloat64x -> 17
+      | A.Tfloat32x -> 18
+      | A.Tfloat16x -> 19
+      | _ -> 20 (* There should be at most one of the others *)
     in
     List.stable_sort (fun ts1 ts2 -> compare (order ts1) (order ts2)) tspecs' 
   in
@@ -2549,15 +2580,34 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     | [A.Tunsigned; A.Tint64] -> TInt(IUInt128, [])
 
     | [A.Tfloat] -> TFloat(FFloat, [])
+    | [A.Tshort; A.Tfloat] -> TFloat(FShortFloat, [])
     (* __float128 is an optional extension, but we support it *)
     | [A.Tfloat128] -> TFloat(FFloat128, [])
-    | [A.Tdouble] -> TFloat(FDouble, [])
-    | [A.Tfloat; A.Tcomplex] -> TFloat(FComplexFloat, [])
-    | [A.Tdouble; A.Tcomplex] -> TFloat(FComplexDouble, [])
-    | [A.Tcomplex] -> TFloat(FComplexDouble, [])
-
     | [A.Tlong; A.Tdouble] -> TFloat(FLongDouble, [])
+    | [A.Tdouble] -> TFloat(FDouble, [])
+    | [A.Tfloat16] -> TFloat(floatKindForSize 2, [])
+    | [A.Tfloat32] -> TFloat(floatKindForSize 4, [])
+    | [A.Tfloat64] -> TFloat(floatKindForSize 8, [])
+    (* Extended floating types are not compatible with other types. *)
+    | [A.Tfloat16x] -> TFloat(FFloat16x, [])
+    | [A.Tfloat32x] -> TFloat(FFloat32x, [])
+    | [A.Tfloat64x] -> TFloat(FFloat64x, [])
+    | [A.Tfloat128x] -> TFloat(FFloat128x, [])
+    (* _Complex cases *)
+    | [A.Tshort; A.Tfloat; A.Tcomplex] -> TFloat(FComplexShortFloat, [])
+    | [A.Tfloat; A.Tcomplex] -> TFloat(FComplexFloat, [])
+    | [A.Tcomplex] -> TFloat(FComplexDouble, [])
+    | [A.Tdouble; A.Tcomplex] -> TFloat(FComplexDouble, [])
     | [A.Tlong; A.Tdouble; A.Tcomplex] -> TFloat(FComplexLongDouble, [])
+    | [A.Tfloat16; A.Tcomplex] -> TFloat(floatKindForSize 2 ~complex:true, [])
+    | [A.Tfloat32; A.Tcomplex] -> TFloat(floatKindForSize 4 ~complex:true, [])
+    | [A.Tfloat64; A.Tcomplex] -> TFloat(floatKindForSize 8 ~complex:true, [])
+    | [A.Tfloat128; A.Tcomplex] -> TFloat(FComplexFloat128, [])
+    (* Extended floating types are not compatible with other types. *)
+    | [A.Tfloat16x; A.Tcomplex] -> TFloat(FComplexFloat16x, [])
+    | [A.Tfloat32x; A.Tcomplex] -> TFloat(FComplexFloat32x, [])
+    | [A.Tfloat64x; A.Tcomplex] -> TFloat(FComplexFloat64x, [])
+    | [A.Tfloat128x; A.Tcomplex] -> TFloat(FComplexFloat128x, [])
 
      (* Now the other type specifiers *)
     | [A.Tnamed n] -> begin

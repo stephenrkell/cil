@@ -193,6 +193,14 @@ let init_lexicon _ =
 (*      ("__extension__", EXTENSION); *)
       ("__int128", fun _ -> INT128 (currentLoc ()));
       ("__float128", fun _ -> FLOAT128 (currentLoc ()));
+      ("_Float128", fun _ -> FLOAT128 (currentLoc ()));
+      ("_Float128x", fun _ -> FLOAT128X (currentLoc ()));
+      ("_Float64", fun _ -> FLOAT64 (currentLoc ()));
+      ("_Float64x", fun _ -> FLOAT64X (currentLoc ()));
+      ("_Float32", fun _ -> FLOAT32 (currentLoc ()));
+      ("_Float32x", fun _ -> FLOAT32X (currentLoc ()));
+      ("_Float1", fun _ -> FLOAT32 (currentLoc ()));
+      ("_Float32x", fun _ -> FLOAT32X (currentLoc ()));
       (* GCC non-standard __int128 aliases (not typedefs!) *)
       ("__int128_t", fun _ -> INT128 (currentLoc ()));
       (**** MS VC ***)

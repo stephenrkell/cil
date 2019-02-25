@@ -289,15 +289,32 @@ and ikind =
   | IInt128     (** [__int128] *)
   | IUInt128    (** [__uint128] *)
 
-(** Various kinds of floating-point numbers*)
+(** Various kinds of floating-point numbers.*)
 and fkind = 
     FFloat      (** [float] *)
+  | FShortFloat (** [short float] *)
   | FDouble     (** [double] *)
   | FLongDouble (** [long double] *)
   | FFloat128   (** [__float128] *)
+  | FComplexShortFloat (** [float short _Complex] *)
   | FComplexFloat (** [float _Complex] *)
   | FComplexDouble (** [double _Complex] *)
   | FComplexLongDouble (** [long double _Complex] *)
+  | FComplexFloat128 (** [__float128 _Complex] *)
+  (* We support _Float32, _Float64 etc by mapping them to one of the
+   * above. This could be a problem on platforms where there is a hole
+   * in that mapping.
+   * By contrast, _Float32x and friends cannot be mapped onto the above,
+   * because they are by definition not compatible with any other type. *)
+  | FFloat16x
+  | FFloat32x
+  | FFloat64x
+  | FFloat128x
+  | FComplexFloat16x
+  | FComplexFloat32x
+  | FComplexFloat64x
+  | FComplexFloat128x
+
 
 (** An attribute has a name and some optional parameters *)
 and attribute = Attr of string * attrparam list
@@ -1253,11 +1270,16 @@ let intPtrType = TPtr(intType, [])
 let uintPtrType = TPtr(uintType, [])
 let boolPtrType = TPtr(boolType, [])
 
+let float128Type = TFloat(FFloat128, [])
+let longDoubleType = TFloat(FLongDouble, [])
 let doubleType = TFloat(FDouble, [])
-let complexFlotaType = TFloat(FComplexFloat, [])
+let floatType = TFloat(FFloat, [])
+let shortFloatType = TFloat(FShortFloat, [])
+let complexShortFloatType = TFloat(FComplexShortFloat, [])
+let complexFloatType = TFloat(FComplexFloat, [])
 let complexDoubleType = TFloat(FComplexDouble, [])
 let complexLongDoubleType = TFloat(FComplexLongDouble, [])
-
+let complexFloat128Type = TFloat(FComplexFloat128, [])
 
 (* An integer type that fits pointers. Initialized by initCIL *)
 let upointType = ref voidType 
@@ -1657,13 +1679,24 @@ let d_ikind () = function
   | IUInt128 -> text "unsigned __int128"
 
 let d_fkind () = function
-    FFloat -> text "float"
+    FShortFloat -> text "short float"
+  | FFloat -> text "float"
   | FDouble -> text "double"
   | FLongDouble -> text "long double"
   | FFloat128 -> text "__float128"
   | FComplexFloat -> text "float _Complex"
+  | FComplexShortFloat -> text "short float _Complex"
   | FComplexDouble -> text "double _Complex"
   | FComplexLongDouble -> text "long double _Complex"
+  | FComplexFloat128 -> text "_Float128 _Complex"
+  | FFloat128x -> text "_Float128x"
+  | FFloat64x -> text "_Float64x"
+  | FFloat32x -> text "_Float32x"
+  | FFloat16x -> text "_Float16x"
+  | FComplexFloat128x -> text "_Float128x _Complex"
+  | FComplexFloat64x -> text "_Float64x _Complex"
+  | FComplexFloat32x -> text "_Float32x _Complex"
+  | FComplexFloat16x -> text "_Float16x _Complex"
 
 let d_storage () = function
     NoStorage -> nil
@@ -1754,6 +1787,11 @@ let d_const () c =
          FFloat -> chr 'f'
        | FDouble -> nil
        | FLongDouble -> chr 'L'
+       | FFloat128x -> text "F128x"
+       | FFloat64x -> text "F64x"
+       | FFloat32x -> text "F32x"
+       | FFloat16x -> text "F16x"
+       | FShortFloat -> failwith "impossible: CReal constant gave short float result"
        | FFloat128 -> failwith "impossible: CReal constant gave __float128 result"
        | _ -> failwith "impossible: CReal constant gave _Complex result")
   | CEnum(_, s, ei) -> text s
@@ -2021,11 +2059,18 @@ let intKindForSize (s:int) (unsigned:bool) : ikind =
     else if s = 128 then IInt128
     else raise Not_found
 
-let floatKindForSize (s:int) = 
-  if s = !M.theMachine.M.sizeof_double then FDouble
-  else if s = !M.theMachine.M.sizeof_float then FFloat
-  else if s = !M.theMachine.M.sizeof_longdouble then FLongDouble
-  else if s = 16 then FFloat128
+(* Get the floating point type for a particular byte size.
+ * We can ask for _Complex types, in which case the size refers
+ * to the re/im components' individual size, just as in C
+ * e.g. __float128 _Complex is a 256-bit type. *)
+let floatKindForSize ?(complex:bool = false) (s:int) =
+  if s = !M.theMachine.M.sizeof_double then if complex then FComplexDouble else FDouble
+  else if s = !M.theMachine.M.sizeof_float then if complex then FComplexFloat else FFloat
+  else if s = !M.theMachine.M.sizeof_longdouble then if complex then FComplexLongDouble else FLongDouble
+  else if s = 16 then if complex then FComplexFloat128 else FFloat128
+  (* Although we now support ISO C's _Float32 and friends, we assume
+   * for now that the existing float kinds have got these covered. So
+   * if we got here, we've run out. *)
   else raise Not_found
 
 (* Represents an integer as for a given kind.  Returns a flag saying
@@ -2157,13 +2202,24 @@ let rec alignOf_int t =
     | TInt((ILongLong|IULongLong), _) -> !M.theMachine.M.alignof_longlong
     | TInt((IInt128|IUInt128), _) -> 16
     | TEnum(ei, _) -> alignOf_int (TInt(ei.ekind, []))
+    | TFloat(FShortFloat, _) -> !M.theMachine.M.alignof_shortfloat 
     | TFloat(FFloat, _) -> !M.theMachine.M.alignof_float 
     | TFloat(FDouble, _) -> !M.theMachine.M.alignof_double
     | TFloat(FLongDouble, _) -> !M.theMachine.M.alignof_longdouble
-    | TFloat(FFloat128, _) -> 16
-    | TFloat(FComplexFloat, _) -> !M.theMachine.M.alignof_complex_float 
+    | TFloat(FFloat128, _) -> !M.theMachine.M.alignof_float128
+    | TFloat(FComplexShortFloat, _) -> !M.theMachine.M.alignof_complex_shortfloat
+    | TFloat(FComplexFloat, _) -> !M.theMachine.M.alignof_complex_float
     | TFloat(FComplexDouble, _) -> !M.theMachine.M.alignof_complex_double
     | TFloat(FComplexLongDouble, _) -> !M.theMachine.M.alignof_complex_longdouble
+    | TFloat(FComplexFloat128, _) -> !M.theMachine.M.alignof_complex_float128
+    | TFloat(FFloat16x, _) -> !M.theMachine.M.alignof_float16x
+    | TFloat(FFloat32x, _) -> !M.theMachine.M.alignof_float32x
+    | TFloat(FFloat64x, _) -> !M.theMachine.M.alignof_float64x
+    | TFloat(FFloat128x, _) -> !M.theMachine.M.alignof_float128x
+    | TFloat(FComplexFloat16x, _) -> !M.theMachine.M.alignof_complex_float16x
+    | TFloat(FComplexFloat32x, _) -> !M.theMachine.M.alignof_complex_float32x
+    | TFloat(FComplexFloat64x, _) -> !M.theMachine.M.alignof_complex_float64x
+    | TFloat(FComplexFloat128x, _) -> !M.theMachine.M.alignof_complex_float128x
     | TNamed (t, _) -> alignOf_int t.ttype
     | TArray (t, _, _) -> alignOf_int t
     | TPtr _ | TBuiltin_va_list _ -> !M.theMachine.M.alignof_ptr
@@ -2421,6 +2477,7 @@ and bitsSizeOf t =
     E.s (E.error "You did not call Cil.initCIL before using the CIL library");
   match t with 
   | TInt (ik,_) -> 8 * (bytesSizeOfInt ik)
+  | TFloat(FShortFloat, _) -> 8 * !M.theMachine.M.sizeof_shortfloat
   | TFloat(FFloat, _) -> 8 * !M.theMachine.M.sizeof_float
   | TFloat(FDouble, _) -> 8 * !M.theMachine.M.sizeof_double
   | TFloat(FLongDouble, _) -> 8 * !M.theMachine.M.sizeof_longdouble
@@ -2428,6 +2485,14 @@ and bitsSizeOf t =
   | TFloat(FComplexFloat, _) -> 8 * !M.theMachine.M.sizeof_complex_float
   | TFloat(FComplexDouble, _) -> 8 * !M.theMachine.M.sizeof_complex_double
   | TFloat(FComplexLongDouble, _) -> 8 * !M.theMachine.M.sizeof_complex_longdouble
+  | TFloat(FFloat16x, _) -> 16
+  | TFloat(FFloat32x, _) -> 32
+  | TFloat(FFloat64x, _) -> 64
+  | TFloat(FFloat128x, _) -> 128
+  | TFloat(FComplexFloat16x, _) -> 2*16 (* FIXME: is this correct? *)
+  | TFloat(FComplexFloat32x, _) -> 2*32
+  | TFloat(FComplexFloat64x, _) -> 2*64
+  | TFloat(FComplexFloat128x, _) -> 2*128
   | TEnum (ei, _) -> bitsSizeOf (TInt(ei.ekind, []))
   | TPtr _ -> 8 * !M.theMachine.M.sizeof_ptr
   | TBuiltin_va_list _ -> 8 * !M.theMachine.M.sizeof_ptr

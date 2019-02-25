@@ -64,6 +64,14 @@ typedef int bool;
 
 #define THREAD_IS_KEYWORD "@THREAD_IS_KEYWORD@"
 #define HAVE_BUILTIN_VA_LIST "@HAVE_BUILTIN_VA_LIST@"
+#define HAVE_FLOAT128 @HAVE_FLOAT128@
+#define HAVE_FLOAT128X @HAVE_FLOAT128X@
+#define HAVE_FLOAT64 @HAVE_FLOAT64@
+#define HAVE_FLOAT64X @HAVE_FLOAT64X@
+#define HAVE_FLOAT32 @HAVE_FLOAT32@
+#define HAVE_FLOAT32X @HAVE_FLOAT32X@
+#define HAVE_FLOAT16 @HAVE_FLOAT16@
+#define HAVE_FLOAT16X @HAVE_FLOAT16X@
 
 #ifdef _GNUCC
 #define LONGLONG long long
@@ -221,7 +229,32 @@ int main(int argc, char **argv)
       long double _Complex ld;
     };
     alignof_complex_longdouble = (intptr_t)(&((struct s1c*)0)->ld);
-  }    
+  }
+  // How to macroise this pattern but also guard on HAVE_*?
+#define ALIGNOF_GUARD_0(ml_ident, tokens...) int ml_ident = 0;
+#define ALIGNOF_GUARD_1(ml_ident, tokens...) tokens
+#define ALIGNOF_CASE(structname, ml_ident, typetoks, GUARD) \
+  ALIGNOF_GUARD_ ## GUARD (ml_ident, int ml_ident = 0; \
+  { \
+    struct structname { \
+      char c; \
+      typetoks field; \
+    }; \
+    ml_ident = (intptr_t)(&((struct structname*)0)->field); \
+  } )
+  ALIGNOF_CASE(sd, alignof_shortfloat, short float, @HAVE_SHORT_FLOAT@)
+  ALIGNOF_CASE(sd, alignof_complex_shortfloat, short float _Complex, @HAVE_SHORT_FLOAT@)
+  ALIGNOF_CASE(cf128, alignof_complex_float128, _Float128 _Complex, @HAVE_FLOAT128@)
+  ALIGNOF_CASE(cf128x, alignof_complex_float128x, _Float128x _Complex, @HAVE_FLOAT128X@)
+  ALIGNOF_CASE(cf64x, alignof_complex_float64x, _Float64x _Complex, @HAVE_FLOAT64X@)
+  ALIGNOF_CASE(cf32x, alignof_complex_float32x, _Float32x _Complex, @HAVE_FLOAT32X@)
+  ALIGNOF_CASE(cf16x, alignof_complex_float16x, _Float16x _Complex, @HAVE_FLOAT16X@)
+  ALIGNOF_CASE(f128x, alignof_float128x, _Float128x, @HAVE_FLOAT128X@)
+  ALIGNOF_CASE(f64x, alignof_float64x, _Float64x, @HAVE_FLOAT64X@)
+  ALIGNOF_CASE(f32x, alignof_float32x, _Float32x, @HAVE_FLOAT32X@)
+  ALIGNOF_CASE(f16x, alignof_float16x, _Float16x, @HAVE_FLOAT16X@)
+  ALIGNOF_CASE(f128, alignof_float128, __float128, @HAVE_FLOAT128@)
+#undef ALIGNOF_CASE
     
   alignof_str = __alignof("a string");
   alignof_fun = __alignof(main);
@@ -264,8 +297,18 @@ int main(int argc, char **argv)
 	     "float=%d,%d double=%d,%d "
 	     "long_double=%d,%d "
 	     "void=%d "
+	     "shortfloat=%d,%d shortfloatcomplex=%d,%d "
 	     "floatcomplex=%d,%d doublecomplex=%d,%d "
 	     "long_doublecomplex=%d,%d "
+	     "alignof_complex_float128=%d "
+	     "alignof_complex_float128x=%d "
+	     "alignof_complex_float64x=%d "
+	     "alignof_complex_float32x=%d "
+	     "alignof_complex_float16x=%d "
+	     "alignof_float128x=%d "
+	     "alignof_float64x=%d "
+	     "alignof_float32x=%d "
+	     "alignof_float16x=%d "
 	     "bool=%d,%d fun=%d,%d alignof_string=%d max_alignment=%d size_t=%s "
 	     "wchar_t=%s char_signed=%s const_string_literals=%s "
 	     "big_endian=%s __thread_is_keyword=%s __builtin_va_list=%s "
@@ -275,9 +318,23 @@ int main(int argc, char **argv)
 	     (int)sizeof(int *), alignof_ptr, alignof_enum,
 	     (int)sizeof(float), alignof_float, (int)sizeof(double), alignof_double, 
 	     (int)sizeof(long double), alignof_longdouble,
-	     (int)sizeof(void), 
+	     (int)sizeof(void),
+#if HAVE_SHORT_FLOAT
+	     (int)sizeof(short float), alignof_shortfloat, (int)sizeof(short float _Complex), alignof_complex_shortfloat,
+#else
+	     0, 0, 0, 0,
+#endif
 	     (int)sizeof(float _Complex), alignof_complex_float, (int)sizeof(double _Complex), alignof_complex_double,
 	     (int)sizeof(long double _Complex), alignof_complex_longdouble,
+	     alignof_complex_float128,
+	     alignof_complex_float128x,
+	     alignof_complex_float64x,
+	     alignof_complex_float32x,
+	     alignof_complex_float16x,
+	     alignof_float128x,
+	     alignof_float64x,
+	     alignof_float32x,
+	     alignof_float16x,
 	     (int)sizeof(bool), alignof_bool,
 	     sizeof_fun, alignof_fun, alignof_str, alignof_aligned, 
 	     underscore(TYPE_SIZE_T), underscore(TYPE_WCHAR_T), 
@@ -302,8 +359,18 @@ int main(int argc, char **argv)
       printf("\t sizeof_longlong       = %d;\n", (int)sizeof(LONGLONG));
       printf("\t sizeof_ptr            = %d;\n", (int)sizeof(int *));
       printf("\t sizeof_float          = %d;\n", (int)sizeof(float));
+#if HAVE_SHORT_FLOAT
+      printf("\t sizeof_shortfloat     = %d;\n", (int)sizeof(short float));
+#else
+      printf("\t sizeof_shortfloat     = %d;\n", 0);
+#endif
       printf("\t sizeof_double         = %d;\n", (int)sizeof(double));
       printf("\t sizeof_longdouble     = %d;\n", (int)sizeof(long double));
+#if HAVE_SHORT_FLOAT
+      printf("\t sizeof_complex_shortfloat     = %d;\n", (int)sizeof(short float _Complex));
+#else
+      printf("\t sizeof_complex_shortfloat     = %d;\n", 0);
+#endif
       printf("\t sizeof_complex_float          = %d;\n", (int)sizeof(float _Complex));
       printf("\t sizeof_complex_double         = %d;\n", (int)sizeof(double _Complex));
       printf("\t sizeof_complex_longdouble     = %d;\n", (int)sizeof(long double _Complex));
@@ -318,12 +385,24 @@ int main(int argc, char **argv)
       printf("\t alignof_longlong      = %d;\n", alignof_longlong);
       printf("\t alignof_ptr           = %d;\n", alignof_ptr);
       printf("\t alignof_enum          = %d;\n", alignof_enum);
+      printf("\t alignof_shortfloat    = %d;\n", alignof_shortfloat);
       printf("\t alignof_float         = %d;\n", alignof_float);
       printf("\t alignof_double        = %d;\n", alignof_double);
       printf("\t alignof_longdouble    = %d;\n", alignof_longdouble);
+      printf("\t alignof_complex_shortfloat    = %d;\n", alignof_complex_shortfloat);
       printf("\t alignof_complex_float         = %d;\n", alignof_complex_float);
       printf("\t alignof_complex_double        = %d;\n", alignof_complex_double);
       printf("\t alignof_complex_longdouble    = %d;\n", alignof_complex_longdouble);
+      printf("\t alignof_complex_float128      = %d;\n", alignof_complex_float128);
+      printf("\t alignof_complex_float128x     = %d;\n", alignof_complex_float128x);
+      printf("\t alignof_complex_float64x      = %d;\n", alignof_complex_float64x);
+      printf("\t alignof_complex_float32x      = %d;\n", alignof_complex_float32x);
+      printf("\t alignof_complex_float16x      = %d;\n", alignof_complex_float16x);
+      printf("\t alignof_float128      = %d;\n", alignof_float128);
+      printf("\t alignof_float128x     = %d;\n", alignof_float128x);
+      printf("\t alignof_float64x      = %d;\n", alignof_float64x);
+      printf("\t alignof_float32x      = %d;\n", alignof_float32x);
+      printf("\t alignof_float16x      = %d;\n", alignof_float16x);
       printf("\t alignof_str           = %d;\n", alignof_str);
       printf("\t alignof_fun           = %d;\n", alignof_fun);
       printf("\t alignof_aligned       = %d;\n", alignof_aligned);

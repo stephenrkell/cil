@@ -254,7 +254,10 @@ let transformOffsetOf (speclist, dtype) member =
 %token <int64 list * Cabs.cabsloc> CST_WSTRING
 
 %token EOF
-%token<Cabs.cabsloc> CHAR INT BOOL FLOAT128 DOUBLE FLOAT VOID INT128 INT64 INT32
+%token<Cabs.cabsloc> CHAR INT BOOL
+%token<Cabs.cabsloc> FLOAT128 DOUBLE FLOAT
+%token<Cabs.cabsloc> FLOAT64 FLOAT32 FLOAT16 FLOAT128X FLOAT64X FLOAT32X FLOAT16X
+%token<Cabs.cabsloc> VOID INT128 INT64 INT32
 %token<Cabs.cabsloc> ENUM STRUCT TYPEDEF UNION
 %token<Cabs.cabsloc> SIGNED UNSIGNED LONG SHORT COMPLEX
 %token<Cabs.cabsloc> VOLATILE EXTERN STATIC CONST RESTRICT AUTO REGISTER
@@ -981,7 +984,15 @@ type_spec:   /* ISO 6.7.2 */
 |   INT128          { Tint128, $1 }
 |   FLOAT           { Tfloat, $1 }
 |   DOUBLE          { Tdouble, $1 }
-|   FLOAT128        { Tfloat128, $1 }
+|   FLOAT128        { Tfloat128, $1 }  /* (* "interchange" and "extended" floating types *) */
+|   FLOAT128X       { Tfloat128x, $1 } /* (* http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1796.pdf *) */
+|   FLOAT64         { Tfloat64, $1 }
+|   FLOAT64X        { Tfloat64x, $1 }
+|   FLOAT32         { Tfloat32, $1 }
+|   FLOAT32X        { Tfloat32x, $1 }
+|   FLOAT16         { Tfloat16, $1 }
+|   FLOAT16X        { Tfloat16x, $1 }
+
 |   SIGNED          { Tsigned, $1 }
 |   UNSIGNED        { Tunsigned, $1 }
 |   STRUCT                 id_or_typename
