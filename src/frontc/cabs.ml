@@ -64,6 +64,7 @@ type typeSpecifier = (* Merge all specifiers into one type *)
   | Tint128
   | Tfloat
   | Tdouble
+  | Tfloat128
   | Tcomplex
   | Tsigned
   | Tsizet    (* used temporarily to translate offsetof() *)

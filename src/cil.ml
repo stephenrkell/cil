@@ -294,6 +294,7 @@ and fkind =
     FFloat      (** [float] *)
   | FDouble     (** [double] *)
   | FLongDouble (** [long double] *)
+  | FFloat128   (** [__float128] *)
   | FComplexFloat (** [float _Complex] *)
   | FComplexDouble (** [double _Complex] *)
   | FComplexLongDouble (** [long double _Complex] *)
@@ -1659,6 +1660,7 @@ let d_fkind () = function
     FFloat -> text "float"
   | FDouble -> text "double"
   | FLongDouble -> text "long double"
+  | FFloat128 -> text "__float128"
   | FComplexFloat -> text "float _Complex"
   | FComplexDouble -> text "double _Complex"
   | FComplexLongDouble -> text "long double _Complex"
@@ -1752,6 +1754,7 @@ let d_const () c =
          FFloat -> chr 'f'
        | FDouble -> nil
        | FLongDouble -> chr 'L'
+       | FFloat128 -> failwith "impossible: CReal constant gave __float128 result"
        | _ -> failwith "impossible: CReal constant gave _Complex result")
   | CEnum(_, s, ei) -> text s
 
@@ -2022,6 +2025,7 @@ let floatKindForSize (s:int) =
   if s = !M.theMachine.M.sizeof_double then FDouble
   else if s = !M.theMachine.M.sizeof_float then FFloat
   else if s = !M.theMachine.M.sizeof_longdouble then FLongDouble
+  else if s = 16 then FFloat128
   else raise Not_found
 
 (* Represents an integer as for a given kind.  Returns a flag saying
@@ -2151,11 +2155,12 @@ let rec alignOf_int t =
     | TInt((IInt|IUInt), _) -> !M.theMachine.M.alignof_int
     | TInt((ILong|IULong), _) -> !M.theMachine.M.alignof_long
     | TInt((ILongLong|IULongLong), _) -> !M.theMachine.M.alignof_longlong
-    | TInt((IInt128|IUInt128), _) -> 128
+    | TInt((IInt128|IUInt128), _) -> 16
     | TEnum(ei, _) -> alignOf_int (TInt(ei.ekind, []))
     | TFloat(FFloat, _) -> !M.theMachine.M.alignof_float 
     | TFloat(FDouble, _) -> !M.theMachine.M.alignof_double
     | TFloat(FLongDouble, _) -> !M.theMachine.M.alignof_longdouble
+    | TFloat(FFloat128, _) -> 16
     | TFloat(FComplexFloat, _) -> !M.theMachine.M.alignof_complex_float 
     | TFloat(FComplexDouble, _) -> !M.theMachine.M.alignof_complex_double
     | TFloat(FComplexLongDouble, _) -> !M.theMachine.M.alignof_complex_longdouble
@@ -2419,6 +2424,7 @@ and bitsSizeOf t =
   | TFloat(FFloat, _) -> 8 * !M.theMachine.M.sizeof_float
   | TFloat(FDouble, _) -> 8 * !M.theMachine.M.sizeof_double
   | TFloat(FLongDouble, _) -> 8 * !M.theMachine.M.sizeof_longdouble
+  | TFloat(FFloat128, _) -> 128
   | TFloat(FComplexFloat, _) -> 8 * !M.theMachine.M.sizeof_complex_float
   | TFloat(FComplexDouble, _) -> 8 * !M.theMachine.M.sizeof_complex_double
   | TFloat(FComplexLongDouble, _) -> 8 * !M.theMachine.M.sizeof_complex_longdouble

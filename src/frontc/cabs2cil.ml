@@ -1342,7 +1342,9 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
     (t1: typ)
     (t2: typ) : typ =
   match unrollType t1, unrollType t2 with
-    TFloat(FLongDouble, _), _ -> t1
+    TFloat(FFloat128, _), _ -> t1
+  | _, TFloat(FFloat128, _) -> t2
+  | TFloat(FLongDouble, _), _ -> t1
   | _, TFloat(FLongDouble, _) -> t2
   | TFloat(FDouble, _), _ -> t1
   | _, TFloat (FDouble, _) -> t2
@@ -2473,7 +2475,8 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
       | A.Tdouble -> 9
       | A.Tint128 -> 10
       | A.Tcomplex -> 11
-      | _ -> 12 (* There should be at most one of the others *)
+      | A.Tfloat128 -> 12
+      | _ -> 13 (* There should be at most one of the others *)
     in
     List.stable_sort (fun ts1 ts2 -> compare (order ts1) (order ts2)) tspecs' 
   in
@@ -2546,6 +2549,8 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     | [A.Tunsigned; A.Tint64] -> TInt(IUInt128, [])
 
     | [A.Tfloat] -> TFloat(FFloat, [])
+    (* __float128 is an optional extension, but we support it *)
+    | [A.Tfloat128] -> TFloat(FFloat128, [])
     | [A.Tdouble] -> TFloat(FDouble, [])
     | [A.Tfloat; A.Tcomplex] -> TFloat(FComplexFloat, [])
     | [A.Tdouble; A.Tcomplex] -> TFloat(FComplexDouble, [])
