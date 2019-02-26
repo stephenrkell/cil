@@ -622,6 +622,15 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 UNDERSCORE_NAME
 THREAD_IS_KEYWORD
+HAVE_FLOAT16X
+HAVE_FLOAT16
+HAVE_FLOAT32X
+HAVE_FLOAT32
+HAVE_FLOAT64X
+HAVE_FLOAT64
+HAVE_FLOAT128X
+HAVE_FLOAT128
+HAVE_SHORT_FLOAT
 HAVE_BUILTIN_VA_LIST
 CIL_VERSION
 CIL_VERSION_REV
@@ -696,6 +705,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -766,6 +776,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -1018,6 +1029,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1155,7 +1175,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1308,6 +1328,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -5233,6 +5254,69 @@ else
   HAVE_BUILTIN_VA_LIST=false
 fi
 
+ac_fn_c_check_type "$LINENO" "short float" "ac_cv_type_short_float" "$ac_includes_default"
+if test "x$ac_cv_type_short_float" = xyes; then :
+  HAVE_SHORT_FLOAT=1
+else
+  HAVE_SHORT_FLOAT=0
+fi
+
+ac_fn_c_check_type "$LINENO" "_Float128" "ac_cv_type__Float128" "$ac_includes_default"
+if test "x$ac_cv_type__Float128" = xyes; then :
+  HAVE_FLOAT128=1
+else
+  HAVE_FLOAT128=0
+fi
+
+ac_fn_c_check_type "$LINENO" "_Float128x" "ac_cv_type__Float128x" "$ac_includes_default"
+if test "x$ac_cv_type__Float128x" = xyes; then :
+  HAVE_FLOAT128X=1
+else
+  HAVE_FLOAT128X=0
+fi
+
+ac_fn_c_check_type "$LINENO" "_Float64" "ac_cv_type__Float64" "$ac_includes_default"
+if test "x$ac_cv_type__Float64" = xyes; then :
+  HAVE_FLOAT64=1
+else
+  HAVE_FLOAT64=0
+fi
+
+ac_fn_c_check_type "$LINENO" "_Float64x" "ac_cv_type__Float64x" "$ac_includes_default"
+if test "x$ac_cv_type__Float64x" = xyes; then :
+  HAVE_FLOAT64X=1
+else
+  HAVE_FLOAT64X=0
+fi
+
+ac_fn_c_check_type "$LINENO" "_Float32" "ac_cv_type__Float32" "$ac_includes_default"
+if test "x$ac_cv_type__Float32" = xyes; then :
+  HAVE_FLOAT32=1
+else
+  HAVE_FLOAT32=0
+fi
+
+ac_fn_c_check_type "$LINENO" "_Float32x" "ac_cv_type__Float32x" "$ac_includes_default"
+if test "x$ac_cv_type__Float32x" = xyes; then :
+  HAVE_FLOAT32X=1
+else
+  HAVE_FLOAT32X=0
+fi
+
+ac_fn_c_check_type "$LINENO" "_Float16" "ac_cv_type__Float16" "$ac_includes_default"
+if test "x$ac_cv_type__Float16" = xyes; then :
+  HAVE_FLOAT16=1
+else
+  HAVE_FLOAT16=0
+fi
+
+ac_fn_c_check_type "$LINENO" "_Float16x" "ac_cv_type__Float16x" "$ac_includes_default"
+if test "x$ac_cv_type__Float16x" = xyes; then :
+  HAVE_FLOAT16X=1
+else
+  HAVE_FLOAT16X=0
+fi
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking if __thread is a keyword" >&5
 $as_echo_n "checking if __thread is a keyword... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -6104,6 +6188,15 @@ $as_echo "$real_type" >&6; }
 # ----------------- finish up -------------------
 # names of the variables that get substituted in files; for example,
 # write @CIL_VERSION@ somewhere in a written file to get it substituted
+
+
+
+
+
+
+
+
+
 
 
 
