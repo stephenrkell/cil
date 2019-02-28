@@ -2572,8 +2572,6 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     | [A.Tint64] -> TInt(ILongLong, [])
     | [A.Tsigned; A.Tint64] -> TInt(ILongLong, [])
 
-    | [A.Tunsigned; A.Tint64] -> TInt(IULongLong, [])
-    
     (* __int128 is an optional extension, but we support it *)
     | [A.Tint128] -> TInt(IInt128, [])
     | [A.Tsigned; A.Tint128] -> TInt(IInt128, [])
@@ -2801,6 +2799,7 @@ and convertCVtoAttr (src: A.cvspec list) : A.attribute list =
   | CV_CONST    :: tl -> ("const",[])    :: (convertCVtoAttr tl)
   | CV_VOLATILE :: tl -> ("volatile",[]) :: (convertCVtoAttr tl)
   | CV_RESTRICT :: tl -> ("restrict",[]) :: (convertCVtoAttr tl)
+  | CV_ATOMIC   :: tl -> ("_Atomic",[])  :: (convertCVtoAttr tl)
 
 
 and makeVarInfoCabs 
@@ -5837,6 +5836,10 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
         match nl with 
           [] -> ""
         | ((n, _, _, _), _) :: _ -> n
+      in
+      let s = match (s, nl) with
+      | ([SpecType Tautotype], [(_, SINGLE_INIT e)]) -> [SpecType (TtypeofE e)]
+      | _ -> s
       in
       let spec_res = doSpecList sugg s in
       (* Do all the variables and concatenate the resulting statements *)

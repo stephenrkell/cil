@@ -261,7 +261,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> ENUM STRUCT TYPEDEF UNION
 %token<Cabs.cabsloc> SIGNED UNSIGNED LONG SHORT COMPLEX
 %token<Cabs.cabsloc> VOLATILE EXTERN STATIC CONST RESTRICT AUTO REGISTER
-%token<Cabs.cabsloc> THREAD
+%token<Cabs.cabsloc> THREAD ATOMIC AUTOTYPE
 
 %token<Cabs.cabsloc> SIZEOF ALIGNOF
 
@@ -327,7 +327,7 @@ let transformOffsetOf (speclist, dtype) member =
 %left	INF SUP INF_EQ SUP_EQ
 %left	INF_INF SUP_SUP
 %left	PLUS MINUS
-%left	STAR SLASH PERCENT CONST RESTRICT VOLATILE
+%left	STAR SLASH PERCENT CONST RESTRICT VOLATILE ATOMIC
 %right	EXCLAM TILDE PLUS_PLUS MINUS_MINUS CAST RPAREN ADDROF SIZEOF ALIGNOF
 %left 	LBRACKET
 %left	DOT ARROW LPAREN LBRACE
@@ -1031,6 +1031,7 @@ type_spec:   /* ISO 6.7.2 */
 |   TYPEOF LPAREN expression RPAREN     { TtypeofE (fst $3), $1 }
 |   TYPEOF LPAREN type_name RPAREN      { let s, d = $3 in
                                           TtypeofT (s, d), $1 }
+|   AUTOTYPE        { Tautotype, $1 }
 ;
 struct_decl_list: /* (* ISO 6.7.2. Except that we allow empty structs. We 
                       * also allow missing field names. *)
@@ -1294,6 +1295,7 @@ cvspec:
     CONST                               { SpecCV(CV_CONST), $1 }
 |   VOLATILE                            { SpecCV(CV_VOLATILE), $1 }
 |   RESTRICT                            { SpecCV(CV_RESTRICT), $1 }
+|   ATOMIC                              { SpecCV(CV_ATOMIC), $1 }
 ;
 
 /*** GCC attributes ***/
