@@ -1558,7 +1558,11 @@ asmopname:
 
 asmclobber:
     /* empty */                         { [] }
-| COLON asmcloberlst_ne                 { $2 }
+| COLON asmcloberlst                    { $2 }
+;
+asmcloberlst:
+    /* empty */                         { [] }
+| asmcloberlst_ne                       { $1 }
 ;
 asmcloberlst_ne:
    string_constant                           { [fst $1] }
