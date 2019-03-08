@@ -156,7 +156,8 @@ let rec print_specifiers (specs: spec_elem list) =
         printu (match cv with
         | CV_CONST -> "const"
         | CV_VOLATILE -> "volatile"
-        | CV_RESTRICT -> "restrict")
+        | CV_RESTRICT -> "restrict"
+        | CV_ATOMIC -> "_Atomic")
     | SpecAttr al -> print_attribute al; space ()
     | SpecType bt -> print_type_spec bt
     | SpecPattern name -> printl ["@specifier";"(";name;")"]
@@ -203,6 +204,7 @@ and print_type_spec = function
       (print_enum_items enum_items)
   | TtypeofE e -> printl ["__typeof__";"("]; print_expression e; print ") "
   | TtypeofT (s,d) -> printl ["__typeof__";"("]; print_onlytype (s, d); print ") "
+  | Tautotype -> print "__auto_type "
 
 
 (* print "struct foo", but with specified keyword and a list of
