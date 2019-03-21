@@ -206,6 +206,8 @@ let init_lexicon _ =
       (**** MS VC ***)
       ("__int64", fun _ -> INT64 (currentLoc ()));
       ("__int32", fun loc -> INT loc);
+      ("_Atomic", fun loc -> ATOMIC loc);
+      ("__auto_type", fun loc -> AUTOTYPE loc);
       ("_cdecl",  fun _ -> MSATTR ("_cdecl", currentLoc ())); 
       ("__cdecl", fun _ -> MSATTR ("__cdecl", currentLoc ()));
       ("_stdcall", fun _ -> MSATTR ("_stdcall", currentLoc ())); 

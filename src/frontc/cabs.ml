@@ -87,6 +87,7 @@ type typeSpecifier = (* Merge all specifiers into one type *)
   | Tenum of string * enum_item list option * attribute list
   | TtypeofE of expression                      (* GCC __typeof__ *)
   | TtypeofT of specifier * decl_type       (* GCC __typeof__ *)
+  | Tautotype                               (* GCC __auto_type *)
 
 and storage =
     NO_STORAGE | AUTO | STATIC | EXTERN | REGISTER
@@ -95,7 +96,7 @@ and funspec =
     INLINE | VIRTUAL | EXPLICIT
 
 and cvspec =
-    CV_CONST | CV_VOLATILE | CV_RESTRICT
+    CV_CONST | CV_VOLATILE | CV_RESTRICT | CV_ATOMIC
 
 (* Type specifier elements. These appear at the start of a declaration *)
 (* Everywhere they appear in this file, they appear as a 'spec_elem list', *)
