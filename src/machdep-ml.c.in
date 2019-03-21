@@ -64,6 +64,8 @@ typedef int bool;
 
 #define THREAD_IS_KEYWORD "@THREAD_IS_KEYWORD@"
 #define HAVE_BUILTIN_VA_LIST "@HAVE_BUILTIN_VA_LIST@"
+#define HAVE_SHORT_FLOAT @HAVE_SHORT_FLOAT@
+#define HAVE_SHORT_FLOAT_COMPLEX @HAVE_SHORT_FLOAT_COMPLEX@
 #define HAVE_FLOAT128 @HAVE_FLOAT128@
 #define HAVE_FLOAT128X @HAVE_FLOAT128X@
 #define HAVE_FLOAT64 @HAVE_FLOAT64@
@@ -72,6 +74,14 @@ typedef int bool;
 #define HAVE_FLOAT32X @HAVE_FLOAT32X@
 #define HAVE_FLOAT16 @HAVE_FLOAT16@
 #define HAVE_FLOAT16X @HAVE_FLOAT16X@
+#define HAVE_FLOAT128_COMPLEX @HAVE_FLOAT128_COMPLEX@
+#define HAVE_FLOAT128X_COMPLEX @HAVE_FLOAT128X_COMPLEX@
+#define HAVE_FLOAT64_COMPLEX @HAVE_FLOAT64_COMPLEX@
+#define HAVE_FLOAT64X_COMPLEX @HAVE_FLOAT64X_COMPLEX@
+#define HAVE_FLOAT32_COMPLEX @HAVE_FLOAT32_COMPLEX@
+#define HAVE_FLOAT32X_COMPLEX @HAVE_FLOAT32X_COMPLEX@
+#define HAVE_FLOAT16_COMPLEX @HAVE_FLOAT16_COMPLEX@
+#define HAVE_FLOAT16X_COMPLEX @HAVE_FLOAT16X_COMPLEX@
 
 #ifdef _GNUCC
 #define LONGLONG long long
@@ -243,12 +253,12 @@ int main(int argc, char **argv)
     ml_ident = (intptr_t)(&((struct structname*)0)->field); \
   } )
   ALIGNOF_CASE(sd, alignof_shortfloat, short float, @HAVE_SHORT_FLOAT@)
-  ALIGNOF_CASE(sd, alignof_complex_shortfloat, short float _Complex, @HAVE_SHORT_FLOAT@)
-  ALIGNOF_CASE(cf128, alignof_complex_float128, _Float128 _Complex, @HAVE_FLOAT128@)
-  ALIGNOF_CASE(cf128x, alignof_complex_float128x, _Float128x _Complex, @HAVE_FLOAT128X@)
-  ALIGNOF_CASE(cf64x, alignof_complex_float64x, _Float64x _Complex, @HAVE_FLOAT64X@)
-  ALIGNOF_CASE(cf32x, alignof_complex_float32x, _Float32x _Complex, @HAVE_FLOAT32X@)
-  ALIGNOF_CASE(cf16x, alignof_complex_float16x, _Float16x _Complex, @HAVE_FLOAT16X@)
+  ALIGNOF_CASE(sd, alignof_complex_shortfloat, short float _Complex, @HAVE_SHORT_FLOAT_COMPLEX@)
+  ALIGNOF_CASE(cf128, alignof_complex_float128, _Float128 _Complex, @HAVE_FLOAT128_COMPLEX@)
+  ALIGNOF_CASE(cf128x, alignof_complex_float128x, _Float128x _Complex, @HAVE_FLOAT128X_COMPLEX@)
+  ALIGNOF_CASE(cf64x, alignof_complex_float64x, _Float64x _Complex, @HAVE_FLOAT64X_COMPLEX@)
+  ALIGNOF_CASE(cf32x, alignof_complex_float32x, _Float32x _Complex, @HAVE_FLOAT32X_COMPLEX@)
+  ALIGNOF_CASE(cf16x, alignof_complex_float16x, _Float16x _Complex, @HAVE_FLOAT16X_COMPLEX@)
   ALIGNOF_CASE(f128x, alignof_float128x, _Float128x, @HAVE_FLOAT128X@)
   ALIGNOF_CASE(f64x, alignof_float64x, _Float64x, @HAVE_FLOAT64X@)
   ALIGNOF_CASE(f32x, alignof_float32x, _Float32x, @HAVE_FLOAT32X@)
