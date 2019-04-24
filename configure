@@ -639,6 +639,7 @@ HAVE_FLOAT64X
 HAVE_FLOAT64
 HAVE_FLOAT128X
 HAVE_FLOAT128
+HAVE___FLOAT128
 HAVE_SHORT_FLOAT
 HAVE_BUILTIN_VA_LIST
 CIL_VERSION
@@ -5251,6 +5252,9 @@ else
   HAVE_BUILTIN_VA_LIST=false
 fi
 
+# When testing for float types, we really care about whether
+# they are defined as builtins by the compiler, not as typedefs
+# by the standard headers. So we substitute INCLUDES with -nostdinc
 ac_fn_c_check_type "$LINENO" "short float" "ac_cv_type_short_float" "$ac_includes_default"
 if test "x$ac_cv_type_short_float" = xyes; then :
   HAVE_SHORT_FLOAT=1
@@ -5258,119 +5262,143 @@ else
   HAVE_SHORT_FLOAT=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float128" "ac_cv_type__Float128" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "__float128" "ac_cv_type___float128" "$ac_includes_default"
+if test "x$ac_cv_type___float128" = xyes; then :
+  HAVE___FLOAT128=1
+else
+  HAVE___FLOAT128=0
+fi
+
+ac_fn_c_check_type "$LINENO" "_Float128" "ac_cv_type__Float128" "-nostdinc
+"
 if test "x$ac_cv_type__Float128" = xyes; then :
   HAVE_FLOAT128=1
 else
   HAVE_FLOAT128=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float128x" "ac_cv_type__Float128x" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float128x" "ac_cv_type__Float128x" "-nostdinc
+"
 if test "x$ac_cv_type__Float128x" = xyes; then :
   HAVE_FLOAT128X=1
 else
   HAVE_FLOAT128X=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float64" "ac_cv_type__Float64" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float64" "ac_cv_type__Float64" "-nostdinc
+"
 if test "x$ac_cv_type__Float64" = xyes; then :
   HAVE_FLOAT64=1
 else
   HAVE_FLOAT64=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float64x" "ac_cv_type__Float64x" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float64x" "ac_cv_type__Float64x" "-nostdinc
+"
 if test "x$ac_cv_type__Float64x" = xyes; then :
   HAVE_FLOAT64X=1
 else
   HAVE_FLOAT64X=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float32" "ac_cv_type__Float32" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float32" "ac_cv_type__Float32" "-nostdinc
+"
 if test "x$ac_cv_type__Float32" = xyes; then :
   HAVE_FLOAT32=1
 else
   HAVE_FLOAT32=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float32x" "ac_cv_type__Float32x" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float32x" "ac_cv_type__Float32x" "-nostdinc
+"
 if test "x$ac_cv_type__Float32x" = xyes; then :
   HAVE_FLOAT32X=1
 else
   HAVE_FLOAT32X=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float16" "ac_cv_type__Float16" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float16" "ac_cv_type__Float16" "-nostdinc
+"
 if test "x$ac_cv_type__Float16" = xyes; then :
   HAVE_FLOAT16=1
 else
   HAVE_FLOAT16=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float16x" "ac_cv_type__Float16x" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float16x" "ac_cv_type__Float16x" "-nostdinc
+"
 if test "x$ac_cv_type__Float16x" = xyes; then :
   HAVE_FLOAT16X=1
 else
   HAVE_FLOAT16X=0
 fi
 
-ac_fn_c_check_type "$LINENO" "short float _Complex" "ac_cv_type_short_float__Complex" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "short float _Complex" "ac_cv_type_short_float__Complex" "-nostdinc
+"
 if test "x$ac_cv_type_short_float__Complex" = xyes; then :
   HAVE_SHORT_FLOAT_COMPLEX=1
 else
   HAVE_SHORT_FLOAT_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float128 _Complex" "ac_cv_type__Float128__Complex" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float128 _Complex" "ac_cv_type__Float128__Complex" "-nostdinc
+"
 if test "x$ac_cv_type__Float128__Complex" = xyes; then :
   HAVE_FLOAT128_COMPLEX=1
 else
   HAVE_FLOAT128_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float128x _Complex" "ac_cv_type__Float128x__Complex" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float128x _Complex" "ac_cv_type__Float128x__Complex" "-nostdinc
+"
 if test "x$ac_cv_type__Float128x__Complex" = xyes; then :
   HAVE_FLOAT128X_COMPLEX=1
 else
   HAVE_FLOAT128X_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float64 _Complex" "ac_cv_type__Float64__Complex" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float64 _Complex" "ac_cv_type__Float64__Complex" "-nostdinc
+"
 if test "x$ac_cv_type__Float64__Complex" = xyes; then :
   HAVE_FLOAT64_COMPLEX=1
 else
   HAVE_FLOAT64_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float64x _Complex" "ac_cv_type__Float64x__Complex" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float64x _Complex" "ac_cv_type__Float64x__Complex" "-nostdinc
+"
 if test "x$ac_cv_type__Float64x__Complex" = xyes; then :
   HAVE_FLOAT64X_COMPLEX=1
 else
   HAVE_FLOAT64X_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float32 _Complex" "ac_cv_type__Float32__Complex" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float32 _Complex" "ac_cv_type__Float32__Complex" "-nostdinc
+"
 if test "x$ac_cv_type__Float32__Complex" = xyes; then :
   HAVE_FLOAT32_COMPLEX=1
 else
   HAVE_FLOAT32_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float32x _Complex" "ac_cv_type__Float32x__Complex" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float32x _Complex" "ac_cv_type__Float32x__Complex" "-nostdinc
+"
 if test "x$ac_cv_type__Float32x__Complex" = xyes; then :
   HAVE_FLOAT32X_COMPLEX=1
 else
   HAVE_FLOAT32X_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float16 _Complex" "ac_cv_type__Float16__Complex" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float16 _Complex" "ac_cv_type__Float16__Complex" "-nostdinc
+"
 if test "x$ac_cv_type__Float16__Complex" = xyes; then :
   HAVE_FLOAT16_COMPLEX=1
 else
   HAVE_FLOAT16_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float16x _Complex" "ac_cv_type__Float16x__Complex" "$ac_includes_default"
+ac_fn_c_check_type "$LINENO" "_Float16x _Complex" "ac_cv_type__Float16x__Complex" "-nostdinc
+"
 if test "x$ac_cv_type__Float16x__Complex" = xyes; then :
   HAVE_FLOAT16X_COMPLEX=1
 else
@@ -6248,6 +6276,7 @@ $as_echo "$real_type" >&6; }
 # ----------------- finish up -------------------
 # names of the variables that get substituted in files; for example,
 # write @CIL_VERSION@ somewhere in a written file to get it substituted
+
 
 
 

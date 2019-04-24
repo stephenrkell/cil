@@ -130,60 +130,66 @@ AC_MSG_CHECKING([for gcc version])
 AC_CHECK_TYPE(__builtin_va_list,
               HAVE_BUILTIN_VA_LIST=true,
               HAVE_BUILTIN_VA_LIST=false)
+# When testing for float types, we really care about whether
+# they are defined as builtins by the compiler, not as typedefs
+# by the standard headers. So we substitute INCLUDES with -nostdinc
 AC_CHECK_TYPE([short float],
               HAVE_SHORT_FLOAT=1,
               HAVE_SHORT_FLOAT=0)
+AC_CHECK_TYPE(__float128,
+              HAVE___FLOAT128=1,
+              HAVE___FLOAT128=0)
 AC_CHECK_TYPE(_Float128,
               HAVE_FLOAT128=1,
-              HAVE_FLOAT128=0)
+              HAVE_FLOAT128=0,-nostdinc)
 AC_CHECK_TYPE(_Float128x,
               HAVE_FLOAT128X=1,
-              HAVE_FLOAT128X=0)
+              HAVE_FLOAT128X=0,-nostdinc)
 AC_CHECK_TYPE(_Float64,
               HAVE_FLOAT64=1,
-              HAVE_FLOAT64=0)
+              HAVE_FLOAT64=0,-nostdinc)
 AC_CHECK_TYPE(_Float64x,
               HAVE_FLOAT64X=1,
-              HAVE_FLOAT64X=0)
+              HAVE_FLOAT64X=0,-nostdinc)
 AC_CHECK_TYPE(_Float32,
               HAVE_FLOAT32=1,
-              HAVE_FLOAT32=0)
+              HAVE_FLOAT32=0,-nostdinc)
 AC_CHECK_TYPE(_Float32x,
               HAVE_FLOAT32X=1,
-              HAVE_FLOAT32X=0)
+              HAVE_FLOAT32X=0,-nostdinc)
 AC_CHECK_TYPE(_Float16,
               HAVE_FLOAT16=1,
-              HAVE_FLOAT16=0)
+              HAVE_FLOAT16=0,-nostdinc)
 AC_CHECK_TYPE(_Float16x,
               HAVE_FLOAT16X=1,
-              HAVE_FLOAT16X=0)
+              HAVE_FLOAT16X=0,-nostdinc)
 AC_CHECK_TYPE([short float _Complex],
               HAVE_SHORT_FLOAT_COMPLEX=1,
-              HAVE_SHORT_FLOAT_COMPLEX=0)
+              HAVE_SHORT_FLOAT_COMPLEX=0,-nostdinc)
 AC_CHECK_TYPE([_Float128 _Complex],
               HAVE_FLOAT128_COMPLEX=1,
-              HAVE_FLOAT128_COMPLEX=0)
+              HAVE_FLOAT128_COMPLEX=0,-nostdinc)
 AC_CHECK_TYPE([_Float128x _Complex],
               HAVE_FLOAT128X_COMPLEX=1,
-              HAVE_FLOAT128X_COMPLEX=0)
+              HAVE_FLOAT128X_COMPLEX=0,-nostdinc)
 AC_CHECK_TYPE([_Float64 _Complex],
               HAVE_FLOAT64_COMPLEX=1,
-              HAVE_FLOAT64_COMPLEX=0)
+              HAVE_FLOAT64_COMPLEX=0,-nostdinc)
 AC_CHECK_TYPE([_Float64x _Complex],
               HAVE_FLOAT64X_COMPLEX=1,
-              HAVE_FLOAT64X_COMPLEX=0)
+              HAVE_FLOAT64X_COMPLEX=0,-nostdinc)
 AC_CHECK_TYPE([_Float32 _Complex],
               HAVE_FLOAT32_COMPLEX=1,
-              HAVE_FLOAT32_COMPLEX=0)
+              HAVE_FLOAT32_COMPLEX=0,-nostdinc)
 AC_CHECK_TYPE([_Float32x _Complex],
               HAVE_FLOAT32X_COMPLEX=1,
-              HAVE_FLOAT32X_COMPLEX=0)
+              HAVE_FLOAT32X_COMPLEX=0,-nostdinc)
 AC_CHECK_TYPE([_Float16 _Complex],
               HAVE_FLOAT16_COMPLEX=1,
-              HAVE_FLOAT16_COMPLEX=0)
+              HAVE_FLOAT16_COMPLEX=0,-nostdinc)
 AC_CHECK_TYPE([_Float16x _Complex],
               HAVE_FLOAT16X_COMPLEX=1,
-              HAVE_FLOAT16X_COMPLEX=0)
+              HAVE_FLOAT16X_COMPLEX=0,-nostdinc)
 AC_MSG_CHECKING([if __thread is a keyword])
 AC_COMPILE_IFELSE([AC_LANG_SOURCE([int main(int __thread) { return 0; }])],
                   THREAD_IS_KEYWORD=false,
@@ -233,6 +239,7 @@ AC_SUBST(CIL_VERSION_REV)
 AC_SUBST(CIL_VERSION)
 AC_SUBST(HAVE_BUILTIN_VA_LIST)
 AC_SUBST(HAVE_SHORT_FLOAT)
+AC_SUBST(HAVE___FLOAT128)
 AC_SUBST(HAVE_FLOAT128)
 AC_SUBST(HAVE_FLOAT128X)
 AC_SUBST(HAVE_FLOAT64)

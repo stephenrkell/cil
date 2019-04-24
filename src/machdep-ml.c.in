@@ -66,6 +66,7 @@ typedef int bool;
 #define HAVE_BUILTIN_VA_LIST "@HAVE_BUILTIN_VA_LIST@"
 #define HAVE_SHORT_FLOAT @HAVE_SHORT_FLOAT@
 #define HAVE_SHORT_FLOAT_COMPLEX @HAVE_SHORT_FLOAT_COMPLEX@
+#define HAVE___FLOAT128 @HAVE___FLOAT128@
 #define HAVE_FLOAT128 @HAVE_FLOAT128@
 #define HAVE_FLOAT128X @HAVE_FLOAT128X@
 #define HAVE_FLOAT64 @HAVE_FLOAT64@
@@ -263,7 +264,11 @@ int main(int argc, char **argv)
   ALIGNOF_CASE(f64x, alignof_float64x, _Float64x, @HAVE_FLOAT64X@)
   ALIGNOF_CASE(f32x, alignof_float32x, _Float32x, @HAVE_FLOAT32X@)
   ALIGNOF_CASE(f16x, alignof_float16x, _Float16x, @HAVE_FLOAT16X@)
-  ALIGNOF_CASE(f128, alignof_float128, __float128, @HAVE_FLOAT128@)
+  ALIGNOF_CASE(f128, alignof_float128, _Float128, @HAVE_FLOAT128@)
+  ALIGNOF_CASE(__f128, alignof___float128, __float128, @HAVE___FLOAT128@)
+  ALIGNOF_CASE(f64, alignof_float64, _Float64, @HAVE_FLOAT64@)
+  ALIGNOF_CASE(f32, alignof_float32, _Float32, @HAVE_FLOAT32@)
+  ALIGNOF_CASE(f16, alignof_float16, _Float16, @HAVE_FLOAT16@)
 #undef ALIGNOF_CASE
     
   alignof_str = __alignof("a string");
@@ -315,10 +320,15 @@ int main(int argc, char **argv)
 	     "alignof_complex_float64x=%d "
 	     "alignof_complex_float32x=%d "
 	     "alignof_complex_float16x=%d "
+	     "alignof___float128=%d "
 	     "alignof_float128x=%d "
 	     "alignof_float64x=%d "
 	     "alignof_float32x=%d "
 	     "alignof_float16x=%d "
+	     "alignof_float128=%d "
+	     "alignof_float64=%d "
+	     "alignof_float32=%d "
+	     "alignof_float16=%d "
 	     "bool=%d,%d fun=%d,%d alignof_string=%d max_alignment=%d size_t=%s "
 	     "wchar_t=%s char_signed=%s const_string_literals=%s "
 	     "big_endian=%s __thread_is_keyword=%s __builtin_va_list=%s "
@@ -341,10 +351,15 @@ int main(int argc, char **argv)
 	     alignof_complex_float64x,
 	     alignof_complex_float32x,
 	     alignof_complex_float16x,
+	     alignof___float128,
 	     alignof_float128x,
 	     alignof_float64x,
 	     alignof_float32x,
 	     alignof_float16x,
+	     alignof_float128,
+	     alignof_float64,
+	     alignof_float32,
+	     alignof_float16,
 	     (int)sizeof(bool), alignof_bool,
 	     sizeof_fun, alignof_fun, alignof_str, alignof_aligned, 
 	     underscore(TYPE_SIZE_T), underscore(TYPE_WCHAR_T), 
@@ -408,11 +423,15 @@ int main(int argc, char **argv)
       printf("\t alignof_complex_float64x      = %d;\n", alignof_complex_float64x);
       printf("\t alignof_complex_float32x      = %d;\n", alignof_complex_float32x);
       printf("\t alignof_complex_float16x      = %d;\n", alignof_complex_float16x);
+      printf("\t alignof___float128      = %d;\n", alignof___float128);
       printf("\t alignof_float128      = %d;\n", alignof_float128);
       printf("\t alignof_float128x     = %d;\n", alignof_float128x);
       printf("\t alignof_float64x      = %d;\n", alignof_float64x);
       printf("\t alignof_float32x      = %d;\n", alignof_float32x);
       printf("\t alignof_float16x      = %d;\n", alignof_float16x);
+      printf("\t alignof_float64       = %d;\n", alignof_float64);
+      printf("\t alignof_float32       = %d;\n", alignof_float32);
+      printf("\t alignof_float16       = %d;\n", alignof_float16);
       printf("\t alignof_str           = %d;\n", alignof_str);
       printf("\t alignof_fun           = %d;\n", alignof_fun);
       printf("\t alignof_aligned       = %d;\n", alignof_aligned);

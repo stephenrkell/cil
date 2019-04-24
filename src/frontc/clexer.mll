@@ -193,14 +193,41 @@ let init_lexicon _ =
 (*      ("__extension__", EXTENSION); *)
       ("__int128", fun _ -> INT128 (currentLoc ()));
       ("__float128", fun _ -> FLOAT128 (currentLoc ()));
-      ("_Float128", fun _ -> FLOAT128 (currentLoc ()));
-      ("_Float128x", fun _ -> FLOAT128X (currentLoc ()));
-      ("_Float64", fun _ -> FLOAT64 (currentLoc ()));
-      ("_Float64x", fun _ -> FLOAT64X (currentLoc ()));
-      ("_Float32", fun _ -> FLOAT32 (currentLoc ()));
-      ("_Float32x", fun _ -> FLOAT32X (currentLoc ()));
-      ("_Float1", fun _ -> FLOAT32 (currentLoc ()));
-      ("_Float32x", fun _ -> FLOAT32X (currentLoc ()));
+      ("_Float128", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128 then
+                         FLOAT128 (currentLoc ())
+                       else
+                         IDENT ("_Float128", currentLoc()));
+      ("_Float128x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128x then
+                         FLOAT128X (currentLoc ())
+                       else
+                         IDENT ("_Float128x", currentLoc()));
+      ("_Float64", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64 then
+                         FLOAT64 (currentLoc ())
+                       else
+                         IDENT ("_Float64", currentLoc())
+                         );
+      ("_Float64x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64x then
+                         FLOAT64X (currentLoc ())
+                       else
+                         IDENT ("_Float64x", currentLoc()));
+      ("_Float32", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float32 then
+                         FLOAT32 (currentLoc ())
+                       else
+                         IDENT ("_Float32", currentLoc())
+                         );
+      ("_Float32x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float32x then
+                         FLOAT32X (currentLoc ())
+                       else
+                         IDENT ("_Float32x", currentLoc()));
+      ("_Float16", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float16 then
+                         FLOAT16 (currentLoc ())
+                       else
+                         IDENT ("_Float16", currentLoc())
+                         );
+      ("_Float16x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float16x then
+                         FLOAT16X (currentLoc ())
+                       else
+                         IDENT ("_Float16x", currentLoc()));
       (* GCC non-standard __int128 aliases (not typedefs!) *)
       ("__int128_t", fun _ -> INT128 (currentLoc ()));
       (**** MS VC ***)
