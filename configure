@@ -715,6 +715,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -785,6 +786,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -1037,6 +1039,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1174,7 +1185,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1327,6 +1338,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -5269,7 +5281,7 @@ else
   HAVE___FLOAT128=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float128" "ac_cv_type__Float128" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float128" "ac_cv_type__Float128" "
 "
 if test "x$ac_cv_type__Float128" = xyes; then :
   HAVE_FLOAT128=1
@@ -5277,7 +5289,7 @@ else
   HAVE_FLOAT128=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float128x" "ac_cv_type__Float128x" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float128x" "ac_cv_type__Float128x" "
 "
 if test "x$ac_cv_type__Float128x" = xyes; then :
   HAVE_FLOAT128X=1
@@ -5285,7 +5297,7 @@ else
   HAVE_FLOAT128X=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float64" "ac_cv_type__Float64" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float64" "ac_cv_type__Float64" "
 "
 if test "x$ac_cv_type__Float64" = xyes; then :
   HAVE_FLOAT64=1
@@ -5293,7 +5305,7 @@ else
   HAVE_FLOAT64=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float64x" "ac_cv_type__Float64x" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float64x" "ac_cv_type__Float64x" "
 "
 if test "x$ac_cv_type__Float64x" = xyes; then :
   HAVE_FLOAT64X=1
@@ -5301,7 +5313,7 @@ else
   HAVE_FLOAT64X=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float32" "ac_cv_type__Float32" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float32" "ac_cv_type__Float32" "
 "
 if test "x$ac_cv_type__Float32" = xyes; then :
   HAVE_FLOAT32=1
@@ -5309,7 +5321,7 @@ else
   HAVE_FLOAT32=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float32x" "ac_cv_type__Float32x" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float32x" "ac_cv_type__Float32x" "
 "
 if test "x$ac_cv_type__Float32x" = xyes; then :
   HAVE_FLOAT32X=1
@@ -5317,7 +5329,7 @@ else
   HAVE_FLOAT32X=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float16" "ac_cv_type__Float16" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float16" "ac_cv_type__Float16" "
 "
 if test "x$ac_cv_type__Float16" = xyes; then :
   HAVE_FLOAT16=1
@@ -5325,7 +5337,7 @@ else
   HAVE_FLOAT16=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float16x" "ac_cv_type__Float16x" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float16x" "ac_cv_type__Float16x" "
 "
 if test "x$ac_cv_type__Float16x" = xyes; then :
   HAVE_FLOAT16X=1
@@ -5333,7 +5345,7 @@ else
   HAVE_FLOAT16X=0
 fi
 
-ac_fn_c_check_type "$LINENO" "short float _Complex" "ac_cv_type_short_float__Complex" "-nostdinc
+ac_fn_c_check_type "$LINENO" "short float _Complex" "ac_cv_type_short_float__Complex" "
 "
 if test "x$ac_cv_type_short_float__Complex" = xyes; then :
   HAVE_SHORT_FLOAT_COMPLEX=1
@@ -5341,7 +5353,7 @@ else
   HAVE_SHORT_FLOAT_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float128 _Complex" "ac_cv_type__Float128__Complex" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float128 _Complex" "ac_cv_type__Float128__Complex" "
 "
 if test "x$ac_cv_type__Float128__Complex" = xyes; then :
   HAVE_FLOAT128_COMPLEX=1
@@ -5349,7 +5361,7 @@ else
   HAVE_FLOAT128_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float128x _Complex" "ac_cv_type__Float128x__Complex" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float128x _Complex" "ac_cv_type__Float128x__Complex" "
 "
 if test "x$ac_cv_type__Float128x__Complex" = xyes; then :
   HAVE_FLOAT128X_COMPLEX=1
@@ -5357,7 +5369,7 @@ else
   HAVE_FLOAT128X_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float64 _Complex" "ac_cv_type__Float64__Complex" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float64 _Complex" "ac_cv_type__Float64__Complex" "
 "
 if test "x$ac_cv_type__Float64__Complex" = xyes; then :
   HAVE_FLOAT64_COMPLEX=1
@@ -5365,7 +5377,7 @@ else
   HAVE_FLOAT64_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float64x _Complex" "ac_cv_type__Float64x__Complex" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float64x _Complex" "ac_cv_type__Float64x__Complex" "
 "
 if test "x$ac_cv_type__Float64x__Complex" = xyes; then :
   HAVE_FLOAT64X_COMPLEX=1
@@ -5373,7 +5385,7 @@ else
   HAVE_FLOAT64X_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float32 _Complex" "ac_cv_type__Float32__Complex" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float32 _Complex" "ac_cv_type__Float32__Complex" "
 "
 if test "x$ac_cv_type__Float32__Complex" = xyes; then :
   HAVE_FLOAT32_COMPLEX=1
@@ -5381,7 +5393,7 @@ else
   HAVE_FLOAT32_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float32x _Complex" "ac_cv_type__Float32x__Complex" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float32x _Complex" "ac_cv_type__Float32x__Complex" "
 "
 if test "x$ac_cv_type__Float32x__Complex" = xyes; then :
   HAVE_FLOAT32X_COMPLEX=1
@@ -5389,7 +5401,7 @@ else
   HAVE_FLOAT32X_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float16 _Complex" "ac_cv_type__Float16__Complex" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float16 _Complex" "ac_cv_type__Float16__Complex" "
 "
 if test "x$ac_cv_type__Float16__Complex" = xyes; then :
   HAVE_FLOAT16_COMPLEX=1
@@ -5397,7 +5409,7 @@ else
   HAVE_FLOAT16_COMPLEX=0
 fi
 
-ac_fn_c_check_type "$LINENO" "_Float16x _Complex" "ac_cv_type__Float16x__Complex" "-nostdinc
+ac_fn_c_check_type "$LINENO" "_Float16x _Complex" "ac_cv_type__Float16x__Complex" "
 "
 if test "x$ac_cv_type__Float16x__Complex" = xyes; then :
   HAVE_FLOAT16X_COMPLEX=1
