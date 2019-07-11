@@ -3224,8 +3224,8 @@ and isVariableSizedArray (dt: A.decl_type)
   let res = ref None in
   let rec findArray = function
     ARRAY (JUSTBASE, al, lo) when lo != A.NOTHING -> 
-      (* Try to compile the expression to a constant *)
-      let (se, e', _) = doExp true lo (AExp (Some intType)) in
+      (* Handle the expression and see if it comes out a constant *)
+      let (se, e', _) = doExp false lo (AExp (Some intType)) in
       if isNotEmpty se || not (isConstant e') then begin
         res := Some (se, e');
         PTR (al, JUSTBASE)
@@ -5759,7 +5759,7 @@ and createLocal ((_, sto, _, _) as specs)
       let vi = alphaConvertVarAndAddToEnv true vi in        (* Replace vi *)
       let se1 = 
         if isvarsize then begin (* Variable-sized array *) 
-          ignore (warn "Variable-sized local variable %s" vi.vname);
+          ignore (E.log "Variable-sized local variable %s" vi.vname);
           (* Make a local variable to keep the length *)
           let savelen = 
             makeVarInfoCabs 
