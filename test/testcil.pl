@@ -726,9 +726,9 @@ addTest("testrun/compound2");
 addTest("test/shell-escape SHELL_ESCAPE=1");
 addTest("testpipe/simple");
 
-addTest("testrun/inline-srk-gnu89 $gcc");
-addTest("testrun/inline-srk-c11 $gcc");
-addTest("testrun/inline-srk-c11+oldinline $gcc");
+addTest("testrun/inline-srk-gnu89 $gcc OPTIMIZE=1 EXTRAARGS=-O2");
+addTest("testrun/inline-srk-c11 $gcc OPTIMIZE=1 EXTRAARGS=-O2");
+addTest("testrun/inline-srk-c11+oldinline $gcc OPTIMIZE=1 EXTRAARGS=-O2");
 
 addTest("test/complex");
 
