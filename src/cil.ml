@@ -1412,7 +1412,7 @@ let attributeHash: (string, attributeClass) H.t =
   let table = H.create 13 in
   List.iter (fun a -> H.add table a (AttrName false))
     [ "section"; "constructor"; "destructor"; "unused"; "used"; "weak"; 
-      "no_instrument_function"; "alias"; "no_check_memory_usage";
+      "no_instrument_function"; "alias"; "no_check_memory_usage"; "visibility";
       "exception"; "model"; (* "restrict"; *)
       "aconst"; "__asm__" (* Gcc uses this to specifiy the name to be used in 
                            * assembly for a global  *)];
