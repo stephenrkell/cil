@@ -3396,24 +3396,30 @@ class defaultCilPrinterClass : cilPrinter = object (self)
   (* variable use *)
   method pVar (v:varinfo) = text v.vname
 
-  (* variable declaration *)
+  (* variable declaration
+   * The caller tells us if we're being repurposed as part of
+   * printing the first line of a function *definition*, because
+   * 'inline' needs special handling. *)
   method pVDecl ?(beginsFunDef = false) () (v:varinfo) =
     let stom, rest = separateStorageModifiers v.vattr in
     (* First the storage modifiers *)
     (* If we're printing a function definition, we handle inlines specially.
-     * Getting this right is a bit hairy. Let's try as follows. The definition
-     * should take the "max" of *)
+     * Getting this right is a bit hairy. *)
     text (if v.vinline then "__inline " else "")
-      (* suppress extern on a function definition if it's not inline,;
-         suppress extern on a function prototype if it's not been used consistently *)
-      ++ (let suppressExtern = (beginsFunDef && not v.vinline) || (not beginsFunDef)
-         in (*if v.vstorage = Extern && suppressExtern then text " " else *) d_storage () v.vstorage)
+      (* Suppress extern on a function definition if it's not inline.
+         Suppress extern on a function prototype if it's *consistently* been declared extern. *)
+      ++ (let suppressExtern = (* (beginsFunDef && not v.vinline) || (not beginsFunDef) *) false
+         in if v.vstorage = Extern && suppressExtern then text " " else  d_storage () v.vstorage)
       ++ (self#pAttrs () stom)
       ++ (self#pType (Some (text v.vname)) () v.vtype)
-      ++ text (if beginsFunDef then " /* comes from pVDecl with beginsFunDef; vinline is really "
-        ^ (if v.vinline then "true" else "false")
-        ^ " and the varinfo, magic " ^ (string_of_int (Obj.magic v))
-        ^ ", also has " ^ (string_of_int (List.length v.vvardecls))^ " entries in vvardecls */ " else " ")
+      ++ text (
+          if beginsFunDef
+          then (" /* comes from pVDecl with beginsFunDef; vinline is really "
+            ^ (if v.vinline then "true" else "false")
+            ^ " and the varinfo, magic " ^ (string_of_int (Obj.magic v))
+            ^ ", also has " ^ (string_of_int (List.length v.vvardecls))^ " entries in vvardecls */ ")
+          else " " (* DON'T try to output /* */ comments here -- CIL *)
+         )         (* sometimes wraps this case in '/* */' itself.   *)
       ++ self#pAttrs () rest
 
   (*** L-VALUES ***)
@@ -4252,15 +4258,36 @@ class defaultCilPrinterClass : cilPrinter = object (self)
              (self#pLineDirective l) ++ (self#pVDecl () fundec.svar)
                ++ text"; /* attrs: extra prototype dump */" ++ line
            else if declaredInline then
+            (* Dump all the GVarDecls we saw for this function,
+             * by printing the *actual* fundec's prototype but
+             * with the 'inl' and 'storage' that the vardecl
+             * came with. Extra quirk: if we're not declaring
+             * it inline, also strip the gnu_inline attribute,
+             * to silence some GCC warnings.
+             * XXX: for reasons that make no sense to me, attributes
+             * like "gnu_inline" and many others are added to the
+             * function's type. See 'AttrFunType' in attributeClass.
+             * Many of these, from what I can see, are actually
+             * attributes which go on a *named function* but have
+             * nothing to do with its type. It's possible that
+             * refactoring that split would avoid the need for this
+             * hack. Anyway, here for now I remove gnu_inline from
+             * *both* the function and its type. *)
             List.fold_left (fun acc -> fun (glob, storage, inl) ->
-                     let oldinl, oldsto = (fundec.svar.vinline, fundec.svar.vstorage) in
+                     let oldinl, oldsto, oldattr, oldtattrs = (fundec.svar.vinline, fundec.svar.vstorage, fundec.svar.vattr, typeAttrs fundec.svar.vtype) in
                      (fundec.svar.vinline <- inl;
                      fundec.svar.vstorage <- storage;
+                     fundec.svar.vattr <- if inl then oldattr
+                        else dropAttribute "gnu_inline" oldattr;
+                     fundec.svar.vtype <- if inl then fundec.svar.vtype
+                        else setTypeAttrs fundec.svar.vtype (dropAttribute "gnu_inline" oldtattrs);
                      let res = acc ++ (self#pVDecl () fundec.svar)
-						++ (text "; /* inline: extra prototype dump */") ++ line
+                        ++ (text "; /* inline: extra prototype dump */") ++ line
                      in
                      fundec.svar.vinline <- oldinl;
                      fundec.svar.vstorage <- oldsto;
+                     fundec.svar.vattr <- oldattr;
+                     fundec.svar.vtype <- setTypeAttrs fundec.svar.vtype oldtattrs;
                      res)
                  )
                  (text "")
