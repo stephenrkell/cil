@@ -425,7 +425,14 @@ and typeinfo = {
     (** True if used. Initially set to false*)
 }
 
-
+(** Information about a variable or function declaration. This exists
+ * because different declarations of the same function or variable
+ * might use different attributes, storage or 'inline' modifiers. *)
+and declinfo = {
+    mutable dstorage: storage;
+    mutable dinline: bool;
+    mutable dattr: attributes;
+}
 (** Information about a variable. These structures are shared by all 
  * references to the variable. So, you can change the name easily, for 
  * example. Use one of the {!Cil.makeLocalVar}, {!Cil.makeTempVar} or 
@@ -442,7 +449,7 @@ and varinfo = {
      * argument list in a [TFun] type *)
 
     (** All globals that share this varinfo, if it's global *)
-    mutable vvardecls : (global * storage * bool) list;
+    mutable vvardecls : (global * declinfo) list;
 
     mutable vglob: bool;	        (** True if this is a global variable*)
 
@@ -4092,18 +4099,18 @@ class defaultCilPrinterClass : cilPrinter = object (self)
            * and for definitions of extern inlines.
            * For a function declared inline anywhere, we prototype *all* of the
            * declaration cases found in its vvardecls. *)
-          let declaredInline = List.fold_left (fun acc -> fun (_, _, inl) -> acc || inl) false
+          let declaredInline = List.fold_left (fun acc -> fun (_, decl) -> acc || decl.dinline) false
                  fundec.svar.vvardecls
           in
           if oldattr <> [] && not declaredInline then
             (self#pLineDirective l) ++ (self#pVDecl () fundec.svar)
               ++ chr ';' ++ text "/* extra prototype for attrs */" ++ line
           else if declaredInline then
-            List.fold_left (fun acc -> fun (glob, storage, inl) ->
+            List.fold_left (fun acc -> fun (glob, decl) ->
                      let (oldinl, oldsto) = (fundec.svar.vinline, fundec.svar.vstorage)
                      in
-                     (fundec.svar.vinline <- inl;
-                     fundec.svar.vstorage <- storage;
+                     (fundec.svar.vinline <- decl.dinline;
+                     fundec.svar.vstorage <- decl.dstorage;
                      let res = acc ++ (self#pVDecl () fundec.svar) ++ (text "; /* extra prototype for inline */") ++ line
                      in
                      fundec.svar.vinline <- oldinl;
@@ -4251,7 +4258,7 @@ class defaultCilPrinterClass : cilPrinter = object (self)
           * GCC cannot accept function attributes in a definition *)
          let oldattr = fundec.svar.vattr in
          let maybeExtraProtos =
-           let declaredInline = List.fold_left (fun acc -> fun (_, _, inl) -> acc || inl) false
+           let declaredInline = List.fold_left (fun acc -> fun (_, decl) -> acc || decl.dinline) false
                  fundec.svar.vvardecls
            in
            if oldattr <> [] && not declaredInline then
@@ -4273,13 +4280,13 @@ class defaultCilPrinterClass : cilPrinter = object (self)
              * refactoring that split would avoid the need for this
              * hack. Anyway, here for now I remove gnu_inline from
              * *both* the function and its type. *)
-            List.fold_left (fun acc -> fun (glob, storage, inl) ->
+            List.fold_left (fun acc -> fun (glob, decl) ->
                      let oldinl, oldsto, oldattr, oldtattrs = (fundec.svar.vinline, fundec.svar.vstorage, fundec.svar.vattr, typeAttrs fundec.svar.vtype) in
-                     (fundec.svar.vinline <- inl;
-                     fundec.svar.vstorage <- storage;
-                     fundec.svar.vattr <- if inl then oldattr
+                     (fundec.svar.vinline <- decl.dinline;
+                     fundec.svar.vstorage <- decl.dstorage;
+                     fundec.svar.vattr <- if decl.dinline then oldattr
                         else dropAttribute "gnu_inline" oldattr;
-                     fundec.svar.vtype <- if inl then fundec.svar.vtype
+                     fundec.svar.vtype <- if decl.dinline then fundec.svar.vtype
                         else setTypeAttrs fundec.svar.vtype (dropAttribute "gnu_inline" oldtattrs);
                      let res = acc ++ (self#pVDecl () fundec.svar)
                         ++ (text "; /* inline: extra prototype dump */") ++ line

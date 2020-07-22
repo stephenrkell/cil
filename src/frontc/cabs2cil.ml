@@ -1938,7 +1938,8 @@ let makeGlobalVarinfo (isadef: bool) (vi: varinfo) : varinfo * bool =
      * First, snapshot the incoming declaration -- whether or not it's
      * also a definition -- as a GVarDecl. FIXME: why not just as whatever it really is?  *)
     oldvi.vvardecls <- (let glob = if isadef then (GVarDecl(oldvi, vi.vdecl)) else (GVarDecl(oldvi, vi.vdecl))
-        in (glob, vi.vstorage, vi.vinline) :: oldvi.vvardecls);
+        in let decl = { dstorage = vi.vstorage; dinline = vi.vinline; dattr = vi.vattr; }
+        in (glob, decl) :: oldvi.vvardecls);
     oldvi.vtype <- (try combineTypes
             (if isadef then CombineFundef else CombineOther) oldvi.vtype vi.vtype
           with Failure reason ->
@@ -2008,7 +2009,9 @@ let makeGlobalVarinfo (isadef: bool) (vi: varinfo) : varinfo * bool =
             let glob = if isadef then GVarDecl(vi, vi.vdecl)
                 else GVarDecl(vi, vi.vdecl)
             in
-            (glob, vi.vstorage, vi.vinline) :: newlyAdded.vvardecls
+            let decl = { dstorage = vi.vstorage; dinline = vi.vinline; dattr = vi.vattr; }
+            in
+            (glob, decl) :: newlyAdded.vvardecls
         );
     newlyAdded, false
     )
