@@ -5762,7 +5762,6 @@ and createLocal ((_, sto, _, _) as specs)
       let vi = alphaConvertVarAndAddToEnv true vi in        (* Replace vi *)
       let se1 = 
         if isvarsize then begin (* Variable-sized array *) 
-          ignore (E.log "Variable-sized local variable %s" vi.vname);
           (* Make a local variable to keep the length *)
           let savelen = 
             makeVarInfoCabs 
