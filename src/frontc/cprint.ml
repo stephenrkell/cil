@@ -175,6 +175,7 @@ and print_type_spec = function
   | Tlong -> print "long "
   | Tint64 -> print "__int64 "
   | Tint128 -> print "__int128 "
+  | Tuint128 -> print "__uint128 "
   | Tfloat -> print "float "
   | Tdouble -> print "double "
   | Tfloat128 -> print "__float128 "

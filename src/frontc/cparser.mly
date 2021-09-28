@@ -257,7 +257,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> CHAR INT BOOL
 %token<Cabs.cabsloc> FLOAT128 DOUBLE FLOAT
 %token<Cabs.cabsloc> FLOAT64 FLOAT32 FLOAT16 FLOAT128X FLOAT64X FLOAT32X FLOAT16X
-%token<Cabs.cabsloc> VOID INT128 INT64 INT32
+%token<Cabs.cabsloc> VOID INT128 UINT128 INT64 INT32
 %token<Cabs.cabsloc> ENUM STRUCT TYPEDEF UNION
 %token<Cabs.cabsloc> SIGNED UNSIGNED LONG SHORT COMPLEX
 %token<Cabs.cabsloc> VOLATILE EXTERN STATIC CONST RESTRICT AUTO REGISTER
@@ -293,7 +293,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> IF TRY EXCEPT FINALLY
 %token ELSE 
 
-%token<Cabs.cabsloc> ATTRIBUTE INLINE ASM STATIC_ASSERT TYPEOF FUNCTION__ PRETTY_FUNCTION__
+%token<Cabs.cabsloc> ATTRIBUTE INLINE NORETURN ASM STATIC_ASSERT TYPEOF FUNCTION__ PRETTY_FUNCTION__
 %token LABEL__
 %token<Cabs.cabsloc> BUILTIN_VA_ARG ATTRIBUTE_USED
 %token BUILTIN_VA_LIST
@@ -955,6 +955,7 @@ decl_spec_list:                         /* ISO 6.7 */
 |   type_spec decl_spec_list_opt_no_named { SpecType (fst $1) :: $2, snd $1 }
                                         /* ISO 6.7.4 */
 |   INLINE decl_spec_list_opt           { SpecInline :: $2, $1 }
+|   NORETURN decl_spec_list_opt         { SpecAttr ("noreturn", []) :: $2, $1 }
 |   cvspec decl_spec_list_opt           { (fst $1) :: $2, snd $1 }
 |   attribute_nocv decl_spec_list_opt   { SpecAttr (fst $1) :: $2, snd $1 }
 /* specifier pattern variable (must be last in spec list) */
@@ -984,6 +985,7 @@ type_spec:   /* ISO 6.7.2 */
 |   LONG            { Tlong, $1 }
 |   INT64           { Tint64, $1 }
 |   INT128          { Tint128, $1 }
+|   UINT128         { Tuint128, $1 }
 |   FLOAT           { Tfloat, $1 }
 |   DOUBLE          { Tdouble, $1 }
 |   FLOAT128        { Tfloat128, $1 }  /* (* "interchange" and "extended" floating types *) */

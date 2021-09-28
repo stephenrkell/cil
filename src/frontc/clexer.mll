@@ -164,6 +164,7 @@ let init_lexicon _ =
                         INLINE loc
                       else 
                         IDENT ("_inline", loc));
+      ("_Noreturn", fun loc -> NORETURN loc);
       ("__attribute__", fun loc -> ATTRIBUTE loc);
       ("__attribute", fun loc -> ATTRIBUTE loc);
 (*
@@ -231,6 +232,7 @@ let init_lexicon _ =
                          IDENT ("_Float16x", currentLoc()));
       (* GCC non-standard __int128 aliases (not typedefs!) *)
       ("__int128_t", fun _ -> INT128 (currentLoc ()));
+      ("__uint128_t", fun _ -> UINT128 (currentLoc ()));
       (**** MS VC ***)
       ("__int64", fun _ -> INT64 (currentLoc ()));
       ("__int32", fun loc -> INT loc);
