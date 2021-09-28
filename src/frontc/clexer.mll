@@ -164,7 +164,7 @@ let init_lexicon _ =
                         INLINE loc
                       else 
                         IDENT ("_inline", loc));
-      ("_Noreturn", fun loc -> NORETURN loc);
+      ("_Noreturn", fun loc -> NORETURN loc); (* FIXME: guard on version of C and/or compiler *)
       ("__attribute__", fun loc -> ATTRIBUTE loc);
       ("__attribute", fun loc -> ATTRIBUTE loc);
 (*
@@ -174,12 +174,12 @@ let init_lexicon _ =
       ("__blockattribute", fun _ -> BLOCKATTRIBUTE);
       ("__asm__", fun loc -> ASM loc);
       ("asm", fun loc -> ASM loc);
-      ("_Static_assert", fun loc -> STATIC_ASSERT loc);
+      ("_Static_assert", fun loc -> STATIC_ASSERT loc); (* FIXME: guard on version of C and/or compiler *)
       ("__typeof__", fun loc -> TYPEOF loc);
       ("__typeof", fun loc -> TYPEOF loc);
       ("typeof", fun loc -> TYPEOF loc); 
       ("__alignof", fun loc -> ALIGNOF loc);
-      ("_Alignof", fun loc -> ALIGNOF loc);
+      ("_Alignof", fun loc -> ALIGNOF loc); (* FIXME: guard on version of C and/or compiler *)
       ("__alignof__", fun loc -> ALIGNOF loc);
       ("__volatile__", fun loc -> VOLATILE loc);
       ("__volatile", fun loc -> VOLATILE loc);
@@ -195,42 +195,42 @@ let init_lexicon _ =
 (*      ("__extension__", EXTENSION); *)
       ("__int128", fun _ -> INT128 (currentLoc ()));
       ("__float128", fun _ -> FLOAT128 (currentLoc ()));
-      ("_Float128", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128 then
+      ("_Float128", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
                          FLOAT128 (currentLoc ())
                        else
                          IDENT ("_Float128", currentLoc()));
-      ("_Float128x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128x then
+      ("_Float128x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
                          FLOAT128X (currentLoc ())
                        else
                          IDENT ("_Float128x", currentLoc()));
-      ("_Float64", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64 then
+      ("_Float64", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
                          FLOAT64 (currentLoc ())
                        else
                          IDENT ("_Float64", currentLoc())
                          );
-      ("_Float64x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64x then
+      ("_Float64x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
                          FLOAT64X (currentLoc ())
                        else
                          IDENT ("_Float64x", currentLoc()));
-      ("_Float32", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float32 then
+      ("_Float32", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float32 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
                          FLOAT32 (currentLoc ())
                        else
                          IDENT ("_Float32", currentLoc())
                          );
-      ("_Float32x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float32x then
+      ("_Float32x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float32x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
                          FLOAT32X (currentLoc ())
                        else
                          IDENT ("_Float32x", currentLoc()));
-      ("_Float16", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float16 then
+      ("_Float16", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float16 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
                          FLOAT16 (currentLoc ())
                        else
                          IDENT ("_Float16", currentLoc())
                          );
-      ("_Float16x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float16x then
+      ("_Float16x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float16x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
                          FLOAT16X (currentLoc ())
                        else
                          IDENT ("_Float16x", currentLoc()));
-      (* GCC non-standard __int128 aliases (not typedefs!) *)
+      (* GCC non-standard __int128 aliases (not typedefs!) FIXME: in which version of GNU C did these appear? *)
       ("__int128_t", fun _ -> INT128 (currentLoc ()));
       ("__uint128_t", fun _ -> UINT128 (currentLoc ()));
       (**** MS VC ***)

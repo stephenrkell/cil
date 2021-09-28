@@ -2025,7 +2025,10 @@ val visitCilAttributes: cilVisitor -> attribute list -> attribute list
 
 (** Whether the pretty printer should print output for the MS VC compiler.
    Default is GCC. After you set this function you should call {!Cil.initCIL}. *)
-val msvcMode: bool ref               
+val msvcMode: bool ref
+
+(** The version of GNU C we input and output in non-MSVC mode, as 100*major + minor. *)
+val gnucDialectVersion : int ref
 
 (** Whether to convert local static variables into global static variables *)
 val makeStaticGlobal: bool ref

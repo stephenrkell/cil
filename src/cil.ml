@@ -58,11 +58,41 @@ let cilVersionMajor    = Cilversion.cilVersionMajor
 let cilVersionMinor    = Cilversion.cilVersionMinor
 let cilVersionRevision = Cilversion.cilVersionRev
 
-(* A few globals that control the interpretation of C source *)
+(* A few globals that control the interpretation of C source
+ * FIXME: These are already a mess and should probably be
+ * consolidated, perhaps into an abstract TargetCompiler module
+ * or somesuch. This extends to the 'Machdep' module, which is
+ * partly compiler-dependent stuff. The kicker is that things may
+ * change between invocations of CIL tools, i.e. at least some of
+ * this may change from run to run, so needs to be probed/
+ * configured each time we start up. Probably Machdep should
+ * be refactored so that it is really only machine/ABI-dependent
+ * stuff, and then we let our client tell us about the compiler-
+ * -specific stuff. There is now *GCC-version-specific* stuff
+ * to do with _Float128 and so on, i.e. how we lex the '_Float128'
+ * token. It does NOT suffice to rely on the headers' #ifdef
+ * guards, because we want to be able to take either branch of
+ * the #ifdefs, and that requires two different lexing behaviours.
+ * I can see the following variables:
+ *
+ * - which C standard 'base' we are targeting (C90, C99, C11, C18, ...)
+ * - which compiler's 'extension dialect' (GCC or MSVC)
+ * - the specific version of the latter.
+ *
+ * It would be good if we could pick up the specific version
+ * ourselves, given only 'gcc' or 'msvc'. Setting this is a job
+ * for clients/drivers (cilly, etc.), not the library. Probably
+ * they can typically call the compiler's '--version' or equivalent.
+ * But we should take our 'guess of last resort' from a build-time
+ * probe like Machdep.
+ *)
 let msvcMode = ref false              (* Whether the pretty printer should 
                                        * print output for the MS VC 
                                        * compiler. Default is GCC *)
-let c99Mode = ref false (* True to handle ISO C 99 vs 90 changes.
+
+let gnucDialectVersion : int ref = ref 700
+
+let c99Mode = ref true (* True to handle ISO C 99 vs 90 changes.
 			   So far only affects integer parsing. *)
 
 (* Set this to true to get old-style handling of gcc's extern inline C extension:
