@@ -847,6 +847,12 @@ and print_def def =
       new_line ();
       force_new_line ()
 
+  | SASSERT (expr, msg, loc) ->
+      setLoc(loc);
+      printl ["_Static_assert"; "("]; print_expression expr; print ", "; print_string msg; print ");";
+      new_line ();
+      force_new_line ()
+
   | PRAGMA (a,loc) ->
       setLoc(loc);
       force_new_line ();

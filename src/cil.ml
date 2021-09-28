@@ -205,6 +205,7 @@ and global =
 
   | GAsm of string * location           (** Global asm statement. These ones 
                                             can contain only a template *)
+  | GStaticAssert of exp * string * location  (** Static assert *)
   | GPragma of attribute * location     (** Pragmas at top level. Use the same 
                                             syntax as attributes *)
   | GText of string                     (** Some text (printed verbatim) at 
@@ -1115,6 +1116,7 @@ let get_globalLoc (g : global) =
   | GVarDecl(_,l) -> (l) 
   | GVar(_,_,l) -> (l)
   | GAsm(_,l) -> (l)
+  | GStaticAssert(_,_,l) -> (l)
   | GPragma(_,l) -> (l) 
   | GText(_) -> locUnknown
 
@@ -4213,6 +4215,11 @@ class defaultCilPrinterClass : cilPrinter = object (self)
         self#pLineDirective l ++
           text ("__asm__(\"" ^ escape_string s ^ "\");\n")
 
+    | GStaticAssert (ex, s, l) ->
+        self#pLineDirective l ++
+          text ("_Static_assert(") ++ (self#pExp () ex)
+           ++ text (", \"" ^ escape_string s ^ "\");\n")
+
     | GPragma (Attr(an, args), l) ->
         (* sm: suppress printing pragmas that gcc does not understand *)
         (* assume anything starting with "ccured" is ours *)
@@ -4732,6 +4739,7 @@ let d_shortglobal () = function
   | GFun(fd, _) -> dprintf "definition of %s" fd.svar.vname
   | GText _ -> text "GText"
   | GAsm _ -> text "GAsm"
+  | GStaticAssert _ -> text "GStaticAssert"
 
 
 (* sm: given an ordinary CIL object printer, yield one which

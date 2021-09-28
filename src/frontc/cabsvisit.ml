@@ -324,6 +324,8 @@ and childrenDefinition vis d =
       let s' = visitCabsSpecifier vis s in
       if s' != s then ONLYTYPEDEF (s', l) else d
   | GLOBASM _ -> d
+  | SASSERT (e, s, l) -> let e' = visitCabsExpression vis e in
+      if e' != e then SASSERT (e', s, l) else d
   | PRAGMA (e, l) -> 
       let e' = visitCabsExpression vis e in
       if e' != e then PRAGMA (e', l) else d

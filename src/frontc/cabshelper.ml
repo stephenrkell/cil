@@ -54,6 +54,7 @@ let get_definitionloc (d : definition) : cabsloc =
   | TYPEDEF(_, l) -> l
   | ONLYTYPEDEF(_, l) -> l
   | GLOBASM(_, l) -> l
+  | SASSERT(_, _, l) -> l
   | PRAGMA(_, l) -> l
   | TRANSFORMER(_, _, l) -> l
   | EXPRTRANSFORMER(_, _, l) -> l

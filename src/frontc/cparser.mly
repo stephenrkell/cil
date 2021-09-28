@@ -293,7 +293,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> IF TRY EXCEPT FINALLY
 %token ELSE 
 
-%token<Cabs.cabsloc> ATTRIBUTE INLINE ASM TYPEOF FUNCTION__ PRETTY_FUNCTION__
+%token<Cabs.cabsloc> ATTRIBUTE INLINE ASM STATIC_ASSERT TYPEOF FUNCTION__ PRETTY_FUNCTION__
 %token LABEL__
 %token<Cabs.cabsloc> BUILTIN_VA_ARG ATTRIBUTE_USED
 %token BUILTIN_VA_LIST
@@ -418,6 +418,8 @@ global:
                                         { LINKAGE (fst $2, (*handleLoc*) (snd $2), $4)  }
 | ASM LPAREN string_constant RPAREN SEMICOLON
                                         { GLOBASM (fst $3, (*handleLoc*) $1) }
+| STATIC_ASSERT LPAREN expression COMMA string_constant RPAREN SEMICOLON
+                                        { SASSERT (fst $3, fst $5, (*handleLoc*) $1) }
 | pragma                                { $1 }
 /* (* Old-style function prototype. This should be somewhere else, like in
     * "declaration". For now we keep it at global scope only because in local

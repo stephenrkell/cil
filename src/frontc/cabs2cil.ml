@@ -5095,7 +5095,7 @@ and doPureExp (e : A.expression) : exp =
           if !useLogicalOperators then
                error "doPureExp: not pure"
           else
-               error "doPureExp: could not compute array length, try --useLogicalOperators"
+               error "doPureExp: could not evaluate pure expression (array length?), try --useLogicalOperators"
       in E.s msg;
   end;
   e'
@@ -5878,6 +5878,11 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
       cabsPushGlobal (GAsm (s, !currentLoc));
       empty
         
+  | A.SASSERT (ex,msg,loc) when isglobal ->
+      currentLoc := convLoc(loc);
+      cabsPushGlobal (GStaticAssert ((doPureExp ex), msg, !currentLoc));
+      empty
+
   | A.PRAGMA (a, loc) when isglobal -> begin
       currentLoc := convLoc(loc);
       match doAttr ("dummy", [a]) with

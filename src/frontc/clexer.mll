@@ -173,6 +173,7 @@ let init_lexicon _ =
       ("__blockattribute", fun _ -> BLOCKATTRIBUTE);
       ("__asm__", fun loc -> ASM loc);
       ("asm", fun loc -> ASM loc);
+      ("_Static_assert", fun loc -> STATIC_ASSERT loc);
       ("__typeof__", fun loc -> TYPEOF loc);
       ("__typeof", fun loc -> TYPEOF loc);
       ("typeof", fun loc -> TYPEOF loc); 

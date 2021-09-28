@@ -177,6 +177,7 @@ and definition =
  | TYPEDEF of name_group * cabsloc
  | ONLYTYPEDEF of specifier * cabsloc
  | GLOBASM of string * cabsloc
+ | SASSERT of expression * string * cabsloc
  | PRAGMA of expression * cabsloc
  | LINKAGE of string * cabsloc * definition list (* extern "C" { ... } *)
  (* toplevel form transformer, from the first definition to the *)

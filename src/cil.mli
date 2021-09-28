@@ -155,6 +155,7 @@ and global =
 
   | GAsm of string * location           (** Global asm statement. These ones 
                                             can contain only a template *)
+  | GStaticAssert of exp * string * location  (** Static assert *)
   | GPragma of attribute * location     (** Pragmas at top level. Use the same 
                                             syntax as attributes *)
   | GText of string                     (** Some text (printed verbatim) at 
