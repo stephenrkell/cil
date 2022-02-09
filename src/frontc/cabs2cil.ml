@@ -1431,115 +1431,6 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
 
   end
 
-  
-(* Specify whether the cast is from the source code *)
-let rec castTo ?(fromsource=false) 
-                (ot : typ) (nt : typ) (e : exp) : (typ * exp ) = 
-  let debugCast = false in 
-  if debugCast then 
-    ignore (E.log "%t: castTo:%s %a->%a\n"
-              d_thisloc
-              (if fromsource then "(source)" else "")
-              d_type ot d_type nt);
-
-  if not fromsource && Util.equals (typeSig ot) (typeSig nt) then
-    (* Do not put the cast if it is not necessary, unless it is from the 
-     * source. *)
-    (ot, e) 
-  else begin
-    let nt' = if fromsource then nt else !typeForInsertedCast nt in
-    let result = (nt', 
-                  if !insertImplicitCasts || fromsource then Cil.mkCastT e ot nt' else e) in
-
-    if debugCast then 
-      ignore (E.log "castTo: ot=%a nt=%a\n  result is %a\n" 
-                d_type ot d_type nt'
-                d_plainexp (snd result));
-
-    (* Now see if we can have a cast here *)
-    match unrollType ot, unrollType nt' with
-      TNamed _, _ 
-    | _, TNamed _ -> E.s (bug "unrollType failed in castTo")
-    | TInt(ikindo,_), TInt(ikindn,_) -> 
-        (* We used to ignore attributes on integer-integer casts. Not anymore *)
-        (* if ikindo = ikindn then (nt, e) else *) 
-        result
-
-    | TPtr (told, _), TPtr(tnew, _) -> result
-
-    (* in the case of __typeof__, we do not perform conversion of functions to
-     * function pointers, so we have to accept this explicit cast when it occurs
-     * in the source. *)
-    | TFun _, TPtr _ when fromsource -> result
-          
-    | TInt _, TPtr _ -> result
-          
-    | TPtr _, TInt _ -> result
-          
-    | TArray _, TPtr _ -> result
-          
-    | TArray(t1,_,_), TArray(t2,None,_)
-        when Util.equals (typeSig t1) (typeSig t2) -> (nt', e)
-          
-    | TPtr _, TArray(_,_,_) -> (nt', e)
-          
-    | TEnum _, TInt _ -> result
-    | TFloat _, (TInt _|TEnum _) -> result
-    | (TInt _|TEnum _), TFloat _ -> result
-    | TFloat _, TFloat _ -> result
-    | TInt _, TEnum _ -> result
-    | TEnum _, TEnum _ -> result
-
-    | TEnum _, TPtr _ -> result
-    | TBuiltin_va_list _, (TInt _ | TPtr _) -> 
-        result
-
-    | (TInt _ | TPtr _), TBuiltin_va_list _ ->
-        ignore (warnOpt "Casting %a to __builtin_va_list" d_type ot);
-        result
-
-    | TPtr _, TEnum _ -> 
-        ignore (warnOpt "Casting a pointer into an enumeration type");
-        result
-
-          (* The expression is evaluated for its side-effects *)
-    | (TInt _ | TEnum _ | TPtr _ ), TVoid _ -> 
-        (ot, e)
-
-          (* Even casts between structs are allowed when we are only 
-           * modifying some attributes *)
-    | TComp (comp1, a1), TComp (comp2, a2) when comp1.ckey = comp2.ckey -> 
-        result
-          
-          (** If we try to pass a transparent union value to a function 
-           * expecting a transparent union argument, the argument type would 
-           * have been changed to the type of the first argument, and we'll 
-           * see a cast from a union to the type of the first argument. Turn 
-           * that into a field access *)
-    | TComp(tunion, a1), _ -> begin
-        match isTransparentUnion ot with 
-          None -> E.s (error "cabs2cil/castTo: illegal cast  %a -> %a@!"
-                         d_type ot d_type nt')
-        | Some fstfield -> begin
-            (* We do it now only if the expression is an lval *)
-            let e' = 
-              match e with 
-                Lval lv -> 
-                  Lval (addOffsetLval (Field(fstfield, NoOffset)) lv)
-              | _ -> E.s (unimp "castTo: transparent union expression is not an lval: %a\n" d_exp e)
-            in
-            (* Continue casting *)
-            castTo ~fromsource:fromsource fstfield.ftype nt' e'
-        end
-    end
-    | _ -> 
-        (* strip attributes for a cleaner error message *)
-        let ot'' = setTypeAttrs ot [] in
-        let nt'' = setTypeAttrs nt' [] in
-        E.s (error "cabs2cil/castTo: illegal cast  %a -> %a@!" 
-                  d_type ot'' d_type nt'')
-  end
-
 (* A cast that is used for conditional expressions. Pointers are Ok *)
 let checkBool (ot : typ) (e : exp) : bool =
   match unrollType ot with
@@ -2017,34 +1908,162 @@ let makeGlobalVarinfo (isadef: bool) (vi: varinfo) : varinfo * bool =
     )
   end 
 
-let conditionalConversion (t2: typ) (t3: typ) : typ =
+let conditionalCombine ?(emitWarnings=true) (t2: typ) (t3: typ) : typ option =
+  let isVoidPtr = (function TPtr(TVoid _, _) -> true | _ -> false) in
   let tresult =  (* ISO 6.5.15 *)
     match unrollType t2, unrollType t3 with
       (TInt _ | TEnum _ | TFloat _), 
       (TInt _ | TEnum _ | TFloat _) -> 
-        arithmeticConversion t2 t3 
+        Some(arithmeticConversion t2 t3)
     | TComp (comp2,_), TComp (comp3,_) 
-          when comp2.ckey = comp3.ckey -> t2 
-    | TPtr(_, _), TPtr(TVoid _, _) -> t2
-    | TPtr(TVoid _, _), TPtr(_, _) -> t3
-    | TPtr _, TPtr _ when Util.equals (typeSig t2) (typeSig t3) -> t2
-    | TPtr _, TInt _  -> t2 (* most likely comparison with 0 *)
-    | TInt _, TPtr _ -> t3 (* most likely comparison with 0 *)
-
+          when comp2.ckey = comp3.ckey -> Some(t2)
+    | TPtr _, TInt _  -> Some(t2) (* most likely comparison with 0 *)
+    | TInt _, TPtr _ -> Some(t3) (* most likely comparison with 0 *)
+    (* FIXME: ISO requires test for null pointer constant in the above logic *)
+    | (TPtr _) as t2', (TPtr _ as t3') when (isVoidPtr t2' || isVoidPtr t3') ->
+          Some(if isVoidPtr t3 then t2 else t3)
+    | TPtr _, TPtr _ when Util.equals (typeSig t2) (typeSig t3) -> Some(t2)
           (* When we compare two pointers of diffent type, we combine them 
            * using the same algorithm when combining multiple declarations of 
            * a global *)
     | (TPtr _) as t2', (TPtr _ as t3') -> begin
-        try combineTypes CombineOther t2' t3' 
+        try Some(combineTypes CombineOther t2' t3' )
         with Failure msg -> begin
-          ignore (warn "A.QUESTION: %a does not match %a (%s)"
-                    d_type (unrollType t2) d_type (unrollType t3) msg);
-          t2 (* Just pick one *)
+          if (*emitWarnings*) true then
+              ignore (warn "A.QUESTION: %a does not match %a (%s)"
+                    d_type (unrollType t2) d_type (unrollType t3) msg)
+          else ();
+          Some(t2) (* Just pick one *)
         end
-    end
-    | _, _ -> E.s (error "A.QUESTION for invalid combination of types")
+      end
+    | _, _ -> None
   in
   tresult
+
+let conditionalConversion (t2: typ) (t3: typ) : typ =
+  match conditionalCombine t2 t3 with
+      Some(t2) -> t2
+    | None -> E.s (error "A.QUESTION for invalid combination of types")
+
+
+let rec castTo ?(fromsource=false)  (* Specify whether the cast is from the source code *)
+                (ot : typ) (nt : typ) (e : exp) : (typ * exp ) = 
+  let debugCast = false in 
+  if debugCast then 
+    ignore (E.log "%t: castTo:%s %a->%a\n"
+              d_thisloc
+              (if fromsource then "(source)" else "")
+              d_type ot d_type nt);
+
+  if not fromsource && Util.equals (typeSig ot) (typeSig nt) then
+    (* Do not put the cast if it is not necessary, unless it is from the 
+     * source. *)
+    (ot, e) 
+  else begin
+    let nt' = if fromsource then nt else !typeForInsertedCast nt in
+    let result = (nt', 
+                  if !insertImplicitCasts || fromsource
+                  then
+                      (* If we're going to emit a not-generally-safe cast that didn't
+                       * appear in source code, we should *really* warn.
+                       * As a bit of a HACK, we use conditionalCombine to test
+                       * for compatibility. *)
+                      let _ = if (not fromsource) &&
+                                  not (conditionalCombine nt' ot ~emitWarnings:false == Some(nt'))
+                         then ignore (warnOpt "Implicit conversion from %a to %a" d_type ot d_type nt')
+                         else () 
+                      in
+                      Cil.mkCastT e ot nt' 
+                  else e) in
+
+    if debugCast then 
+      ignore (E.log "castTo: ot=%a nt=%a\n  result is %a\n" 
+                d_type ot d_type nt'
+                d_plainexp (snd result));
+
+    (* Now see if we can have a cast here *)
+    match unrollType ot, unrollType nt' with
+      TNamed _, _ 
+    | _, TNamed _ -> E.s (bug "unrollType failed in castTo")
+    | TInt(ikindo,_), TInt(ikindn,_) -> 
+        (* We used to ignore attributes on integer-integer casts. Not anymore *)
+        (* if ikindo = ikindn then (nt, e) else *) 
+        result
+
+    | TPtr (told, _), TPtr(tnew, _) -> result
+
+    (* in the case of __typeof__, we do not perform conversion of functions to
+     * function pointers, so we have to accept this explicit cast when it occurs
+     * in the source. *)
+    | TFun _, TPtr _ when fromsource -> result
+          
+    | TInt _, TPtr _ -> result
+          
+    | TPtr _, TInt _ -> result
+          
+    | TArray _, TPtr _ -> result
+          
+    | TArray(t1,_,_), TArray(t2,None,_)
+        when Util.equals (typeSig t1) (typeSig t2) -> (nt', e)
+          
+    | TPtr _, TArray(_,_,_) -> (nt', e)
+          
+    | TEnum _, TInt _ -> result
+    | TFloat _, (TInt _|TEnum _) -> result
+    | (TInt _|TEnum _), TFloat _ -> result
+    | TFloat _, TFloat _ -> result
+    | TInt _, TEnum _ -> result
+    | TEnum _, TEnum _ -> result
+
+    | TEnum _, TPtr _ -> result
+    | TBuiltin_va_list _, (TInt _ | TPtr _) -> 
+        result
+
+    | (TInt _ | TPtr _), TBuiltin_va_list _ ->
+        ignore (warnOpt "Casting %a to __builtin_va_list" d_type ot);
+        result
+
+    | TPtr _, TEnum _ -> 
+        ignore (warnOpt "Casting a pointer into an enumeration type");
+        result
+
+          (* The expression is evaluated for its side-effects *)
+    | (TInt _ | TEnum _ | TPtr _ ), TVoid _ -> 
+        (ot, e)
+
+          (* Even casts between structs are allowed when we are only 
+           * modifying some attributes *)
+    | TComp (comp1, a1), TComp (comp2, a2) when comp1.ckey = comp2.ckey -> 
+        result
+          
+          (** If we try to pass a transparent union value to a function 
+           * expecting a transparent union argument, the argument type would 
+           * have been changed to the type of the first argument, and we'll 
+           * see a cast from a union to the type of the first argument. Turn 
+           * that into a field access *)
+    | TComp(tunion, a1), _ -> begin
+        match isTransparentUnion ot with 
+          None -> E.s (error "cabs2cil/castTo: illegal cast  %a -> %a@!"
+                         d_type ot d_type nt')
+        | Some fstfield -> begin
+            (* We do it now only if the expression is an lval *)
+            let e' = 
+              match e with 
+                Lval lv -> 
+                  Lval (addOffsetLval (Field(fstfield, NoOffset)) lv)
+              | _ -> E.s (unimp "castTo: transparent union expression is not an lval: %a\n" d_exp e)
+            in
+            (* Continue casting *)
+            castTo ~fromsource:fromsource fstfield.ftype nt' e'
+        end
+    end
+    | _ -> 
+        (* strip attributes for a cleaner error message *)
+        let ot'' = setTypeAttrs ot [] in
+        let nt'' = setTypeAttrs nt' [] in
+        E.s (error "cabs2cil/castTo: illegal cast  %a -> %a@!" 
+                  d_type ot'' d_type nt'')
+  end
 
 (* Some utilitites for doing initializers *)
 
@@ -4861,7 +4880,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
     | A.EXPR_PATTERN _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
 
   with e when continueOnError -> begin
-    (*ignore (E.log "error in doExp (%s)" (Printexc.to_string e));*)
+    ignore (E.log "error in doExp (%s)\n" (Printexc.to_string e));
     E.hadErrors := true;
     (i2c (dInstr (dprintf "booo_exp(%t)" d_thisloc) !currentLoc),
      integer 0, intType)
