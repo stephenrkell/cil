@@ -1076,8 +1076,10 @@ enum_list: /* (* ISO 6.7.2.2 *) */
 ;
 enumerator:	
     IDENT			{(fst $1, NOTHING, snd $1)}
+|   IDENT just_attributes {(fst $1, NOTHING, snd $1)}
 |   IDENT EQ expression		{(fst $1, fst $3, snd $1)}
-;
+|   IDENT just_attributes EQ expression		{(fst $1, fst $4, snd $1)}
+; (* FIXME(srk): don't just throw away the attributes.... *)
 
 
 declarator:  /* (* ISO 6.7.5. Plus Microsoft declarators.*) */
