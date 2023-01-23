@@ -6313,7 +6313,6 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
           in
           cabsPushGlobal (GPragma (a'', !currentLoc));
           empty
-
       | _ -> E.s (error "Too many attributes in pragma")
   end
   | A.TRANSFORMER (_, _, _) -> E.s (E.bug "TRANSFORMER in cabs2cil input")

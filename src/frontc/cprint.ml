@@ -931,6 +931,11 @@ and print_def def =
       end;
       print ");";
 
+  | MACDEF (name, body, loc) ->
+      setLoc(loc);
+      print ("#define " ^ name ^ " " ^ body);
+      force_new_line ()
+
 (* sm: print a comment if the printComments flag is set *)
 and comprint (str : string) : unit =
 begin
