@@ -3122,6 +3122,14 @@ let initGccBuiltins () : unit =
                                                TPtr(longDoubleType, []) ], 
                              false);
 
+  (* FIXME: can we get away without typed arguments? working around overloading...  *)
+  H.add h "__builtin_mul_overflow_p" (boolType, [ (*longType; longType; longType*) ], true);
+  H.add h "__builtin_add_overflow_p" (boolType, [ (*longType; longType; longType*) ], true);
+  H.add h "__builtin_sub_overflow_p" (boolType, [ (*longType; longType; longType*) ], true);
+  H.add h "__builtin_mul_overflow" (boolType, [ (*longType; longType; longType*) ], true);
+  H.add h "__builtin_add_overflow" (boolType, [ (*longType; longType; longType*) ], true);
+  H.add h "__builtin_sub_overflow" (boolType, [ (*longType; longType; longType*) ], true);
+
   H.add h "__builtin_nan" (doubleType, [ charConstPtrType ], false);
   H.add h "__builtin_nanf" (floatType, [ charConstPtrType ], false);
   H.add h "__builtin_nanl" (longDoubleType, [ charConstPtrType ], false);
