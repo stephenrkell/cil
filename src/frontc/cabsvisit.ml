@@ -324,8 +324,8 @@ and childrenDefinition vis d =
       let s' = visitCabsSpecifier vis s in
       if s' != s then ONLYTYPEDEF (s', l) else d
   | GLOBASM _ -> d
-  | SASSERT (e, s, l) -> let e' = visitCabsExpression vis e in
-      if e' != e then SASSERT (e', s, l) else d
+  | SASSERT_GLOB (e, s, l) -> let e' = visitCabsExpression vis e in
+      if e' != e then SASSERT_GLOB (e', s, l) else d
   | PRAGMA (e, l) -> 
       let e' = visitCabsExpression vis e in
       if e' != e then PRAGMA (e', l) else d
@@ -440,6 +440,8 @@ and childrenStatement vis s =
           let dl' = Util.list_map (fun d' -> DEFINITION d') dl in
           BLOCK ({blabels = []; battrs = []; bstmts = dl' }, l)
     end
+  | SASSERT_STMT (e, str, l) -> let e' = ve e in
+        if e' != e then SASSERT_STMT(e', str, l) else s
   | ASM (sl, b, details, l) -> 
       let childrenIdentStringExp ((i,s, e) as input) = 
         let e' = ve e in

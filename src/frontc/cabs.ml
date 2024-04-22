@@ -178,7 +178,7 @@ and definition =
  | TYPEDEF of name_group * cabsloc
  | ONLYTYPEDEF of specifier * cabsloc
  | GLOBASM of string * cabsloc
- | SASSERT of expression * string * cabsloc
+ | SASSERT_GLOB of expression * string * cabsloc
  | PRAGMA of expression * cabsloc
  | MACDEF of string * string * cabsloc
  | LINKAGE of string * cabsloc * definition list (* extern "C" { ... } *)
@@ -232,7 +232,7 @@ and statement =
  | GOTO of string * cabsloc
  | COMPGOTO of expression * cabsloc (* GCC's "goto *exp" *)
  | DEFINITION of definition (*definition or declaration of a variable or type*)
-
+ | SASSERT_STMT of expression * string * cabsloc
  | ASM of attribute list * (* typically only volatile and const *)
           string list * (* template *)
           asm_details option * (* extra details to guide GCC's optimizer *)

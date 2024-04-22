@@ -54,7 +54,7 @@ let get_definitionloc (d : definition) : cabsloc =
   | TYPEDEF(_, l) -> l
   | ONLYTYPEDEF(_, l) -> l
   | GLOBASM(_, l) -> l
-  | SASSERT(_, _, l) -> l
+  | SASSERT_GLOB(_, _, l) -> l
   | PRAGMA(_, l) -> l
   | MACDEF(_, _, l) -> l
   | TRANSFORMER(_, _, l) -> l
@@ -83,6 +83,7 @@ begin
   | GOTO(_,loc) -> loc
   | COMPGOTO (_, loc) -> loc
   | DEFINITION d -> get_definitionloc d
+  | SASSERT_STMT (_, _, loc) -> loc
   | ASM(_,_,_,loc) -> loc
   | TRY_EXCEPT(_, _, _, loc) -> loc
   | TRY_FINALLY(_, _, loc) -> loc

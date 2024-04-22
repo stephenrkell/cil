@@ -422,7 +422,9 @@ global:
 | ASM LPAREN string_constant RPAREN SEMICOLON
                                         { GLOBASM (fst $3, (*handleLoc*) $1) }
 | STATIC_ASSERT LPAREN expression COMMA string_constant RPAREN SEMICOLON
-                                        { SASSERT (fst $3, fst $5, (*handleLoc*) $1) }
+                                        { SASSERT_GLOB (fst $3, fst $5, (*handleLoc*) $1) }
+| STATIC_ASSERT LPAREN expression RPAREN SEMICOLON
+                                        { SASSERT_GLOB (fst $3, "", (*handleLoc*) $1) }
 | pragma                                { $1 }
 | define                                { $1 }
 /* (* Old-style function prototype. This should be somewhere else, like in
@@ -906,6 +908,10 @@ statement:
 		                 {GOTO (fst $2, (*handleLoc*) $1)}
 |   GOTO STAR comma_expression SEMICOLON 
                                  { COMPGOTO (smooth_expression (fst $3), (*handleLoc*) $1) }
+| STATIC_ASSERT LPAREN expression COMMA string_constant RPAREN SEMICOLON
+                                        { SASSERT_STMT (fst $3, fst $5, (*handleLoc*) $1) }
+| STATIC_ASSERT LPAREN expression RPAREN SEMICOLON
+                                        { SASSERT_STMT (fst $3, "", (*handleLoc*) $1) }
 |   ASM asmattr LPAREN asmtemplate asmoutputs RPAREN SEMICOLON
                         { ASM ($2, $4, $5, (*handleLoc*) $1) }
 |   MSASM               { ASM ([], [fst $1], None, (*handleLoc*)(snd $1))}

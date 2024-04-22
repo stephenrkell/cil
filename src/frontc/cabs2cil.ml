@@ -5899,7 +5899,7 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
       cabsPushGlobal (GAsm (s, !currentLoc));
       empty
         
-  | A.SASSERT (ex,msg,loc) when isglobal ->
+  | A.SASSERT_GLOB (ex,msg,loc) when isglobal ->
       currentLoc := convLoc(loc);
       cabsPushGlobal (GStaticAssert ((doPureExp ex), msg, !currentLoc));
       empty
@@ -6774,6 +6774,8 @@ and doStatement (s : A.statement) : chunk =
             s2c switch
         end
       end
+
+    | A.SASSERT_STMT _ -> skipChunk
 
     | A.DEFINITION d ->
         let s = doDecl false d  in 
