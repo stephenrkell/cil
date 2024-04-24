@@ -2995,6 +2995,7 @@ let initGccBuiltins () : unit =
   H.add h "__builtin___snprintf_chk" (intType, [ charPtrType; sizeType; intType; sizeType; charConstPtrType ], true);
   H.add h "__builtin___sprintf_chk" (intType, [ charPtrType; intType; sizeType; charConstPtrType ], true);
   H.add h "__builtin___stpcpy_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType ], false);
+  H.add h "__builtin___stpncpy_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType ], false);
   H.add h "__builtin___strcat_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType ], false);
   H.add h "__builtin___strcpy_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType ], false);
   H.add h "__builtin___strncat_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType; sizeType ], false);
@@ -3452,7 +3453,8 @@ class defaultCilPrinterClass : cilPrinter = object (self)
     (* First the storage modifiers *)
     (* If we're printing a function definition, we handle inlines specially.
      * Getting this right is a bit hairy. *)
-    text (if v.vinline then "__inline " else "")
+    let allButAttrs =
+     text (if v.vinline then "__inline " else "")
       (* Suppress extern on a function definition if it's not inline.
          Suppress extern on a function prototype if it's *consistently* been declared extern. *)
       ++ (let suppressExtern = (* (beginsFunDef && not v.vinline) || (not beginsFunDef) *) false
@@ -3467,7 +3469,33 @@ class defaultCilPrinterClass : cilPrinter = object (self)
             ^ ", also has " ^ (string_of_int (List.length v.vvardecls))^ " entries in vvardecls */ ")
           else " " (* DON'T try to output /* */ comments here -- CIL *)
          )         (* sometimes wraps this case in '/* */' itself.   *)
-      ++ self#pAttrs () rest
+    in
+    (* Another quirk is that attributes like '__malloc__', that use
+     * an identifier to reference a definition or declaration elsewhere,
+     * cannot be used in a function declaration to refer to itself.
+     * The workaround is to declare the function twice. Our default
+     * behaviour would attempt to merge these, so would generate code that
+     * the compiler chokes on. Instead we detect self-reference and special-case
+     * it. *)
+    let findSelfRefAttrs (v:varinfo) : attribute list =
+        List.filter (function Attr(name, params) -> 
+           List.fold_left (fun acc -> fun param -> acc || match param with
+                       ACons(ident, _) when ident = v.vname -> true
+                      | _ -> false
+                    ) false params
+        ) v.vattr
+    in
+    let selfRefAttrs = findSelfRefAttrs v in
+    (* We can only handle self-referential attributes if we're not beginning a funDef *)
+    match (selfRefAttrs, beginsFunDef) with
+        ([], _) -> allButAttrs ++ self#pAttrs () rest
+      | (_, true) -> failwith "FIXME: not supported: function definition with a self-referential attribute"
+      | _ ->
+          (* temporarily filter out the problematic attribute... *)
+          let tempAttrs = List.filter (fun a -> not (List.mem a selfRefAttrs)) v.vattr in
+          let origAttrs = v.vattr in
+          let firstDef = (v.vattr <- tempAttrs; self#pVDecl ~beginsFunDef:beginsFunDef () v) in
+          (v.vattr <- origAttrs; firstDef ++ text ";\n" ++ allButAttrs ++ self#pAttrs () rest)
 
   (*** L-VALUES ***)
   method pLval () (lv:lval) =  (* lval (base is 1st field)  *)
