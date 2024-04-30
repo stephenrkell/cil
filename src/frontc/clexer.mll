@@ -492,7 +492,7 @@ let no_parse_pragma =
              | "redefine_extname"
              | "TCS_align"
 	     | "mark"
-
+         | "omp"  (* srk: OK to pass through unparsed? hmm... we'll find out *)
 
 rule initial =
 	parse 	"/*"			{ let il = comment lexbuf in
