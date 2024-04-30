@@ -3209,12 +3209,30 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
           | a :: args' -> 
               (* C is weird: if our argument is CV-qualified "const", but is
                * of array type, the "const" goes on the pointer *target*. *)
-              (match (unrollType a.vtype, filterAttributes "const" a.vattr) with
+              ((* output_string stderr ("Fixing up an argument of name " ^ a.vname ^ "\n"); *)
+              ((* The case we care about is where 'vtype' is an TNamed with the 'const' attribute
+                * which it got when we made the formal. Perhaps we should not have made the formal
+                * this way. However, arguably what we're doing is specific to the array-to-pointer
+                * which is what we're doing right now.
+
+                * Or is it? Maybe unrollType should always move the 'const'? Where else can we
+                * have 'const' on a typedef? In a global. Not in a struct. 
+                *
+                * If we do unrollType, I think it will transfer the 'const' from the TNamed to the 'array'.
+                * The 'const' is not in 'vattr'.
+                *)
+               match (unrollType a.vtype, filterAttributes "const" a.vattr) with
                 (TArray(bt,lo,attr), []) -> 
                   (* Note that for multi-dimensional arrays we strip off only
                      the first TArray and leave bt alone. *)
-                  a.vtype <- turnArrayIntoPointer bt lo attr
+                  (match a.vtype with
+                     TNamed(_, attrs) when [] <> filterAttributes "const" attrs ->
+                       ((* output_string stderr "saw a const in TNamed attrs!"; *)
+                        a.vtype <- turnArrayIntoPointer (typeAddAttributes [Attr("const", [])] bt) lo (dropAttribute "const" attr))
+                   | _ -> a.vtype <- turnArrayIntoPointer bt lo attr
+                  )
               | (TArray(bt,lo,attr), _) -> (* same again but we move the 'const *) 
+                  output_string stderr "Moving a 'const'!";
                   a.vtype <- turnArrayIntoPointer bt lo ((Attr ("const", [])) :: attr);
                   a.vattr <- dropAttribute "const" a.vattr
               | (TFun _, _) -> a.vtype <- TPtr(a.vtype, [])
@@ -3228,6 +3246,7 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
               end
               | (_, _) -> ());
               fixupArgumentTypes (argidx + 1) args'
+              )
         in
         let args = 
           match targs with 
