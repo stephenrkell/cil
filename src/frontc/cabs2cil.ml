@@ -3183,70 +3183,76 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
         exitScope ();
         (* Turn [] types into pointers in the arguments and the result type. 
          * Turn function types into pointers to respective. This simplifies 
-         * our life a lot, and is what the standard requires. *)
-        let turnArrayIntoPointer (bt: typ) 
-                                 (lo: exp option) (a: attributes) : typ = 
-          let a' : attributes = 
-            match lo with 
-              None -> a
-            | Some l -> begin 
-                 (* Transform the length into an attribute expression *)
-                try 
-                  let la : attrparam = expToAttrParam l in
-                  addAttribute (Attr("arraylen", [ la ])) a
-                with NotAnAttrParam _ -> begin
-                    ignore (warn "Cannot represent the length of array as an attribute");
-                  
-                      a (* Leave unchanged *)
-                end 
-            end
-          in
-          TPtr(bt, a')
+         * our life a lot, and is what the standard requires (C11 \S6.7.6.3#7,8).
+         *
+         * We used to take the unrolled array *element* type as our argument, along with
+         * attrs unrolled into the TArray. However, that code did not handle typedefs
+         * correctly: if our argument is CV-qualified "const", but is
+         * of array type or typedef thereof, the "const" goes on the pointer *target*.
+         *
+         * (\S6.7.3#9) "If the specification of an array type includes any type qualifiers,
+         * the element type is so-qualified, not the array type. 136)"
+         * where footnote 136 says "Both of these can occur through the use of typedefs."
+         * and this seems to apply also when the parameter type is adjusted (\S6.7.6.3#7,
+         * mention of "array type derivation").
+         *
+         * There might be a chain of multiple typedefs each adding qualifiers, of course.
+         * Qualifiers can be 'const' or 'volatile', of course. What about "_Atomic" and
+         * "restrict"? "_Atomic" can't apply to arrays. But what about arrays of atomic T?
+         * Could I specify it using 'const myarr_t'? Presumably yes. *)
+        let maybeAdjustToPointerType (t: typ) : typ =
+          let ut = unrollType t in
+          match (t, ut) with
+            (_, TArray(elT, maybeLength, collectedAttrs)) ->
+              (* Anything that unrolls to an array.
+               * Collected attrs include qualifiers that were on the array type,
+               * *and* those on any of the intervening typedefs. SOME of these
+               * actually belong on the element type, not on the overall array or
+               * pointer type. But which? All type qualifiers, and only those. *)
+              let newCollectedAttrs =
+                match maybeLength with
+                  None -> collectedAttrs
+                | Some l -> begin
+                    (* Transform the length into an attribute expression *)
+                    try
+                      let lengthAttr : attrparam = expToAttrParam l in
+                      addAttribute (Attr("arraylen", [ lengthAttr ])) collectedAttrs
+                    with NotAnAttrParam _ -> begin
+                        ignore (warn "Cannot represent the length of array as an attribute");
+                          collectedAttrs (* Leave unchanged *)
+                    end
+                  end
+              in
+              let maybeEltConstAttr = filterAttributes "const" newCollectedAttrs in
+              let maybeEltVolatileAttr = filterAttributes "volatile" newCollectedAttrs in
+              let maybeEltRestrictAttr = filterAttributes "restrict" newCollectedAttrs in
+              TPtr(
+                typeAddAttributes (maybeEltConstAttr @ maybeEltVolatileAttr @ maybeEltRestrictAttr) elT,
+                dropAttributes ["const"; "volatile"; "restrict"] newCollectedAttrs
+              )
+          | (_, TFun(retT, maybeArgs, isVa, attrs)) ->
+              (* Anything that unrolls to a function.
+               * Qualifiers are not allowed. 6.7.3#8... UB!
+               * The pointer itself has no attributes, I guess. *)
+              TPtr(ut, [])
+          | _ -> t
         in
         let rec fixupArgumentTypes (argidx: int) (args: varinfo list) : unit = 
-          match args with
+          (match args with
             [] -> ()
           | a :: args' -> 
-              (* C is weird: if our argument is CV-qualified "const", but is
-               * of array type, the "const" goes on the pointer *target*. *)
-              ((* output_string stderr ("Fixing up an argument of name " ^ a.vname ^ "\n"); *)
-              ((* The case we care about is where 'vtype' is an TNamed with the 'const' attribute
-                * which it got when we made the formal. Perhaps we should not have made the formal
-                * this way. However, arguably what we're doing is specific to the array-to-pointer
-                * which is what we're doing right now.
-
-                * Or is it? Maybe unrollType should always move the 'const'? Where else can we
-                * have 'const' on a typedef? In a global. Not in a struct. 
-                *
-                * If we do unrollType, I think it will transfer the 'const' from the TNamed to the 'array'.
-                * The 'const' is not in 'vattr'.
-                *)
-               match (unrollType a.vtype, filterAttributes "const" a.vattr) with
-                (TArray(bt,lo,attr), []) -> 
-                  (* Note that for multi-dimensional arrays we strip off only
-                     the first TArray and leave bt alone. *)
-                  (match a.vtype with
-                     TNamed(_, attrs) when [] <> filterAttributes "const" attrs ->
-                       ((* output_string stderr "saw a const in TNamed attrs!"; *)
-                        a.vtype <- turnArrayIntoPointer (typeAddAttributes [Attr("const", [])] bt) lo (dropAttribute "const" attr))
-                   | _ -> a.vtype <- turnArrayIntoPointer bt lo attr
-                  )
-              | (TArray(bt,lo,attr), _) -> (* same again but we move the 'const *) 
-                  output_string stderr "Moving a 'const'!";
-                  a.vtype <- turnArrayIntoPointer bt lo ((Attr ("const", [])) :: attr);
-                  a.vattr <- dropAttribute "const" a.vattr
-              | (TFun _, _) -> a.vtype <- TPtr(a.vtype, [])
-              | (TComp (comp, _), _) -> begin
+              (match unrollType a.vtype with
+              | TComp (comp, _) -> begin
                   match isTransparentUnion a.vtype with
                     None ->  ()
                   | Some fstfield -> 
                       transparentUnionArgs := 
                          (argidx, a.vtype) :: !transparentUnionArgs;
                       a.vtype <- fstfield.ftype;
-              end
-              | (_, _) -> ());
+                end
+              | _ -> (a.vtype <- maybeAdjustToPointerType a.vtype));
               fixupArgumentTypes (argidx + 1) args'
-              )
+          )
         in
         let args = 
           match targs with 
@@ -3255,10 +3261,11 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
               fixupArgumentTypes 0 argl;
               Some (Util.list_map (fun a -> (a.vname, a.vtype, a.vattr)) argl)
         in
-        let tres = 
-          match unrollType bt with
-            TArray(t,lo,attr) -> turnArrayIntoPointer t lo attr
-          | _ -> bt
+        (* The following will happily convert a function returning an array
+         * into a function returning a pointer to the array element type.
+         * Such input is a constraint violation (C11: \S6.7.6.3#1). But OK, we
+         * can go ahead. *)
+        let tres = maybeAdjustToPointerType bt
         in
         doDeclType (TFun (tres, args, isva', [])) acc d
 
