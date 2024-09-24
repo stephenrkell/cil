@@ -4,7 +4,7 @@
   (public_name goblint-cil)
   (name goblintCil)
   (libraries zarith findlib dynlink unix str stdlib-shims)
-  (modules (:standard \ main ciloptions machdepConfigure modelConfigure))
+  (modules (:standard \ main ciloptions machdepConfigure machdepArchConfigure modelConfigure))
 )
 
 (executable
@@ -20,6 +20,21 @@
  (deps machdep-config.h machdep-ml.c)
  (target machdep-ml.exe)
  (action (run %{read-lines:../bin/real-gcc} -D_GNUCC machdep-ml.c -o %{target})))
+
+(executable
+ (name machdepArchConfigure)
+ (modules machdepArchConfigure)
+ (libraries dune-configurator))
+
+(rule
+ (deps machdep-config.h machdep-ml.c)
+ (target machdep32)
+ (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 32))))
+
+(rule
+ (deps machdep-config.h machdep-ml.c)
+ (target machdep64)
+ (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 64))))
 
 ; for Cilly.pm
 (executable
@@ -40,6 +55,7 @@
  (action (with-stdout-to %{target} (run ./modelConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 64))))
 
 (rule
+ (deps machdep32 machdep64)
  (target machdep.ml)
  (action (run %{bin:cppo} -V OCAML:%{ocaml_version}
               %{dep:machdep.cppo.ml} -x machdep:./%{dep:machdep-ml.exe}

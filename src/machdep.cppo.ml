@@ -56,4 +56,11 @@ let gcc = {
 #ext machdep
 #endext
 }
+
+let gcc32 =
+#include "machdep32"
+
+let gcc64 =
+#include "machdep64"
+
 let theMachine : mach ref = ref gcc
