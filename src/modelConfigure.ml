@@ -13,6 +13,7 @@ let () =
       let {C.Process.exit_code; stdout; stderr} = C.Process.run c !real_gcc ["-D_GNUCC"; "-m" ^ !m; "machdep-ml.c"; "-o"; exe] in
       if exit_code = 0 then (
         let {C.Process.stdout; stderr; exit_code} = C.Process.run c exe ["--env"] in
+        assert (exit_code = 0);
         print_string stdout;
       )
       else 
