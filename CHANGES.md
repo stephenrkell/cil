@@ -1,3 +1,7 @@
+## 2.0.5
+* Add enumerator attributes (#172).
+* Generate 32bit and 64bit `Machdep` if possible (#173).
+
 ## 2.0.4
 * Add `Return` statement expression location (#167).
 * Add `availability` attribute support (#168, #171).
