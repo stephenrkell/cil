@@ -412,8 +412,10 @@ class zraCilPrinterClass : cilPrinter = object (self)
           text "enum" ++ align ++ text (" " ^ enum.ename) ++
           self#pAttrs () enum.eattr ++ text " {" ++ line
           ++ (docList ~sep:(chr ',' ++ line)
-                (fun (n,i, loc) ->
-                  text (n ^ " = ")
+                (fun (n, attrs, i, loc) ->
+                  text n
+                    ++ self#pAttrs () attrs
+                    ++ text (n ^ " = ")
                     ++ self#pExp () i)
                 () enum.eitems)
           ++ unalign ++ line ++ text "};\n"

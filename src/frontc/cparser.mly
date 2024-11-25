@@ -1188,8 +1188,8 @@ enum_list: /* (* ISO 6.7.2.2 *) */
 |   enum_list COMMA error               { $1 }
 ;
 enumerator:
-    IDENT			{(fst $1, NOTHING, snd $1)}
-|   IDENT EQ expression		{(fst $1, fst $3, snd $1)}
+    IDENT attributes			{(fst $1, $2, NOTHING, snd $1)}
+|   IDENT attributes EQ expression		{(fst $1, $2, fst $4, snd $1)}
 ;
 
 
@@ -1494,6 +1494,8 @@ primary_attr:
 |   LPAREN attr RPAREN                  { $2 }
 |   IDENT IDENT                          { CALL(VARIABLE (fst $1), [VARIABLE (fst $2)]) }
 |   CST_INT                              { CONSTANT(CONST_INT (fst $1)) }
+|   CST_FLOAT                            { CONSTANT(CONST_FLOAT (fst $1)) }
+|   CST_FLOAT CST_FLOAT                  { CONSTANT(CONST_FLOAT (fst $1 ^ fst $2)) } /* Clang-like hack to parse version numbers like "10.13.4" (https://github.com/goblint/cil/pull/171#issuecomment-2250670652). We lex them as "10.13" and ".4". */
 |   const_string_or_wstring                 { CONSTANT(fst $1) }
                                            /*(* Const when it appears in
                                               attribute lists, is translated
@@ -1619,8 +1621,12 @@ conditional_attr:
 |   logical_or_attr QUEST conditional_attr COLON conditional_attr
                                           { QUESTION($1, $3, $5) }
 
+assignment_attr:
+    conditional_attr              { $1 }
+|   unary_attr EQ assignment_attr { BINARY(ASSIGN, $1, $3) }
 
-attr: conditional_attr                    { $1 }
+
+attr: assignment_attr                    { $1 }
 ;
 
 attr_list_ne:

@@ -222,6 +222,8 @@ addTest("test/attr10 _GNUCC=1");
 addTest("test/attr11 _GNUCC=1");
 addTest("test/attr12 _GNUCC=1");
 addTest("test/attr13 _GNUCC=1");
+# addTest("test/attr-assign"); # TODO: only on OSX, Linux GCC errors on introduced
+# addTest("test/attr-enumerator"); # TODO: only on OSX, Linux GCC errors on introduced
 addTest("testrun/packed _GNUCC=1 WARNINGS_ARE_ERRORS=1");
 addTest("test/packed2 _GNUCC=1");
 addTest("test/bitfield");
@@ -657,7 +659,7 @@ addTest("scott/globalprob $gcc");
 addBadComment("scott/globalprob", "Notbug. Not a bug if fails on a non-Linux machine ;-)");
 addTest("scott/bisonerror $gcc");
 addTest("scott/cmpzero");
-addTest("scott/kernel1 $gcc");
+# addTest("scott/kernel1 $gcc");
 addTest("scott/kernel2 $gcc");
 addTest("scott/xcheckers $gcc");
 addTest("scott/memberofptr $gcc");

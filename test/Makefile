@@ -127,6 +127,9 @@ ifdef SEPARATE
   CILLY+= --nomerge
 endif
 
+# Disable GCC 14 new warnings as errors because some tests contain them
+CFLAGS += -Wno-error=implicit-int -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=incompatible-pointer-types
+
 # sm: this will make gcc warnings into errors; it's almost never
 # what we want, but for a particular testcase (combine_copyptrs)
 # I need it to show the difference between something which works

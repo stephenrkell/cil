@@ -1,3 +1,9 @@
+## 2.0.4
+* Add `Return` statement expression location (#167).
+* Add `availability` attribute support (#168, #171).
+* Remove unused `Libmaincil` module (#165).
+* Fix some synthetic locations (#166, #167).
+
 ## 2.0.3
 * Add `asm inline` parsing (#151).
 * Ignore top level qualifiers in `__builtin_types_compatible_p` (#157).

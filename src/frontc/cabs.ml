@@ -168,7 +168,7 @@ and init_name = name * init_expression
 and single_name = specifier * name
 
 
-and enum_item = string * expression * cabsloc
+and enum_item = string * attribute list * expression * cabsloc
 
 (*
 ** Declaration definition (at toplevel)

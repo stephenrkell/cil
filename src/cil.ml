@@ -344,6 +344,7 @@ and attrparam =
   | AAddrOf of attrparam                 (** & a **)
   | AIndex of attrparam * attrparam      (** a1[a2] *)
   | AQuestion of attrparam * attrparam * attrparam (** a1 ? a2 : a3 **)
+  | AAssign of attrparam * attrparam     (** a1 = a2 *)
 
 
 (** Information about a composite type (a struct or a union). Use
@@ -398,7 +399,7 @@ and fieldinfo = {
     enumeration. Make sure you have a [GEnumTag] for each of of these.   *)
 and enuminfo = {
     mutable ename: string;              (** The name. Always non-empty *)
-    mutable eitems: (string * exp * location) list; (** Items with names
+    mutable eitems: (string * attributes * exp * location) list; (** Items with names
                                                       and values. This list
                                                       should be
                                                       non-empty. The item
@@ -1874,6 +1875,7 @@ let additiveLevel = 60
 let comparativeLevel = 70
 let bitwiseLevel = 75
 let questionLevel = 100
+let assignLevel = 110
 let getParenthLevel (e: exp) =
   match e with
   | Question _ -> questionLevel
@@ -1924,6 +1926,7 @@ let getParenthLevelAttrParam (a: attrparam) =
   | AAddrOf _ -> 30
   | ADot _ | AIndex _ | AStar _ -> 20
   | AQuestion _ -> questionLevel
+  | AAssign _ -> assignLevel
 
 
 let isIntegralType t =
@@ -4011,8 +4014,10 @@ class defaultCilPrinterClass : cilPrinter = object (self)
           text "enum" ++ align ++ text (" " ^ enum.ename) ++
           text " {" ++ line
           ++ (docList ~sep:(chr ',' ++ line)
-                (fun (n,i, loc) ->
-                  text (n ^ " = ")
+                (fun (n, attrs, i, loc) ->
+                  text n
+                    ++ self#pAttrs () attrs
+                    ++ text (n ^ " = ")
                     ++ self#pExp () i)
                 () enum.eitems)
           ++ unalign ++ line ++ text "} "
@@ -4423,6 +4428,9 @@ class defaultCilPrinterClass : cilPrinter = object (self)
           self#pAttrParam () a1 ++ text " ? " ++
           self#pAttrParam () a2 ++ text " : " ++
           self#pAttrParam () a3
+    | AAssign (a1, a2) ->
+          self#pAttrParam () a1 ++ text "=" ++
+          self#pAttrParam () a2
 
 
   (* A general way of printing lists of attributes *)
@@ -5561,6 +5569,10 @@ and childrenAttrparam (vis: cilVisitor) (aa: attrparam) : attrparam =
         let e3' = fAttrP e3 in
         if e1' != e1 || e2' != e2 || e3' != e3
         then AQuestion (e1', e2', e3') else aa
+    | AAssign (e1, e2) ->
+      let e1' = fAttrP e1 in
+      let e2' = fAttrP e2 in
+      if e1' != e1 || e2' != e2 then AAssign (e1', e2') else aa
 
 
 let rec visitCilFunction (vis : cilVisitor) (f : fundec) : fundec =
@@ -5612,7 +5624,7 @@ and childrenGlobal (vis: cilVisitor) (g: global) : global =
   | GEnumTag (enum, _) ->
       (* (trace "visit" (dprintf "visiting global enum %s\n" enum.ename)); *)
       (* Do the values and attributes of the enumerated items *)
-      let itemVisit (name, exp, loc) = (name, visitCilExpr vis exp, loc) in
+      let itemVisit (name, attrs, exp, loc) = (name, visitCilAttributes vis attrs, visitCilExpr vis exp, loc) in
       enum.eitems <- mapNoCopy itemVisit enum.eitems;
       enum.eattr <- visitCilAttributes vis enum.eattr;
       g

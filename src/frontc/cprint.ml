@@ -262,10 +262,11 @@ and print_enum_items items =
     indent ();
     print_commas
       true
-      (fun (id, exp, loc) -> print id;
+      (fun (id, attrs, exp, loc) -> print id;
 	if exp = NOTHING then ()
 	else begin
 	  space ();
+    print_attributes attrs;
 	  print "= ";
 	  print_expression exp
 	end)

@@ -2675,7 +2675,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     | [A.Tenum (n, Some eil, extraAttrs)] -> (* A definition of an enum *)
         let rec justNames eil = match eil with
             [] -> []
-          | (str, expr, loc) :: eis -> str :: justNames eis
+          | (str, attrs, expr, loc) :: eis -> str :: justNames eis
         in
         let names = justNames eil in
         let n' =
@@ -2721,7 +2721,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
           else IULongLong (* assume there can be not enum constants that don't fit in long long since there can only be 128bit constants if long long is also 128bit *)
         in
         (* as each name,value pair is determined, this is called *)
-        let rec processName kname (i: exp) loc rest = begin
+        let rec processName kname attrs (i: exp) loc rest = begin
           (* add the name to the environment, but with a faked 'typ' field;
              we don't know the full type yet (since that includes all of the
              tag values), but we won't need them in here  *)
@@ -2731,16 +2731,16 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
             environment when we're finished  *)
           let newname, _  = newAlphaName true "" kname in
 
-          (kname, (newname, i, loc)) :: loop (increm i 1) rest
+          (kname, (newname, doAttributes attrs, i, loc)) :: loop (increm i 1) rest
         end
 
         and loop i = function
             [] -> []
-          | (kname, A.NOTHING, cloc) :: rest ->
+          | (kname, attrs, A.NOTHING, cloc) :: rest ->
               (* use the passed-in 'i' as the value, since none specified *)
-              processName kname i (convLoc cloc) rest
+              processName kname attrs i (convLoc cloc) rest
 
-          | (kname, e, cloc) :: rest ->
+          | (kname, attrs, e, cloc) :: rest ->
               (* constant-eval 'e' to determine tag value *)
               let e' = getIntConstExp e in
               let e'' =
@@ -2750,7 +2750,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
 		                if !lowerConstants then kintegerCilint ik n else e'
                 | _ -> E.s (error "Constant initializer %a not an integer" d_exp e')
               in
-              processName kname e'' (convLoc cloc) rest
+              processName kname attrs e'' (convLoc cloc) rest
         in
 
         let fields = loop zero eil in
@@ -2927,6 +2927,7 @@ and doAttr (a: A.attribute) : attribute list =
             | _ ->
                 E.s (error "Invalid attribute constant: %s")
           end
+        | A.CONSTANT (A.CONST_FLOAT str) -> ACons (str, [])
         | A.CALL(A.VARIABLE n, args) -> begin
             let n' = if strip then stripUnderscore n else n in
             let ae' = Util.list_map ae args in
@@ -2940,6 +2941,8 @@ and doAttr (a: A.attribute) : attribute list =
             ABinOp(LAnd, ae aa1, ae aa2)
         | A.BINARY(A.OR, aa1, aa2) ->
             ABinOp(LOr, ae aa1, ae aa2)
+        | A.BINARY(A.ASSIGN, aa1, aa2) ->
+            AAssign(ae aa1, ae aa2)
         | A.BINARY(abop, aa1, aa2) ->
             ABinOp (convBinOp abop, ae aa1, ae aa2)
         | A.UNARY(A.PLUS, aa) -> ae aa

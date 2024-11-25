@@ -338,6 +338,7 @@ and attrparam =
   | AAddrOf of attrparam                 (** & a **)
   | AIndex of attrparam * attrparam      (** a1[a2] *)
   | AQuestion of attrparam * attrparam * attrparam (** a1 ? a2 : a3 **)
+  | AAssign of attrparam * attrparam     (** a1 = a2 *)
 
 (** {b Structures.} The {!compinfo} describes the definition of a
    structure or union type. Each such {!compinfo} must be defined at the
@@ -422,7 +423,7 @@ and fieldinfo = {
 and enuminfo = {
     mutable ename: string;
     (** The name. Always non-empty. *)
-    mutable eitems: (string * exp * location) list;
+    mutable eitems: (string * attributes * exp * location) list;
     (** Items with names and values. This list should be non-empty. The item
        values must be compile-time constants. *)
     mutable eattr: attributes;
