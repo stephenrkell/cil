@@ -65,3 +65,6 @@ depexts: [
   ["build-base"] {os-distribution = "alpine"}
 ]
 available: arch = "x86_64" | arch = "arm64"
+x-ci-accept-failures: [
+  "freebsd" # installed cilly binary is not found for some reason (https://github.com/ocaml/opam-repository/pull/24812#issuecomment-1819231335)
+]
