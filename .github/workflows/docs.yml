@@ -28,7 +28,7 @@ jobs:
           opam exec -- dune subst
           opam exec -- dune build @heveadoc
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: doc-html
           path: _build/default/doc/html/cil
@@ -41,7 +41,7 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v3 # check out git repo to make deploy action happy
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: doc-html
           path: _build/default/doc/html/cil
