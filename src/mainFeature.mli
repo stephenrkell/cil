@@ -34,48 +34,24 @@
 
 (** Extending CIL with external features *)
 
-(** Description of a CIL feature. *)
-type t = {
+(** {1 Internal}*)
 
-    mutable fd_enabled: bool; 
-    (** The enable flag. Set to default value  *)
+(** Initialize the module. This needs to be called before {!loadWithDeps} is
+   used. Called automatically by {!loadFromArgv}. *)
+val init : unit -> unit
 
-    fd_name: string; 
-    (** This is used to construct an option "--doxxx" and "--dontxxx" that 
-       enable and disable the feature  *)
+(** Find and dynamically links a module. The name should be either a path to a
+   cmo, cma or cmxs file, or the name of a findlib package. In the latter case,
+   package dependencies are loaded automatically. Each file is loaded at most
+   one.  The loaded module must call {!register} to make its features
+   available to CIL. *)
+val loadWithDeps : string -> unit
 
-    fd_description: string; 
-    (** A longer name that can be used to document the new options  *)
+(** [loadFromArgv switch] searches {!Sys.argv} for the command-line option
+   [switch], and loads the modules passed as parameters. Ignores every other
+   {!Sys.argv} element. *)
+val loadFromArgv : string -> unit
 
-    fd_extraopt: (string * Arg.spec * string) list; 
-    (** Additional command line options.  The description strings should
-        usually start with a space for Arg.align to print the --help nicely. *)
-
-    fd_doit: (Cil.file -> unit);
-    (** This performs the transformation *)
-
-    fd_post_check: bool; 
-    (** Whether to perform a CIL consistency checking after this stage, if 
-       checking is enabled (--check is passed to cilly). Set this to true if 
-       your feature makes any changes for the program. *)
-}
-
-(** Register a feature to be used by CIL. Feature name must be unique. *)
-val register : t -> unit
-
-(** List registered features. *)
-val list_registered : unit -> t list
-
-(** Check if a given feature is registered. *)
-val registered : string -> bool
-
-(** Find a feature by name. Raise Not_found if the feature is not registered. *)
-val find : string -> t
-
-(** Enable a given feature, by name. Raise {!Errormsg.Error} if the feature is not
-    registered. *)
-val enable : string -> unit
-
-(** Check if a given feature is enabled. Return false if the feature is not
-   registered. *)
-val enabled : string -> bool
+(** [loadFromEnv name default] loads coma-separated module names stored in the
+   environment variable [name], or [default] if it is not defined. *)
+val loadFromEnv : string -> string list -> unit
