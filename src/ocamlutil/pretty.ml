@@ -79,11 +79,11 @@ let breakString s =
     let j = ref (String.length s) in
     for i = String.length s - 1 downto 0 do
       if String.unsafe_get s i = '\n' then begin
-        let text = (String.sub s (i + 1) (!j - i - 1)) in
+        let text = Text (String.sub s (i + 1) (!j - i - 1)) in
         (if !r = Nil then
-          r := Concat(Line,Text text)
+          r := Concat(Line, text)
         else
-          r := Concat(Line, Concat(Text text, !r)));
+          r := Concat(Line, Concat(text, !r)));
         j := i
       end
     done;
@@ -91,7 +91,7 @@ let breakString s =
     if !r = Nil then
       Text text
     else
-      Concat(Text text,!r)
+      Concat(Text text, !r)
 
 
 let nil           = Nil
