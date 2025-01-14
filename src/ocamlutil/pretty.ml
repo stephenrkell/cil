@@ -73,25 +73,25 @@ type doc =
 (* Replaces an earlier implementation that relied on repeatedly calling sub, with one inspired by the standard library *)
 let breakString init s =
   if s = "" then
-    Nil
+    init
   else
     let r = ref init in
     let j = ref (String.length s) in
     for i = String.length s - 1 downto 0 do
-      let text = Text (String.sub s (i + 1) (!j - i - 1)) in
       if String.unsafe_get s i = '\n' then begin
-        if !r = Nil then
-          r := Concat(Line, text)
+        let text = (String.sub s (i + 1) (!j - i - 1)) in
+        (if !r = Nil then
+          r := CText(Line, text)
         else
-          r := Concat(Line, Concat(text, !r));
+          r := Concat(Line, CText(!r, text)));
         j := i
       end
     done;
-    let text = Text (String.sub s 0 !j) in
+    let text = String.sub s 0 !j in
     if !r = Nil then
-      text
+      Text text
     else
-      Concat(text, Concat(Line, !r))
+      CText(!r, text)
 
 
 let nil           = Nil
