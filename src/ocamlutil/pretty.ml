@@ -70,26 +70,27 @@ type doc =
   | Unmark
 
 (* Break a string at \n *)
-let rec breakString (acc: doc) (str: string) : doc =
-  (* Printf.printf "breaking string %s\n" str; *)
-  match (try Some (String.index str '\n') with Not_found -> None) with
-  | None -> if acc = Nil then Text str else CText (acc, str)
-  | Some r ->
-    (* Printf.printf "r=%d\n" r; *)
-    let len = String.length str in
-    if r > 0 then begin
-      (* Printf.printf "Taking %s\n" (String.sub str 0 r); *)
-      let acc' = Concat(CText (acc, String.sub str 0 r), Line) in
-      if r = len - 1 then (* The last one *)
-        acc'
-      else begin
-        (* Printf.printf "Continuing with %s\n" (String.sub str (r + 1) (len - r - 1)); *)
-        breakString acc'
-          (String.sub str (r + 1) (len - r - 1))
+(* Replaces an earlier implementation that relied on repeatedly calling sub, with one inspired by the standard library *)
+let breakString init s =
+  if s = "" then
+    Nil
+  else
+    let r = ref init in
+    let j = ref (String.length s) in
+    for i = String.length s - 1 downto 0 do
+      let text = Text (String.sub s (i + 1) (!j - i - 1)) in
+      if String.unsafe_get s i = '\n' then begin
+        if !r = Nil then
+          r := Concat(Line, text)
+        else
+          r := Concat(Line, Concat(text, !r));
+        j := i
       end
-    end else (* The first is a newline *)
-      breakString (Concat(acc, Line))
-        (String.sub str (r + 1) (len - r - 1))
+    done;
+    if !r = Nil then
+      Text (String.sub s 0 !j)
+    else
+      Concat(Text (String.sub s 0 !j), Concat(Line, !r))
 
 
 let nil           = Nil
@@ -591,7 +592,7 @@ let print_with_state ~width f =
     topAlignAbsCol := old_topAlignAbsCol;
     breakAllMode := old_breakAllMode
   in
-  
+
   match f () with
   | r ->
     finally ();
