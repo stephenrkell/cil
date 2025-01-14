@@ -71,19 +71,19 @@ type doc =
 
 (* Break a string at \n *)
 (* Replaces an earlier implementation that relied on repeatedly calling sub, with one inspired by the standard library *)
-let breakString init s =
+let breakString s =
   if s = "" then
-    init
+    Nil
   else
-    let r = ref init in
+    let r = ref Nil in
     let j = ref (String.length s) in
     for i = String.length s - 1 downto 0 do
       if String.unsafe_get s i = '\n' then begin
         let text = (String.sub s (i + 1) (!j - i - 1)) in
         (if !r = Nil then
-          r := CText(Line, text)
+          r := Concat(Line,Text text)
         else
-          r := Concat(Line, CText(!r, text)));
+          r := Concat(Line, Concat(Text text, !r)));
         j := i
       end
     done;
@@ -91,11 +91,11 @@ let breakString init s =
     if !r = Nil then
       Text text
     else
-      CText(!r, text)
+      Concat(Text text,!r)
 
 
 let nil           = Nil
-let text s        = breakString nil s
+let text s        = breakString s
 let num  i        = text (string_of_int i)
 let num64 i       = text (Int64.to_string i)
 let real f        = text (string_of_float f)
@@ -707,7 +707,7 @@ let gprintf (finish : doc -> 'b)
                   else
                     s
               in
-              collect (breakString acc str) (succ j))
+              collect (Concat(acc, breakString str)) (succ j))
         | 'c' ->
             Obj.magic(fun c ->
               collect (dctext1 acc (String.make 1 c)) (succ j))
