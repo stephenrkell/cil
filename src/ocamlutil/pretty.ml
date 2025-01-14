@@ -87,10 +87,11 @@ let breakString init s =
         j := i
       end
     done;
+    let text = Text (String.sub s 0 !j) in
     if !r = Nil then
-      Text (String.sub s 0 !j)
+      text
     else
-      Concat(Text (String.sub s 0 !j), Concat(Line, !r))
+      Concat(text, Concat(Line, !r))
 
 
 let nil           = Nil
