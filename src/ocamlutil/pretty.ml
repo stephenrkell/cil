@@ -72,26 +72,30 @@ type doc =
 (* Break a string at \n *)
 (* Replaces an earlier implementation that relied on repeatedly calling sub, with one inspired by the standard library *)
 let breakString s =
-  if s = "" then
-    Nil
-  else
-    let r = ref Nil in
-    let j = ref (String.length s) in
-    for i = String.length s - 1 downto 0 do
-      if String.unsafe_get s i = '\n' then begin
-        let text = Text (String.sub s (i + 1) (!j - i - 1)) in
-        (if !r = Nil then
-          r := Concat(Line, text)
+  let r = ref Nil in
+  let j = ref (String.length s) in
+  for i = String.length s - 1 downto 0 do
+    if String.unsafe_get s i = '\n' then begin
+      let text = String.sub s (i + 1) (!j - i - 1) in
+      (if text = "" then
+        if !r = Nil then
+          r := Line
         else
-          r := Concat(Line, Concat(text, !r)));
-        j := i
-      end
-    done;
-    let text = String.sub s 0 !j in
-    if !r = Nil then
-      Text text
-    else
-      Concat(Text text, !r)
+          r := Concat(Line, !r)
+      else
+        if !r = Nil then
+          r := Concat(Line, Text text)
+        else
+          r := Concat(Line, Concat(Text text, !r))
+      );
+      j := i
+    end
+  done;
+  let text = String.sub s 0 !j in
+  if text = "" then
+    !r
+  else
+    Concat(Text text, !r)
 
 
 let nil           = Nil
