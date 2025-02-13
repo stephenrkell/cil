@@ -41,7 +41,7 @@ module E = Errormsg
 
 let setDebugFlag v name =
   E.debugFlag := v;
-  if v then Pretty.flushOften := true
+  if v then Domain.DLS.set Pretty.flushOften true
 
 type outfile =
     { fname: string;
@@ -143,14 +143,14 @@ let options : (string * Arg.spec * string) list =
     "<xxx> Turn off debugging flag xxx";
 
     "--flush",
-    Arg.Set Pretty.flushOften,
+    Arg.Set (ref @@ Domain.DLS.get Pretty.flushOften),
     (" Flush the output streams often; aids debugging" ^
-       is_default !Pretty.flushOften);
+       is_default (Domain.DLS.get Pretty.flushOften));
 
     "--noflush",
-    Arg.Clear Pretty.flushOften,
+    Arg.Clear (ref @@ Domain.DLS.get Pretty.flushOften),
     (" Only flush output streams when inevitable" ^
-       is_default (not !Pretty.flushOften));
+       is_default (not @@ Domain.DLS.get Pretty.flushOften));
 
     "--check",
     Arg.Set Cilutil.doCheck,
@@ -366,9 +366,9 @@ let options : (string * Arg.spec * string) list =
     " Do not wrap long lines when printing";
 
     "--pdepth",
-    Arg.Int (fun n -> Pretty.printDepth := n),
+    Arg.Int (fun n -> Domain.DLS.set Pretty.printDepth n),
     ("<n> Set max print depth (default: " ^
-       string_of_int !Pretty.printDepth ^ ")");
+       string_of_int (Domain.DLS.get Pretty.printDepth) ^ ")");
 
     "--decil",
     Arg.Clear Cil.print_CIL_Input,

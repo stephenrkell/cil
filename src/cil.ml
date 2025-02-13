@@ -5829,9 +5829,9 @@ let mapGlobals (fl: file)
 
 
 let dumpFile (pp: cilPrinter) (out : out_channel) (outfile: string) file =
-  printDepth := 99999;  (* We don't want ... in the output *)
+  Domain.DLS.set printDepth 99999;  (* We don't want ... in the output *)
 
-  Pretty.fastMode := true;
+  Domain.DLS.set Pretty.fastMode true;
 
   if !E.verboseFlag then
     ignore (E.log "printing file %s\n" outfile);

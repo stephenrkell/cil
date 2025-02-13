@@ -41,17 +41,25 @@
    structured text.
 *)
 
+(* redefine ref as Domain.DLS to avoid issues with Domains *)
+type 'a refDLS = 'a Domain.DLS.key
+let (!) = Domain.DLS.get
+let (:=) = Domain.DLS.set
+let refDLS vl = Domain.DLS.new_key (fun () -> vl)
+let incr rf = rf := (!rf + 1)
+let decr rf = rf := (!rf - 1)
+
 let debug =  false
 
-let fastMode       = ref false
+let fastMode       = refDLS false
 
 
 (** Whether to print indentation or not (for faster printing and smaller
     output) *)
-let printIndent = ref true
+let printIndent = refDLS true
 
 (** Whether to rebalance doc before printing it to avoid stack-overflows *)
-let flattenBeforePrint = ref true
+let flattenBeforePrint = refDLS true
 
 (******************************************************************************)
 (* The doc type and constructors *)
@@ -241,33 +249,33 @@ type align =
                                    taking the break associated with this
                                    alignment mark. If this is 0, then there
                                    is no break associated with the mark *)
-      mutable isTaken: bool ref; (* If breakGain is > 0 then this is a ref
+      mutable isTaken: bool refDLS; (* If breakGain is > 0 then this is a ref
                                     cell that must be set to true when the
                                     break is taken. These ref cells are also
                                     int the "breaks" list  *)
-            deltaFromPrev: int ref; (* The column of this alignment mark -
+            deltaFromPrev: int refDLS; (* The column of this alignment mark -
                                        the column of the previous mark.
                                        Shared with the deltaToNext of the
                                        previous active align  *)
-             deltaToNext: int ref  (* The column of the next alignment mark -
+             deltaToNext: int refDLS  (* The column of the next alignment mark -
                                       the columns of this one. Shared with
                                       deltaFromPrev of the next active align *)
     }
 
 (* We use references to avoid the need to pass data around all the time *)
-let aligns: align list ref =  (* The current stack of active alignment marks,
+let aligns: align list refDLS =  (* The current stack of active alignment marks,
                                  with the top at the head. Never empty.  *)
-  ref [{ gainBreak = 0; isTaken = ref false;
-         deltaFromPrev = ref 0; deltaToNext = ref 0; }]
+  refDLS [{ gainBreak = 0; isTaken = refDLS false;
+         deltaFromPrev = refDLS 0; deltaToNext = refDLS 0; }]
 
-let topAlignAbsCol = ref 0 (* The absolute column of the top alignment *)
+let topAlignAbsCol = refDLS 0 (* The absolute column of the top alignment *)
 
 let pushAlign (abscol: int) =
   let topalign = List.hd !aligns in
   let res =
-    { gainBreak = 0; isTaken = ref false;
+    { gainBreak = 0; isTaken = refDLS false;
       deltaFromPrev = topalign.deltaToNext; (* Share with the previous *)
-      deltaToNext = ref 0; (* Allocate a new ref *)} in
+      deltaToNext = refDLS 0; (* Allocate a new ref *)} in
   aligns := res :: !aligns;
   res.deltaFromPrev := abscol - !topAlignAbsCol;
   topAlignAbsCol := abscol
@@ -281,18 +289,18 @@ let popAlign () =
 
 (** We keep a list of active markup sections. For each one we keep the column
    we are in *)
-let activeMarkups: int list ref = ref []
+let activeMarkups: int list refDLS = refDLS []
 
 
 (* Keep a list of ref cells for the breaks, in the same order that we see
    them in the document *)
-let breaks: bool ref list ref = ref []
+let breaks: bool refDLS list refDLS = refDLS []
 
 (* The maximum column that we should use *)
-let maxCol = ref 0
+let maxCol = refDLS 0
 
 (* Sometimes we take all the optional breaks *)
-let breakAllMode = ref false
+let breakAllMode = refDLS false
 
 (* We are taking a newline and moving left *)
 let newline () =
@@ -310,7 +318,7 @@ let newline () =
    keep the aligns sorted, especially since they gain never changes (when the
    align is the top align) *)
 let chooseBestGain () : align option =
-  let bestGain = ref 0 in
+  let bestGain = refDLS 0 in
   let rec loop (breakingAlign: align option) = function
       [] -> breakingAlign
     | a :: resta ->
@@ -364,8 +372,8 @@ let movingRight (abscol: int) : int =
 (* Keep track of nested align in gprintf. Each gprintf format string must
    have properly nested align/unalign pairs. When the nesting depth surpasses
    !printDepth then we print ... and we skip until the matching unalign *)
-let printDepth = ref 10000000 (* WRW: must see whole thing *)
-let alignDepth = ref 0
+let printDepth = refDLS 10000000 (* WRW: must see whole thing *)
+let alignDepth = refDLS 0
 
 let useAlignDepth = true
 
@@ -424,7 +432,7 @@ let rec scan (abscol: int) (d: doc) : int =
                                      followed by an optional line break *)
       if !activeMarkups != [] then
         failwith "Line breaks inside markup sections";
-      let takenref = ref false in
+      let takenref = refDLS false in
       breaks := takenref :: !breaks;
       let topalign = List.hd !aligns in (* aligns is never empty *)
       if !breakAllMode then begin
@@ -456,16 +464,16 @@ let rec scan (abscol: int) (d: doc) : int =
 
 (** Keep a running counter of the newlines we are taking. You can read and
     reset this from user code, if you want *)
-let countNewLines = ref 0
+let countNewLines = refDLS 0
 
 (* The actual function that takes a document and prints it *)
 let emitDoc
     (emitString: string -> int -> unit) (* emit a number of copies of a
                                            string *)
     (d: doc) =
-  let aligns: int list ref = ref [0] in (* A stack of alignment columns *)
+  let aligns: int list refDLS = refDLS [0] in (* A stack of alignment columns *)
 
-  let wantIndent = ref false in
+  let wantIndent = refDLS false in
   (* Use this function to take a newline *)
   (* AB: modified it to flag wantIndent. The actual indentation is done only
      if leftflush is not encountered *)
@@ -573,7 +581,7 @@ let print_with_state ~width f =
   let old_alignDepth = !alignDepth in
   alignDepth := 0;
   let old_aligns = !aligns in
-  aligns := [{ gainBreak = 0; isTaken = ref false; deltaFromPrev = ref 0; deltaToNext = ref 0; }];
+  aligns := [{ gainBreak = 0; isTaken = refDLS false; deltaFromPrev = refDLS 0; deltaToNext = refDLS 0; }];
   let old_topAlignAbsCol = !topAlignAbsCol in
   topAlignAbsCol := 0;
   let old_breakAllMode = !breakAllMode in
@@ -830,7 +838,7 @@ let withPrintDepth dp thunk =
 
 
 
-let flushOften = ref false
+let flushOften = refDLS false
 
 let dprintf format     = gprintf (fun x -> x) format
 let fprintf chn format =
