@@ -3199,7 +3199,13 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
          * There might be a chain of multiple typedefs each adding qualifiers, of course.
          * Qualifiers can be 'const' or 'volatile', of course. What about "_Atomic" and
          * "restrict"? "_Atomic" can't apply to arrays. But what about arrays of atomic T?
-         * Could I specify it using 'const myarr_t'? Presumably yes. *)
+         * Could I specify it using 'const myarr_t'? Presumably yes.
+         *
+         * Further wart: if we write "int arr[restrict]", this needs to decay into a
+         * restrict pointer, not a pointer-to-restrict. This seems to go against what
+         * the standard says above, but gcc accepts this and libgnu includes such code
+         * (e.g. see regerror() and regexec() in regex.h). So maybe leave 'restrict'
+         * where it is? *)
         let maybeAdjustToPointerType (t: typ) : typ =
           let ut = unrollType t in
           match (t, ut) with
@@ -3227,8 +3233,8 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
               let maybeEltVolatileAttr = filterAttributes "volatile" newCollectedAttrs in
               let maybeEltRestrictAttr = filterAttributes "restrict" newCollectedAttrs in
               TPtr(
-                typeAddAttributes (maybeEltConstAttr @ maybeEltVolatileAttr @ maybeEltRestrictAttr) elT,
-                dropAttributes ["const"; "volatile"; "restrict"] newCollectedAttrs
+                typeAddAttributes (maybeEltConstAttr @ maybeEltVolatileAttr (* @ maybeEltRestrictAttr *)) elT,
+                dropAttributes ["const"; "volatile" (*; "restrict" *)] newCollectedAttrs
               )
           | (_, TFun(retT, maybeArgs, isVa, attrs)) ->
               (* Anything that unrolls to a function.
