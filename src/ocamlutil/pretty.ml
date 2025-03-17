@@ -280,8 +280,6 @@ let pushAlign (abscol: int) =
       deltaToNext = ref 0; (* Allocate a new ref *)} in
   DLS.set aligns (res :: (DLS.get aligns));
   let (newdelta : int) = abscol - (DLS.get topAlignAbsCol) in
-  let x = ref 1 in
-  x := 0;
   res.deltaFromPrev := newdelta;
   (* res.deltaFromPrev := (abscol - !topAlignAbsCol); *)
   DLS.set topAlignAbsCol abscol
@@ -324,13 +322,13 @@ let newline () =
    keep the aligns sorted, especially since they gain never changes (when the
    align is the top align) *)
 let chooseBestGain () : align option =
-  let bestGain = refDLS 0 in
+  let bestGain = ref 0 in
   let rec loop (breakingAlign: align option) = function
       [] -> breakingAlign
     | a :: resta ->
         if debug then dbgprintf "Looking at align with gain %d\n" a.gainBreak;
-        if a.gainBreak > (DLS.get bestGain) then begin
-          DLS.set bestGain a.gainBreak;
+        if a.gainBreak > !bestGain then begin
+          bestGain := a.gainBreak;
           loop (Some a) resta
         end else
           loop breakingAlign resta
@@ -479,7 +477,7 @@ let emitDoc
     (d: doc) =
   let aligns: int list refDLS = refDLS [0] in (* A stack of alignment columns *)
 
-  let wantIndent = refDLS false in
+  let wantIndent = ref false in
   (* Use this function to take a newline *)
   (* AB: modified it to flag wantIndent. The actual indentation is done only
      if leftflush is not encountered *)
@@ -489,18 +487,18 @@ let emitDoc
     | x :: _ ->
 	emitString "\n" 1;
         incr countNewLines;
-	DLS.set wantIndent true;
+        wantIndent := true;
 	x
   in
   (* Print indentation if wantIndent was previously flagged ; reset this flag *)
   let indentIfNeeded () =
-    if (DLS.get printIndent) && (DLS.get wantIndent) then ignore (
+    if (DLS.get printIndent) && !wantIndent then ignore (
       match (DLS.get aligns) with
 	[] -> failwith "Ran out of aligns"
       | x :: _ ->
           if x > 0 then emitString " "  x;
           x);
-    DLS.set wantIndent false
+    wantIndent := false
   in
   (* A continuation passing style loop *)
   let rec loopCont (abscol: int) (d: doc) (cont: int -> unit) : unit
@@ -544,7 +542,7 @@ let emitDoc
             DLS.set aligns rest; cont abscol
     end
     | Line when shallowAlign ()  -> cont (newline ())
-    | LeftFlush when shallowAlign () -> DLS.set wantIndent false;  cont (0)
+    | LeftFlush when shallowAlign () -> wantIndent := false;  cont (0)
     | Break when shallowAlign () -> begin
         match (DLS.get breaks) with
           [] -> failwith "Break without a takenref"
