@@ -53,15 +53,15 @@ let decr rf = DLS.set rf (DLS.get rf - 1)
 
 let debug =  false
 
-let fastMode       = refDLS false
+let fastMode       = ref false
 
 
 (** Whether to print indentation or not (for faster printing and smaller
     output) *)
-let printIndent = refDLS true
+let printIndent = ref true
 
 (** Whether to rebalance doc before printing it to avoid stack-overflows *)
-let flattenBeforePrint = refDLS true
+let flattenBeforePrint = ref true
 
 (******************************************************************************)
 (* The doc type and constructors *)
@@ -346,7 +346,7 @@ let movingRight (abscol: int) : int =
       if debug then
         dbgprintf "Looking for a break to take in column %d\n" abscol;
       (* Find the best gain there is out there *)
-      match if (DLS.get fastMode) then None else chooseBestGain () with
+      match if !fastMode then None else chooseBestGain () with
         None -> begin
           (* No breaks are available. Take all breaks from now on *)
           DLS.set breakAllMode true;
@@ -376,7 +376,7 @@ let movingRight (abscol: int) : int =
 (* Keep track of nested align in gprintf. Each gprintf format string must
    have properly nested align/unalign pairs. When the nesting depth surpasses
    !printDepth then we print ... and we skip until the matching unalign *)
-let printDepth = refDLS 10000000 (* WRW: must see whole thing *)
+let printDepth = ref 10000000 (* WRW: must see whole thing *)
 let alignDepth = refDLS 0
 
 let useAlignDepth = true
@@ -384,7 +384,7 @@ let useAlignDepth = true
 (** Start an align. Return true if we have just passed the threshhold *)
 let enterAlign () =
   incr alignDepth;
-  useAlignDepth && (DLS.get alignDepth) = (DLS.get printDepth) + 1
+  useAlignDepth && (DLS.get alignDepth) = !printDepth + 1
 
 (** Exit an align *)
 let exitAlign () =
@@ -393,7 +393,7 @@ let exitAlign () =
 (** See if we are at a low-enough align level (and we should be printing
    normally) *)
 let shallowAlign () =
-  not useAlignDepth || (DLS.get alignDepth) <= (DLS.get printDepth)
+  not useAlignDepth || (DLS.get alignDepth) <= !printDepth
 
 
 (* Pass the current absolute column and compute the new column *)
@@ -486,13 +486,13 @@ let emitDoc
       [] -> failwith "Ran out of aligns"
     | x :: _ ->
 	emitString "\n" 1;
-        incr countNewLines;
+        DLS.set countNewLines (DLS.get countNewLines + 1);
         wantIndent := true;
 	x
   in
   (* Print indentation if wantIndent was previously flagged ; reset this flag *)
   let indentIfNeeded () =
-    if (DLS.get printIndent) && !wantIndent then ignore (
+    if !printIndent && !wantIndent then ignore (
       match (DLS.get aligns) with
 	[] -> failwith "Ran out of aligns"
       | x :: _ ->
@@ -615,7 +615,7 @@ let print_with_state ~width f =
 
 (* Print a document on a channel *)
 let fprint (chn: out_channel) ~(width: int) doc =
-  let doc = if (DLS.get flattenBeforePrint) then flatten Nil doc else doc in
+  let doc = if !flattenBeforePrint then flatten Nil doc else doc in
   print_with_state ~width (fun () ->
       ignore (scan 0 doc);
       DLS.set breaks @@ List.rev (DLS.get breaks);
@@ -628,7 +628,7 @@ let fprint (chn: out_channel) ~(width: int) doc =
 
 (* Print the document to a string *)
 let sprint ~(width : int)  doc : string =
-  let doc = if (DLS.get flattenBeforePrint) then flatten Nil doc else doc in
+  let doc = if !flattenBeforePrint then flatten Nil doc else doc in
   print_with_state ~width (fun () ->
       ignore (scan 0 doc);
       DLS.set breaks @@ List.rev (DLS.get breaks);
@@ -656,9 +656,9 @@ let gprintf (finish : doc -> 'b)
   let startAlignDepth = (DLS.get alignDepth) in
   (* Special concatenation functions *)
   let dconcat (acc: doc) (another: doc) =
-    if (DLS.get alignDepth) > (DLS.get printDepth) then acc else acc ++ another in
+    if (DLS.get alignDepth) > !printDepth then acc else acc ++ another in
   let dctext1 (acc: doc) (str: string) =
-    if (DLS.get alignDepth) > (DLS.get printDepth) then acc else
+    if (DLS.get alignDepth) > !printDepth then acc else
     CText(acc, str)
   in
   (* Special finish function *)
@@ -785,9 +785,9 @@ let gprintf (finish : doc -> 'b)
                                         (* Now the special format characters *)
             '[' ->                      (* align *)
               let newacc =
-                if (DLS.get alignDepth) > (DLS.get printDepth) then
+                if (DLS.get alignDepth) > !printDepth then
                   acc
-                else if (DLS.get alignDepth) = (DLS.get printDepth) then
+                else if (DLS.get alignDepth) = !printDepth then
                   CText(acc, "...")
                 else
                   acc ++ align
@@ -798,7 +798,7 @@ let gprintf (finish : doc -> 'b)
           | ']' ->                        (* unalign *)
               decr alignDepth;
               let newacc =
-                if (DLS.get alignDepth) >= (DLS.get printDepth) then
+                if (DLS.get alignDepth) >= !printDepth then
                   acc
                 else
                   acc ++ unalign
@@ -835,14 +835,14 @@ let gprintf (finish : doc -> 'b)
   collect Nil 0
 
 let withPrintDepth dp thunk =
-  let opd = (DLS.get printDepth) in
-  DLS.set printDepth dp;
+  let opd = !printDepth in
+  printDepth := dp;
   thunk ();
-  DLS.set printDepth opd
+  printDepth := opd
 
 
 
-let flushOften = refDLS false
+let flushOften = ref false
 
 let dprintf format     = gprintf (fun x -> x) format
 let fprintf chn format =
@@ -852,7 +852,7 @@ let fprintf chn format =
 	(* save the value we would have returned, flush the channel and then
            return it -- this allows us to see debug input near infinite loops
            *)
-  if (DLS.get flushOften) then flush chn;
+  if !flushOften then flush chn;
   res
 	(* weimeric hack ends *)
 

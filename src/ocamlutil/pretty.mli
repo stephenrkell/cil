@@ -297,20 +297,20 @@ val withPrintDepth : int -> (unit -> unit) -> unit
 
 (** Specifies the nesting depth of the [align]/[unalign] pairs at which 
     everything is replaced with ellipsis *)
-val printDepth   : int refDLS
+val printDepth   : int ref
 
-val printIndent  : bool refDLS  (** If false then does not indent *)
+val printIndent  : bool ref (** If false then does not indent *)
 
 
 (** If set to [true] then optional breaks are taken only when the document 
     has exceeded the given width. This means that the printout will looked 
     more ragged but it will be faster *)
-val fastMode  : bool refDLS
+val fastMode  : bool ref
 
-val flushOften   : bool refDLS  (** If true the it flushes after every print *)
+val flushOften   : bool ref(** If true the it flushes after every print *)
 
 (** Whether to rebalance doc before printing it to avoid stack-overflows *)
-val flattenBeforePrint : bool refDLS
+val flattenBeforePrint : bool ref
 
 
 (** Keep a running count of the taken newlines. You can read and write this 
