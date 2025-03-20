@@ -2,7 +2,7 @@
 (name goblint-cil)
 (implicit_transitive_deps false)
 (generate_opam_files true)
-(version 2.0.5)
+(version 2.0.6)
 (source (github goblint/cil))
 ; (documentation "https://goblint.github.io/cil")
 (authors "George Necula" "Scott McPeak" "Westley Weimer" "Gabriel Kerneis" "Ralf Vogler" "Michael Schwarz" "Simmo Saan")
@@ -22,7 +22,7 @@ This is a fork of the 'cil' package used for 'goblint'. Major changes include:
 * Use dune instead of make and ocamlbuild.
 * Many bug fixes.")
   (depends
-    (ocaml (>= 4.05.0))
+    (ocaml (>= 4.12.0))
     (ocamlfind :with-test)
     zarith
     (hevea :with-doc)
