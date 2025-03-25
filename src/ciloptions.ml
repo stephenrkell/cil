@@ -368,7 +368,7 @@ let options : (string * Arg.spec * string) list =
     "--pdepth",
     Arg.Int (fun n -> Pretty.printDepth := n),
     ("<n> Set max print depth (default: " ^
-       string_of_int ! Pretty.printDepth ^ ")");
+       string_of_int !Pretty.printDepth ^ ")");
 
     "--decil",
     Arg.Clear Cil.print_CIL_Input,

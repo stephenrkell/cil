@@ -45,8 +45,6 @@
 module DLS =  Domain.DLS
 
 type 'a refDLS = 'a Domain.DLS.key
-(* let (!) = Domain.DLS.get *)
-(* let (:=) = Domain.DLS.set *)
 let refDLS vl = DLS.new_key (fun () -> vl)
 let incr rf = DLS.set rf (DLS.get rf + 1)
 let decr rf = DLS.set rf (DLS.get rf - 1)
@@ -279,9 +277,8 @@ let pushAlign (abscol: int) =
       deltaFromPrev = topalign.deltaToNext; (* Share with the previous *)
       deltaToNext = ref 0; (* Allocate a new ref *)} in
   DLS.set aligns (res :: (DLS.get aligns));
-  let (newdelta : int) = abscol - (DLS.get topAlignAbsCol) in
+  let newdelta = abscol - (DLS.get topAlignAbsCol) in
   res.deltaFromPrev := newdelta;
-  (* res.deltaFromPrev := (abscol - !topAlignAbsCol); *)
   DLS.set topAlignAbsCol abscol
 
 let popAlign () =

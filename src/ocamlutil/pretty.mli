@@ -307,7 +307,7 @@ val printIndent  : bool ref (** If false then does not indent *)
     more ragged but it will be faster *)
 val fastMode  : bool ref
 
-val flushOften   : bool ref(** If true the it flushes after every print *)
+val flushOften   : bool ref (** If true the it flushes after every print *)
 
 (** Whether to rebalance doc before printing it to avoid stack-overflows *)
 val flattenBeforePrint : bool ref
