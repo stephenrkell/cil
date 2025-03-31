@@ -5952,11 +5952,8 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
           in
           cabsPushGlobal (GPragma (a'', !currentLoc));
           empty
+
       | _ -> E.s (error "Too many attributes in pragma")
-  end
-  | A.MACDEF (a1, a2, loc) when isglobal -> begin
-      (* output_string Pervasives.stderr ("Saw a macro: " ^ a1 ^ " defined as " ^ a2 ^ "\n");*)
-      empty
   end
   | A.TRANSFORMER (_, _, _) -> E.s (E.bug "TRANSFORMER in cabs2cil input")
   | A.EXPRTRANSFORMER (_, _, _) -> 

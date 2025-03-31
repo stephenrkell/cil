@@ -180,7 +180,6 @@ and definition =
  | GLOBASM of string * cabsloc
  | SASSERT_GLOB of expression * string * cabsloc
  | PRAGMA of expression * cabsloc
- | MACDEF of string * string * cabsloc
  | LINKAGE of string * cabsloc * definition list (* extern "C" { ... } *)
  (* toplevel form transformer, from the first definition to the *)
  (* second group of definitions *)
