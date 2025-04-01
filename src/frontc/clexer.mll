@@ -106,6 +106,10 @@ let dbgToken (t: token) =
   end else
     t
 
+let maybeScrapingMachineInfo (t: token) =
+    match t with
+        DEFINE_UNPARSED (name, def, loc) -> (); t
+       | _ -> t
 
 (*
 ** Keyword hashtable
@@ -196,21 +200,29 @@ let init_lexicon _ =
       ("__int128", fun _ -> INT128 (currentLoc ()));
       ("__float128", fun _ -> FLOAT128 (currentLoc ()));
       ("_Float128", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
+                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float128 as its own token type\n") in
                          FLOAT128 (currentLoc ())
                        else
+                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float128 as an ident\n") in
                          IDENT ("_Float128", currentLoc()));
       ("_Float128x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
+                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float128x as its own token type\n") in
                          FLOAT128X (currentLoc ())
                        else
+                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float128x as an ident\n") in
                          IDENT ("_Float128x", currentLoc()));
       ("_Float64", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
+                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float64 as its own token type\n") in
                          FLOAT64 (currentLoc ())
                        else
+                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float64 as an ident\n") in
                          IDENT ("_Float64", currentLoc())
                          );
       ("_Float64x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
+                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float64x as its own token type\n") in
                          FLOAT64X (currentLoc ())
                        else
+                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float64 as an ident\n") in
                          IDENT ("_Float64x", currentLoc()));
       ("_Float32", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float32 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
                          FLOAT32 (currentLoc ())
@@ -677,7 +689,7 @@ and hash = parse
                 }
 | "pragma"      { hashLine := true; PRAGMA (currentLoc ()) }
 | "define" blank (ident as macName) {  let here = currentLoc () in
-                  DEFINE_UNPARSED (macName, macdef lexbuf, here) }
+                  maybeScrapingMachineInfo (DEFINE_UNPARSED (macName, macdef lexbuf, here)) }
 
 | _	        { addWhite lexbuf; endline lexbuf}
 
