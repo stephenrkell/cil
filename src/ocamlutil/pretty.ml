@@ -78,30 +78,36 @@ type doc =
   | Unmark
 
 (* Break a string at \n *)
-let rec breakString (acc: doc) (str: string) : doc =
-  (* Printf.printf "breaking string %s\n" str; *)
-  match (try Some (String.index str '\n') with Not_found -> None) with
-  | None -> if acc = Nil then Text str else CText (acc, str)
-  | Some r ->
-    (* Printf.printf "r=%d\n" r; *)
-    let len = String.length str in
-    if r > 0 then begin
-      (* Printf.printf "Taking %s\n" (String.sub str 0 r); *)
-      let acc' = Concat(CText (acc, String.sub str 0 r), Line) in
-      if r = len - 1 then (* The last one *)
-        acc'
-      else begin
-        (* Printf.printf "Continuing with %s\n" (String.sub str (r + 1) (len - r - 1)); *)
-        breakString acc'
-          (String.sub str (r + 1) (len - r - 1))
-      end
-    end else (* The first is a newline *)
-      breakString (Concat(acc, Line))
-        (String.sub str (r + 1) (len - r - 1))
+(* Replaces an earlier implementation that relied on repeatedly calling sub, with one inspired by the standard library *)
+let breakString s =
+  let r = ref Nil in
+  let j = ref (String.length s) in
+  for i = String.length s - 1 downto 0 do
+    if String.unsafe_get s i = '\n' then begin
+      let text = String.sub s (i + 1) (!j - i - 1) in
+      (if text = "" then
+        if !r = Nil then
+          r := Line
+        else
+          r := Concat(Line, !r)
+      else
+        if !r = Nil then
+          r := Concat(Line, Text text)
+        else
+          r := Concat(Line, Concat(Text text, !r))
+      );
+      j := i
+    end
+  done;
+  let text = String.sub s 0 !j in
+  if text = "" then
+    !r
+  else
+    Concat(Text text, !r)
 
 
 let nil           = Nil
-let text s        = breakString nil s
+let text s        = breakString s
 let num  i        = text (string_of_int i)
 let num64 i       = text (Int64.to_string i)
 let real f        = text (string_of_float f)
@@ -600,7 +606,7 @@ let print_with_state ~width f =
     DLS.set topAlignAbsCol old_topAlignAbsCol;
     DLS.set breakAllMode old_breakAllMode
   in
-  
+
   match f () with
   | r ->
     finally ();
@@ -714,7 +720,7 @@ let gprintf (finish : doc -> 'b)
                   else
                     s
               in
-              collect (breakString acc str) (succ j))
+              collect (Concat(acc, breakString str)) (succ j))
         | 'c' ->
             Obj.magic(fun c ->
               collect (dctext1 acc (String.make 1 c)) (succ j))
