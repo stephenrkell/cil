@@ -68,7 +68,7 @@
  (name main)
  (modules main mainFeature ciloptions)
  (modes native)
- (libraries goblint-cil dynlink findlib domain_shims)
+ (libraries goblint-cil dynlink findlib)
  (flags :standard -linkall))
 
 (env

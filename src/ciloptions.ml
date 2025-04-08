@@ -149,7 +149,7 @@ let options : (string * Arg.spec * string) list =
 
     "--noflush",
     Arg.Clear Pretty.flushOften,
-    (" Do not flush the output streams often" ^
+    (" Only flush output streams when inevitable" ^
        is_default (not !Pretty.flushOften));
 
     "--check",

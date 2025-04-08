@@ -41,13 +41,12 @@
    structured text.
 *)
 
-(* redefine ref as Domain.DLS to avoid issues with Domains *)
 module DLS =  Domain.DLS
 
 type 'a refDLS = 'a Domain.DLS.key
 let refDLS vl = DLS.new_key (fun () -> vl)
-let incr rf = DLS.set rf (DLS.get rf + 1)
-let decr rf = DLS.set rf (DLS.get rf - 1)
+let incrDLS rf = DLS.set rf (DLS.get rf + 1)
+let decrDLS rf = DLS.set rf (DLS.get rf - 1)
 
 let debug =  false
 
@@ -282,8 +281,8 @@ let pushAlign (abscol: int) =
     { gainBreak = 0; isTaken = ref false;
       deltaFromPrev = topalign.deltaToNext; (* Share with the previous *)
       deltaToNext = ref 0; (* Allocate a new ref *)} in
-  DLS.set aligns (res :: (DLS.get aligns));
-  let newdelta = abscol - (DLS.get topAlignAbsCol) in
+  DLS.set aligns (res :: DLS.get aligns);
+  let newdelta = abscol - DLS.get topAlignAbsCol in
   res.deltaFromPrev := newdelta;
   DLS.set topAlignAbsCol abscol
 
@@ -315,7 +314,7 @@ let newline () =
   if debug then
     dbgprintf "Taking a newline: reseting gain of %d\n" topalign.gainBreak;
   topalign.gainBreak <- 0;        (* Erase the current break info *)
-  if (DLS.get breakAllMode) && (DLS.get topAlignAbsCol) < (DLS.get maxCol) then
+  if (DLS.get breakAllMode) && DLS.get topAlignAbsCol < DLS.get maxCol then
     DLS.set breakAllMode false;
   DLS.get topAlignAbsCol                          (* This is the new column *)
 
@@ -344,7 +343,7 @@ let movingRight (abscol: int) : int =
   (* Keep taking the best break until we get back to the left of maxCol or no
      more are left *)
   let rec tryAgain abscol =
-    if abscol <= (DLS.get maxCol) then abscol else
+    if abscol <= DLS.get maxCol then abscol else
     begin
       if debug then
         dbgprintf "Looking for a break to take in column %d\n" abscol;
@@ -367,7 +366,7 @@ let movingRight (abscol: int) : int =
           if breakingAlign != topalign then begin
             breakingAlign.deltaToNext :=
                !(breakingAlign.deltaToNext) - theGain;
-            DLS.set topAlignAbsCol ((DLS.get topAlignAbsCol) - theGain)
+            DLS.set topAlignAbsCol (DLS.get topAlignAbsCol - theGain)
           end;
           tryAgain (abscol - theGain)
       end
@@ -386,17 +385,17 @@ let useAlignDepth = true
 
 (** Start an align. Return true if we have just passed the threshhold *)
 let enterAlign () =
-  incr alignDepth;
-  useAlignDepth && (DLS.get alignDepth) = !printDepth + 1
+  incrDLS alignDepth;
+  useAlignDepth && DLS.get alignDepth = !printDepth + 1
 
 (** Exit an align *)
 let exitAlign () =
-  decr alignDepth
+  decrDLS alignDepth
 
 (** See if we are at a low-enough align level (and we should be printing
    normally) *)
 let shallowAlign () =
-  not useAlignDepth || (DLS.get alignDepth) <= !printDepth
+  not useAlignDepth || DLS.get alignDepth <= !printDepth
 
 
 (* Pass the current absolute column and compute the new column *)
@@ -429,7 +428,7 @@ let rec scan (abscol: int) (d: doc) : int =
   | Unalign -> exitAlign (); popAlign (); abscol
 
   | Line when shallowAlign () -> (* A forced line break *)
-      if (DLS.get activeMarkups) != [] then
+      if DLS.get activeMarkups != [] then
         failwith "Line breaks inside markup sections";
       newline ()
 
@@ -437,30 +436,30 @@ let rec scan (abscol: int) (d: doc) : int =
 
   | Break when shallowAlign () -> (* An optional line break. Always a space
                                      followed by an optional line break *)
-      if (DLS.get activeMarkups) != [] then
+      if DLS.get activeMarkups != [] then
         failwith "Line breaks inside markup sections";
       let takenref = ref false in
-      DLS.set breaks (takenref :: (DLS.get breaks));
+      DLS.set breaks (takenref :: DLS.get breaks);
       let topalign = List.hd (DLS.get aligns) in (* aligns is never empty *)
-      if (DLS.get breakAllMode) then begin
+      if DLS.get breakAllMode then begin
         takenref := true;
         newline ()
       end else begin
         (* If there was a previous break there it stays not taken, forever.
            So we overwrite it. *)
         topalign.isTaken <- takenref;
-        topalign.gainBreak <- 1 + abscol - (DLS.get topAlignAbsCol);
+        topalign.gainBreak <- 1 + abscol - DLS.get topAlignAbsCol;
         if debug then
           dbgprintf "Registering a break at %d with gain %d\n"
             (1 + abscol) topalign.gainBreak;
         movingRight (1 + abscol)
       end
 
-  | Mark -> DLS.set activeMarkups (abscol :: (DLS.get activeMarkups));
+  | Mark -> DLS.set activeMarkups (abscol :: DLS.get activeMarkups);
             abscol
 
   | Unmark -> begin
-      match (DLS.get activeMarkups) with
+      match DLS.get activeMarkups with
         old :: rest -> DLS.set activeMarkups rest;
                        old
       | [] -> failwith "Too many unmark"
@@ -478,14 +477,14 @@ let emitDoc
     (emitString: string -> int -> unit) (* emit a number of copies of a
                                            string *)
     (d: doc) =
-  let aligns: int list refDLS = refDLS [0] in (* A stack of alignment columns *)
+  let aligns: int list ref = ref [0] in (* A stack of alignment columns *)
 
   let wantIndent = ref false in
   (* Use this function to take a newline *)
   (* AB: modified it to flag wantIndent. The actual indentation is done only
      if leftflush is not encountered *)
   let newline () =
-    match (DLS.get aligns) with
+    match !aligns with
       [] -> failwith "Ran out of aligns"
     | x :: _ ->
 	emitString "\n" 1;
@@ -496,7 +495,7 @@ let emitDoc
   (* Print indentation if wantIndent was previously flagged ; reset this flag *)
   let indentIfNeeded () =
     if !printIndent && !wantIndent then ignore (
-      match (DLS.get aligns) with
+      match !aligns with
 	[] -> failwith "Ran out of aligns"
       | x :: _ ->
           if x > 0 then emitString " "  x;
@@ -529,7 +528,7 @@ let emitDoc
               cont abscol')
 
     | Align ->
-        DLS.set aligns (abscol :: (DLS.get aligns));
+        aligns := (abscol :: !aligns);
         if enterAlign () then begin
           indentIfNeeded ();
           emitString "..." 1;
@@ -538,16 +537,16 @@ let emitDoc
           cont abscol
 
     | Unalign -> begin
-        match (DLS.get aligns) with
+        match !aligns with
           [] -> failwith "Unmatched unalign"
         | _ :: rest ->
             exitAlign ();
-            DLS.set aligns rest; cont abscol
+            aligns := rest; cont abscol
     end
     | Line when shallowAlign ()  -> cont (newline ())
     | LeftFlush when shallowAlign () -> wantIndent := false;  cont (0)
     | Break when shallowAlign () -> begin
-        match (DLS.get breaks) with
+        match DLS.get breaks with
           [] -> failwith "Break without a takenref"
         | istaken :: rest ->
             DLS.set breaks rest; (* Consume the break *)
@@ -560,11 +559,11 @@ let emitDoc
     end
 
     | Mark ->
-        DLS.set activeMarkups (abscol :: (DLS.get activeMarkups));
+        DLS.set activeMarkups (abscol :: DLS.get activeMarkups);
         cont abscol
 
     | Unmark -> begin
-        match (DLS.get activeMarkups) with
+        match DLS.get activeMarkups with
           old :: rest -> DLS.set activeMarkups rest;
                          cont old
         | [] -> failwith "Unmark without a mark"
@@ -579,19 +578,19 @@ let emitDoc
 
 let print_with_state ~width f =
   (* Save some parameters, to allow for nested calls of these routines. *)
-  let old_maxCol = (DLS.get maxCol) in
+  let old_maxCol = DLS.get maxCol in
   DLS.set maxCol width;
-  let old_breaks = (DLS.get breaks) in
+  let old_breaks = DLS.get breaks in
   DLS.set breaks [];
-  let old_activeMarkups = (DLS.get activeMarkups) in
+  let old_activeMarkups = DLS.get activeMarkups in
   DLS.set activeMarkups [];
-  let old_alignDepth = (DLS.get alignDepth) in
+  let old_alignDepth = DLS.get alignDepth in
   DLS.set alignDepth 0;
-  let old_aligns = (DLS.get aligns) in
+  let old_aligns = DLS.get aligns in
   DLS.set aligns [{ gainBreak = 0; isTaken = ref false; deltaFromPrev = ref 0; deltaToNext = ref 0; }];
-  let old_topAlignAbsCol = (DLS.get topAlignAbsCol) in
+  let old_topAlignAbsCol = DLS.get topAlignAbsCol in
   DLS.set topAlignAbsCol 0;
-  let old_breakAllMode = (DLS.get breakAllMode) in
+  let old_breakAllMode = DLS.get breakAllMode in
   DLS.set breakAllMode false;
 
   let finally () =
@@ -656,17 +655,17 @@ let gprintf (finish : doc -> 'b)
   let format = string_of_format format in
 
   (* Record the starting align depth *)
-  let startAlignDepth = (DLS.get alignDepth) in
+  let startAlignDepth = DLS.get alignDepth in
   (* Special concatenation functions *)
   let dconcat (acc: doc) (another: doc) =
-    if (DLS.get alignDepth) > !printDepth then acc else acc ++ another in
+    if DLS.get alignDepth > !printDepth then acc else acc ++ another in
   let dctext1 (acc: doc) (str: string) =
-    if (DLS.get alignDepth) > !printDepth then acc else
+    if DLS.get alignDepth > !printDepth then acc else
     CText(acc, str)
   in
   (* Special finish function *)
   let dfinish (dc: doc) : 'b =
-    if (DLS.get alignDepth) <> startAlignDepth then
+    if DLS.get alignDepth <> startAlignDepth then
       prerr_string ("Unmatched align/unalign in " ^ format ^ "\n");
     finish dc
   in
@@ -788,20 +787,20 @@ let gprintf (finish : doc -> 'b)
                                         (* Now the special format characters *)
             '[' ->                      (* align *)
               let newacc =
-                if (DLS.get alignDepth) > !printDepth then
+                if DLS.get alignDepth > !printDepth then
                   acc
-                else if (DLS.get alignDepth) = !printDepth then
+                else if DLS.get alignDepth = !printDepth then
                   CText(acc, "...")
                 else
                   acc ++ align
               in
-              incr alignDepth;
+              incrDLS alignDepth;
               collect newacc (i + 2)
 
           | ']' ->                        (* unalign *)
-              decr alignDepth;
+              decrDLS alignDepth;
               let newacc =
-                if (DLS.get alignDepth) >= !printDepth then
+                if DLS.get alignDepth >= !printDepth then
                   acc
                 else
                   acc ++ unalign
