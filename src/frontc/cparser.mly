@@ -303,10 +303,8 @@ let transformOffsetOf (speclist, dtype) member =
 %token<string * Cabs.cabsloc> MSASM MSATTR
 %token<string * Cabs.cabsloc> HASH_LINE
 %token<string * Cabs.cabsloc> PRAGMA_UNPARSED
-%token<string * string * Cabs.cabsloc> DEFINE_UNPARSED /*(* srk: merge these? *)*/
 %token<Cabs.cabsloc> PRAGMA
 %token HASH_EOL
-%token<string * string * Cabs.cabsloc> MACRO_DEF /*(* srk: or these? *)*/
 
 /* sm: cabs tree transformation specification keywords */
 %token<Cabs.cabsloc> AT_TRANSFORM AT_TRANSFORMEXPR AT_SPECIFIER AT_EXPR
@@ -426,7 +424,6 @@ global:
 | STATIC_ASSERT LPAREN expression RPAREN SEMICOLON
                                         { SASSERT_GLOB (fst $3, "", (*handleLoc*) $1) }
 | pragma                                { $1 }
-| define                                { $1 }
 /* (* Old-style function prototype. This should be somewhere else, like in
     * "declaration". For now we keep it at global scope only because in local
     * scope it looks too much like a function call  *) */
@@ -1380,16 +1377,6 @@ pragma:
 | PRAGMA attr SEMICOLON HASH_EOL	{ PRAGMA ($2, $1) }
 | PRAGMA_UNPARSED                           { PRAGMA (VARIABLE (fst $1), 
                                                   snd $1) }
-;
-
-/** (* DEFINEs... what are the semantic attributes of DEFINE_UNPARSED?
-       For PRAGMA_UNPARSED we have only $1, i.e. the PRAGMA_UNPARSED token
-       itself, which gets annotated with a pair (pragmaName ^ pragma lexbuf, here).
-       So fst $1 is the pragmaName plus the stuff that gets appended, and
-          snd $1 is the location.
-       Since DEFINE_UNPARSED gets a triple, we can't use fst/snd.... *) ***/
-define: 
-| DEFINE_UNPARSED { MACDEF ((let (f, _, _) = $1 in f), (let (_, s, _) = $1 in s), (let (_, _, t) = $1 in t)) }
 ;
 
 /* (* We want to allow certain strange things that occur in pragmas, so we 
