@@ -5955,61 +5955,6 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
           empty
       | _ -> E.s (error "Too many attributes in pragma")
   end
-  | A.MACDEF (a1, a2, loc) when isglobal -> begin
-      (* output_string Pervasives.stderr ("Saw a macro: " ^ a1 ^ " defined as " ^ a2 ^ "\n");*)
-      (* check against the machine *)
-      if loc.filename = "<built-in>" then
-            let warnIf cond msg =
-                if cond then output_string Pervasives.stderr ("Warning: " ^
-                    "machine mismatch: " ^ msg ^ "\n") else ()
-            in
-            let readInt (s:string) = try int_of_string (String.trim s)
-                with Failure _ -> (output_string Pervasives.stderr ("Not an int: " ^ s ^ "\n"); 0)
-            in
-            (* ("Saw a built-in macro: " ^ a1 ^ " defined as " ^ a2 ^ "\n") *)
-            match a1 with
-                (* which macros do we know about that can define a part of a machine? *)
-                "__GNUC__" (* e.g. "10" *) -> warnIf (!gnucDialectVersion > 100 * readInt a2) "CIL is assuming a later GNU C dialect version"
-                | "__GNUC_MINOR__" (* e.g. "2" *) -> ()
-                | "__GNUC_PATCHLEVEL__" (* e.g. "1" *) -> ()
-                | "__SIZEOF_INT__" (* e.g. "4" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_int) "sizeof (int) mismatch"
-                | "__SIZEOF_LONG__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_long) "sizeof (long) mismatch"
-                | "__SIZEOF_LONG_LONG__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_longlong) "sizeof (long long) mismatch"
-                | "__SIZEOF_SHORT__" (* e.g. "2" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_short) "sizeof (short) mismatch"
-                | "__SIZEOF_FLOAT__" (* e.g. "4" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_float) "sizeof (float) mismatch"
-                | "__SIZEOF_DOUBLE__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_double) "sizeof (double) mismatch"
-                | "__SIZEOF_LONG_DOUBLE__" (* e.g. "16" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_longdouble) "sizeof (double) mismatch"
-                (*| "__SIZEOF_SIZE_T__" (* e.g. "8" *) ->*)
-                | "__SIZEOF_POINTER__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_ptr) "sizeof (double) mismatch"
-                (*| "__SIZE_TYPE__" (* e.g. "long unsigned int" *) ->*)
-                (*| "__PTRDIFF_TYPE__" (* e.g. "long int" *) ->*)
-                | "__WCHAR_TYPE__" (* e.g. "int" *) -> warnIf (String.trim a2 <> !Machdep.theMachine.wchar_t) "wchar_t mismatch"
-                (*| "__INTMAX_TYPE__" (* e.g. "long int" *) ->*)
-                (*| "__UINTMAX_TYPE__" (* e.g. "long unsigned int" *) ->*)
-                (*| "__SIZEOF_INT128__" (* e.g. "16" *) ->*)
-                (*| "__SIZEOF_WCHAR_T__" (* e.g. "4" *) ->*)
-                (*| "__SIZEOF_WINT_T__" (* e.g. "4" *) ->*)
-                (*| "__SIZEOF_PTRDIFF_T__" (* e.g. "8" *) ->*)
-                (*| "__SIZEOF_FLOAT80__" (* e.g. "16" *) ->*)
-                | "__SIZEOF_FLOAT128__" (* e.g. "16" *) -> warnIf (0 = !Machdep.theMachine.alignof_float128) "_Float128 mismatch"
-                (*
-                    What to do about the float stuff? We need to detect whether
-                    the various floatx types are builtins.
-                    And we need to know it ages ago, i.e. during lexing!
-                    Or do we? Are we still lexing the remainder of the file?
-                    I just notice that our warning messages here appear *before*
-                    the problem. Oh, no... we are too late right now. We would have
-                    to scrape all the #defines before we know how to lex the file.
-                    Is there another way around this?
-                    Quickest fix: extend the machdep to include the GNU C dialect version
-                    (or just a dialect version number), then create a special env machine
-                    for clang.
-                    Right fix: pre-lex? Or do the processing here at the time of lexing.
-                 *)
-              | _ -> ()
-      else ();
-      empty
-  end
   | A.TRANSFORMER (_, _, _) -> E.s (E.bug "TRANSFORMER in cabs2cil input")
   | A.EXPRTRANSFORMER (_, _, _) -> 
       E.s (E.bug "EXPRTRANSFORMER in cabs2cil input")
@@ -6976,10 +6921,80 @@ end
 
 let stripParenFile file = V.visitCabsFile (new stripParenClass) file
 
+(* While lexing, we build up on the side a list of the macro definitions
+ * that the preprocessor left in place (e.g. if run with -dMD). Here we
+ * check for any disagreements with the machine spec. Morally this list
+ * is part of the Cabs, although it exists outside the AST.
+ *
+ * One quick way to test this: configure with GCC, run cilly with
+ * CILLY_NATIVE_CC=clang-18, pass args -Xpreprocessor -dD and check that a
+ * warning is generated (clang emulates GNU C 4.2.1 at least up to version 18). *)
+let checkMachineSpecAgainstMacros () =
+    List.iter (fun (a1, a2, loc) ->
+      if loc.filename = "<built-in>" then
+            let warnIf cond msg =
+                if cond then output_string Pervasives.stderr ("Warning: " ^
+                    "machine mismatch: " ^ msg ^ "\n") else ()
+            in
+            let readInt (s:string) = try int_of_string (String.trim s)
+                with Failure _ -> (output_string Pervasives.stderr ("Not an int: " ^ s ^ "\n"); 0)
+            in
+            (* ("Saw a built-in macro: " ^ a1 ^ " defined as " ^ a2 ^ "\n") *)
+            match a1 with
+                (* which macros do we know about that can define a part of a machine? *)
+                "__GNUC__" (* e.g. "10" *) -> let seenMacroVer = readInt a2 in
+                    (* FIXME: we should really combine the major, minor and patchlevel
+                     * as documented, to get our value to compare against assumedVer *)
+                    let assumedVer = !gnucDialectVersion / 100 in
+                    warnIf (assumedVer > seenMacroVer)
+                    ("CIL is assuming a later GNU C dialect version (" ^
+                    (string_of_int assumedVer)
+                    ^ ", compared to macro __GNUC__ seen defined as " ^ a2 ^ ")")
+                | "__GNUC_MINOR__" (* e.g. "2" *) -> ()
+                | "__GNUC_PATCHLEVEL__" (* e.g. "1" *) -> ()
+                | "__SIZEOF_INT__" (* e.g. "4" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_int) "sizeof (int) mismatch"
+                | "__SIZEOF_LONG__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_long) "sizeof (long) mismatch"
+                | "__SIZEOF_LONG_LONG__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_longlong) "sizeof (long long) mismatch"
+                | "__SIZEOF_SHORT__" (* e.g. "2" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_short) "sizeof (short) mismatch"
+                | "__SIZEOF_FLOAT__" (* e.g. "4" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_float) "sizeof (float) mismatch"
+                | "__SIZEOF_DOUBLE__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_double) "sizeof (double) mismatch"
+                | "__SIZEOF_LONG_DOUBLE__" (* e.g. "16" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_longdouble) "sizeof (double) mismatch"
+                (*| "__SIZEOF_SIZE_T__" (* e.g. "8" *) ->*)
+                | "__SIZEOF_POINTER__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_ptr) "sizeof (double) mismatch"
+                (*| "__SIZE_TYPE__" (* e.g. "long unsigned int" *) ->*)
+                (*| "__PTRDIFF_TYPE__" (* e.g. "long int" *) ->*)
+                | "__WCHAR_TYPE__" (* e.g. "int" *) -> warnIf (String.trim a2 <> !Machdep.theMachine.wchar_t) "wchar_t mismatch"
+                (*| "__INTMAX_TYPE__" (* e.g. "long int" *) ->*)
+                (*| "__UINTMAX_TYPE__" (* e.g. "long unsigned int" *) ->*)
+                (*| "__SIZEOF_INT128__" (* e.g. "16" *) ->*)
+                (*| "__SIZEOF_WCHAR_T__" (* e.g. "4" *) ->*)
+                (*| "__SIZEOF_WINT_T__" (* e.g. "4" *) ->*)
+                (*| "__SIZEOF_PTRDIFF_T__" (* e.g. "8" *) ->*)
+                (*| "__SIZEOF_FLOAT80__" (* e.g. "16" *) ->*)
+                | "__SIZEOF_FLOAT128__" (* e.g. "16" *) -> warnIf (0 = !Machdep.theMachine.alignof_float128) "_Float128 mismatch"
+                (*
+                    What to do about the float stuff? We need to detect whether
+                    the various floatx types are builtins.
+                    And we need to know it ages ago, i.e. during lexing!
+                    Or do we? Are we still lexing the remainder of the file?
+                    I just notice that our warning messages here appear *before*
+                    the problem. Oh, no... we are too late right now. We would have
+                    to scrape all the #defines before we know how to lex the file.
+                    Is there another way around this?
+                    Quickest fix: extend the machdep to include the GNU C dialect version
+                    (or just a dialect version number), then create a special env machine
+                    for clang.
+                    Right fix: pre-lex? Or do the processing here at the time of lexing.
+                 *)
+              | _ -> ()
+      else ()
+   ) !Clexer.macDefs
 
 (* Translate a file *)
 let convFile (f : A.file) : Cil.file =
   Cil.initCIL (); (* make sure we have initialized CIL *)
+
+  checkMachineSpecAgainstMacros (); (* warn if we've seen macros that disagree with machine spec *)
 
   (* remove parentheses from the Cabs *)
   let fname,dl = stripParenFile f in 
