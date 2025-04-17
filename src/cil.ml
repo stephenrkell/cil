@@ -2364,6 +2364,13 @@ and intOfAttrparam (a:attrparam) : int option =
         bs / 8
     | AAlignOf(t) ->
         alignOf_int t
+    | ABinOp (op, lhs, rhs) -> begin
+      let lhs_val = doit lhs in
+      let rhs_val = doit rhs in
+      match op with
+        Mult -> lhs_val * rhs_val
+      | _ -> raise (SizeOfError ("", voidType))
+      end
     | _ -> raise (SizeOfError ("", voidType))
   in
   (* Use ignoreAlignmentAttrs here to prevent stack overflow if a buggy
