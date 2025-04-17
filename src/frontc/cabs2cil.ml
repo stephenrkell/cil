@@ -5876,12 +5876,11 @@ and createAutoLocal ((((n, ndt, a, cloc) : A.name), (inite: A.init_expression)) 
   else
     match inite with
     | SINGLE_INIT exp ->
-      (match doPureExp exp with
-      | Some exp ->
+      (match doExp true exp (AExp None) with
+      | (_, exp, _) ->
         let t = Cil.typeOf exp in
         let specs = t,NoStorage,false,[] in
         createLocal specs name
-      | None -> E.s (error "__auto_type but init not pure")
       )
     | _ -> E.s (error "__auto_type but not SINGLE_INIT")
 (* Must catch the Static local variables. Make them global *)
