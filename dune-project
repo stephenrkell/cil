@@ -22,7 +22,7 @@ This is a fork of the 'cil' package used for 'goblint'. Major changes include:
 * Use dune instead of make and ocamlbuild.
 * Many bug fixes.")
   (depends
-    (ocaml (>= 4.05.0))
+    (ocaml (>= 4.12.0))
     (ocamlfind :with-test)
     zarith
     (hevea :with-doc)
@@ -35,6 +35,7 @@ This is a fork of the 'cil' package used for 'goblint'. Major changes include:
     conf-perl
     cppo
     conf-gcc
+    domain_shims
   )
   (conflicts cil) ; only because we both install the cilly executable
 )
