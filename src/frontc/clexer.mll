@@ -495,7 +495,7 @@ let oct_escape = '\\' octdigit octdigit? octdigit?
  * (The pragmas that we do parse have to look, roughly, like an attribute
  * invocation, possibly with a trailing semicolon; see PRAGMA in cparser.mly.) *)
 let no_parse_pragma =
-               "warning" | "GCC"
+               "warning" | "GCC" | "clang"
              (* Solaris-style pragmas:  *)
              | "ident" | "section" | "option" | "asm" | "use_section" | "weak"
              | "redefine_extname"
