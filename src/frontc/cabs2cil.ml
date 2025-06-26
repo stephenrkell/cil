@@ -1572,9 +1572,20 @@ type combineWhat =
  * that are known to be equal *)
 let isomorphicStructs : (string * string, bool) H.t = H.create 15
 
-let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ = 
+let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
+  let combineAttributes olda a =
+          if what = CombineFunarg || what = CombineFunret then dropAttribute "const" (cabsAddAttributes olda a)
+     else cabsAddAttributes olda a
+  in
+  let combineAddAttributes olda a =
+     if what = CombineFunarg || what  = CombineFunret then dropAttribute "const" (addAttributes olda a)
+     else addAttributes olda a
+  in
+  let combineTypeAttributes olda a =
+     cabsTypeAddAttributes olda a
+  in
   match oldt, t with
-  | TVoid olda, TVoid a -> TVoid (cabsAddAttributes olda a)
+  | TVoid olda, TVoid a -> TVoid (combineAttributes olda a)
   | TInt (oldik, olda), TInt (ik, a) -> 
       let combineIK oldk k = 
         if oldk = k then oldk else
@@ -1586,7 +1597,7 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
         else
           raise (Failure "different integer types")
       in
-      TInt (combineIK oldik ik, cabsAddAttributes olda a)
+      TInt (combineIK oldik ik, combineAttributes olda a)
   | TFloat (oldfk, olda), TFloat (fk, a) -> 
       let combineFK oldk k = 
         if oldk = k then oldk else
@@ -1598,21 +1609,21 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
         else
           raise (Failure "different floating point types")
       in
-      TFloat (combineFK oldfk fk, cabsAddAttributes olda a)
+      TFloat (combineFK oldfk fk, combineAttributes olda a)
   | TEnum (_, olda), TEnum (ei, a) -> 
-      TEnum (ei, cabsAddAttributes olda a)
+      TEnum (ei, combineAttributes olda a)
         
         (* Strange one. But seems to be handled by GCC *)
   | TEnum (oldei, olda) , TInt(IInt, a) -> TEnum(oldei, 
-                                                 cabsAddAttributes olda a)
+                                                 combineAttributes olda a)
         (* Strange one. But seems to be handled by GCC *)
-  | TInt(IInt, olda), TEnum (ei, a) -> TEnum(ei, cabsAddAttributes olda a)
+  | TInt(IInt, olda), TEnum (ei, a) -> TEnum(ei, combineAttributes olda a)
         
         
   | TComp (oldci, olda) , TComp (ci, a) -> 
       if oldci.cstruct <> ci.cstruct then 
         raise (Failure "different struct/union types");
-      let comb_a = cabsAddAttributes olda a in
+      let comb_a = combineAttributes olda a in
       if oldci.cname = ci.cname then 
         TComp (oldci, comb_a)
       else 
@@ -1697,16 +1708,16 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
               raise (Failure "different array lengths")
            
       in
-      TArray (newbt, newsz, cabsAddAttributes olda a)
+      TArray (newbt, newsz, combineAttributes olda a)
         
   | TPtr (oldbt, olda), TPtr (bt, a) -> 
-      TPtr (combineTypes CombineOther oldbt bt, cabsAddAttributes olda a)
+      TPtr (combineTypes CombineOther oldbt bt, combineAttributes olda a)
         
   | TFun (_, _, _, [Attr("missingproto",_)]), TFun _ -> t
         
   | TFun (oldrt, oldargs, oldva, olda), TFun (rt, args, va, a) ->
       if oldva != va then 
-        raise (Failure "diferent vararg specifiers");
+        raise (Failure "different vararg specifiers");
       let defrt = combineTypes 
           (if what = CombineFundef then CombineFunret else CombineOther) 
           oldrt rt in
@@ -1743,7 +1754,7 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
                        CombineFunarg else CombineOther) 
                      ot' at
                  in
-                 let a = addAttributes oa aa in
+                 let a = combineAddAttributes oa aa in
                  (n, t, a))
                oldargslist argslist),
 	  (let oldrt' = !typeForCombinedArg map oldrt in
@@ -1753,23 +1764,23 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
 	  !attrsForCombinedArg map olda
         end
       in
-      TFun (newrt, newargs, oldva, cabsAddAttributes olda' a)
+      TFun (newrt, newargs, oldva, combineAttributes olda' a)
         
   | TNamed (oldt, olda), TNamed (t, a) when oldt.tname = t.tname ->
-      TNamed (oldt, cabsAddAttributes olda a)
+      TNamed (oldt, combineAttributes olda a)
         
   | TBuiltin_va_list olda, TBuiltin_va_list a -> 
-      TBuiltin_va_list (cabsAddAttributes olda a)
+      TBuiltin_va_list (combineAttributes olda a)
 
         (* Unroll first the new type *)
   | _, TNamed (t, a) -> 
       let res = combineTypes what oldt t.ttype in
-      cabsTypeAddAttributes a res
+      combineTypeAttributes a res
         
         (* And unroll the old type as well if necessary *)
   | TNamed (oldt, a), _ -> 
       let res = combineTypes what oldt.ttype t in
-      cabsTypeAddAttributes a res
+      combineTypeAttributes a res
         
   | _ -> raise (Failure "different type constructors")
 
@@ -1829,9 +1840,8 @@ let makeGlobalVarinfo (isadef: bool) (vi: varinfo) : varinfo * bool =
      * or a new def with an old GVarDecl.
      * First, snapshot the incoming declaration -- whether or not it's
      * also a definition -- as a GVarDecl. FIXME: why not just as whatever it really is?  *)
-    oldvi.vvardecls <- (let glob = if isadef then (GVarDecl(oldvi, vi.vdecl)) else (GVarDecl(oldvi, vi.vdecl))
-        in let decl = { dstorage = vi.vstorage; dinline = vi.vinline; dattr = vi.vattr; }
-        in (glob, decl) :: oldvi.vvardecls);
+    oldvi.vvardecls <- (let decl = { dstorage = vi.vstorage; dinline = vi.vinline; dattr = vi.vattr; }
+        in (GVarDecl(oldvi, vi.vdecl), decl) :: oldvi.vvardecls);
     oldvi.vtype <- (try combineTypes
             (if isadef then CombineFundef else CombineOther) oldvi.vtype vi.vtype
           with Failure reason ->
@@ -4309,8 +4319,16 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                                          * takes INTs as arguments  *)
             A.VARIABLE n -> begin
               try
+                (* NB: the type looked up here may be slightly inconsistent
+                 * with the type used in the function's implementation. This is
+                 * because `const` and `volatile` attributes can exist in
+                 * prototypes but be missing in a function's implementation
+                 * (see C++03 13.1-3). That means that our output can be
+                 * inconsistent with the original source: we might introduce
+                 * casting to `const` or `volatile` that a function's
+                 * implementation doesn't expect. *)
                 let vi, _ = lookupVar n in
-                (empty, Lval(var vi), vi.vtype) (* Found. Do not use 
+                (empty, Lval(var vi), vi.vtype) (* Found. Do not use
                                                  * finishExp. Simulate what = 
                                                  * AExp None  *)
               with Not_found -> begin
