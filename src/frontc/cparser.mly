@@ -84,6 +84,18 @@ let smooth_expression lst =
 
 
 let currentFunctionName = ref "<outside any function>"
+
+let functionSpecificAttributes =
+        [
+         (SpecAttr ("__attribute__", [VARIABLE "__pure__"]))
+        ]
+let separateFunctionAttrsFromSpecifiers specifiers =
+        let isFunctionSpecific attr = List.mem attr functionSpecificAttributes in
+        let specAttrToAttribute (SpecAttr attr) = attr in
+        let specsFunctionSpecific = List.filter isFunctionSpecific specifiers in
+        let attrsFunctionSpecific = List.map specAttrToAttribute specsFunctionSpecific in
+        let specsNonFunctionSpecific = List.filter (Fun.negate isFunctionSpecific) specifiers in
+        (attrsFunctionSpecific, specsNonFunctionSpecific)
     
 let announceFunctionName ((n, decl, _, _):name) =
   !Lexerhack.add_identifier n;
@@ -1257,8 +1269,14 @@ function_def:  /* (* ISO 6.9.1 *) */
 
 function_def_start:  /* (* ISO 6.9.1 *) */
   decl_spec_list declarator   
-                            { announceFunctionName $2;
-                              (snd $1, fst $1, $2)
+                            {
+                              announceFunctionName $2;
+                              let (functionSpecificAttrs, nonFuncSpecificAttrs) = separateFunctionAttrsFromSpecifiers (fst $1) in
+                              if List.length functionSpecificAttrs = 0 then
+                                  (snd $1, fst $1, $2)
+                              else
+                                  let (n_name, n_type, n_attrlist, n_cabsloc) = $2 in
+                                  (snd $1, nonFuncSpecificAttrs, (n_name, PARENTYPE(functionSpecificAttrs, n_type, []), n_attrlist, n_cabsloc))
                             } 
 
 /* (* Old-style function prototype *) */
