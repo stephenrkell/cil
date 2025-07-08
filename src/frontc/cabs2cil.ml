@@ -2600,6 +2600,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     | [A.Tint128] -> TInt(IInt128, [])
     | [A.Tuint128] -> TInt(IUInt128, [])
     | [A.Tsigned; A.Tint128] -> TInt(IInt128, [])
+    | [A.Tunsigned; A.Tint128] -> TInt(IUInt128, [])
     | [A.Tunsigned; A.Tint64] -> TInt(IUInt128, [])
 
     | [A.Tfloat] -> TFloat(FFloat, [])
