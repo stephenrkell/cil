@@ -90,7 +90,8 @@ let msvcMode = ref false              (* Whether the pretty printer should
                                        * print output for the MS VC 
                                        * compiler. Default is GCC *)
 
-let gnucDialectVersion : int ref = ref 700
+let gnucDialectVersion : int ref = ref (try (let _ = Sys.getenv "CC_IS_CLANG" in 421) with Not_found -> 700)
+
 
 let c99Mode = ref true (* True to handle ISO C 99 vs 90 changes.
 			   So far only affects integer parsing. *)
