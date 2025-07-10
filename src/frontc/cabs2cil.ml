@@ -2340,13 +2340,6 @@ let integerArrayLength (leno: exp option) : int =
                d_exp len)
   end
 
-(* sm: I'm sure something like this already exists, but ... *)
-let isNone (o : 'a option) : bool =
-  match o with
-  | None -> true
-  | Some _ -> false
-
-
 let annonCompFieldNameId = ref 0
 let annonCompFieldName = "__annonCompField"
 
@@ -5364,7 +5357,7 @@ and doInit
 	  (* ISO 6.7.8 para 14: final NUL added only if no size specified, or
 	     if there is room for it; btw, we can't rely on zero-init of
 	     globals, since this array might be a local variable *)
-          if ((isNone leno) || ((String.length s) < (integerArrayLength leno)))
+          if ((Option.is_none leno) || ((String.length s) < (integerArrayLength leno)))
             then ref [init Int64.zero]
             else ref []
         in
@@ -5426,7 +5419,7 @@ and doInit
 	  (* ISO 6.7.8 para 14: final NUL added only if no size specified, or
 	     if there is room for it; btw, we can't rely on zero-init of
 	     globals, since this array might be a local variable *)
-          if ((isNone leno) || ((List.length s) < (integerArrayLength leno)))
+          if ((Option.is_none leno) || ((List.length s) < (integerArrayLength leno)))
             then [init Int64.zero]
             else [])
 (*
@@ -5590,6 +5583,28 @@ and doInit
 
    (* We have a designator *)
   | _, (what, ie) :: restil when what != A.NEXT_INIT ->
+      let rec unrollDesignatorForNestedAnonymous (comp: compinfo) (designator: string) (whatnext: initwhat) =
+        let own_field = List.filter (fun fld -> fld.fname = designator) comp.cfields in
+        match own_field with
+        | fld :: _ -> (true, Some(A.INFIELD_INIT (designator, whatnext)))
+        | [] ->
+          let anonymous_compounds = List.filter_map (fun f ->
+              (* f.ftype need not be unrolled here, inner anonymous struct cannot be typdef'ed *)
+              match f.ftype with
+              | TComp(compinfo, _) when prefix annonCompFieldName f.fname  -> Some (f, compinfo)
+              | _ -> None
+            ) comp.cfields
+          in
+          let anonymous_compound_inits = List.filter_map (fun (comp_field, comp) ->
+              match unrollDesignatorForNestedAnonymous comp designator whatnext with
+              | _, Some(what) -> Some(comp_field, what)
+              | _, None -> None
+            ) anonymous_compounds
+          in
+          match anonymous_compound_inits with
+          | [] -> (false, None)
+          | (comp_fld, compwhat) :: _ -> (false, Some(A.INFIELD_INIT (comp_fld.fname, compwhat)))
+      in
       (* Process a designator and position to the designated subobject *)
       let addressSubobj
           (so: subobj)
@@ -5604,10 +5619,17 @@ and doInit
           | A.INFIELD_INIT (fn, whatnext) -> begin
               match unrollType so.soTyp with
                 TComp (comp, _) ->
-                  let toinit = fieldsToInit comp (Some fn) in
-                  so.stack <- InComp(so.soOff, comp, toinit) :: so.stack;
-                  normalSubobj so;
-                  address whatnext acc
+                  let unrolledWhat = unrollDesignatorForNestedAnonymous comp fn whatnext in
+                  begin
+                    match unrolledWhat with
+                      false, Some(unrolled) ->
+                        address unrolled acc
+                    | _ ->
+                      let toinit = fieldsToInit comp (Some fn) in
+                      so.stack <- InComp(so.soOff, comp, toinit) :: so.stack;
+                      normalSubobj so;
+                      address whatnext acc
+                  end;
 
               | _ -> E.s (error "Field designator %s not in a struct " fn)
           end
