@@ -4017,7 +4017,7 @@ class defaultCilPrinterClass : cilPrinter = object (self)
                 (fun (n, attrs, i, loc) ->
                   text n
                     ++ self#pAttrs () attrs
-                    ++ text (n ^ " = ")
+                    ++ text " = "
                     ++ self#pExp () i)
                 () enum.eitems)
           ++ unalign ++ line ++ text "} "
