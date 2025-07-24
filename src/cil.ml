@@ -3565,6 +3565,20 @@ class defaultCilPrinterClass : cilPrinter = object (self)
           ++ text " : "
           ++ (self#pExpPrec level () e3)
 
+    (* In cparser.mly we lift __builtin_offsetof to the classic (ulong)(&((T* )0)->memb) idiom.
+     * But Clang does not accept this in a constexpr context, so we try opportunistically
+     * to re-lower such expressions to __builtin_offsetof. FIXME: only do this if we know the
+     * underlying compiler has __builtin_offsetof. One hack would be to remember whether we
+     * saw __builtin_offsetof during parsing. *)
+    | CastE(t, AddrOf(Mem (CastE(pt, pn)), Field(fi, rest)))
+        when isIntegralType t && isZero pn (* XXX: ideally fold constants in pn *)
+         &&  isPointerType pt ->
+        text "__builtin_offsetof("
+          ++ self#pType None () (match unrollType pt with TPtr (target, _) -> target | _ -> failwith "impossible")
+          ++ text ", "
+          ++ self#pOffset (text fi.fname) rest
+          ++ text ")"
+
     | CastE(t,e) -> 
         text "(" 
           ++ self#pType None () t
