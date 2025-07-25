@@ -268,64 +268,64 @@ type align =
     }
 
 type state = {
-  aligns: align list refDLS;
+  aligns: align list ref;
   (** The current stack of active alignment marks, with the top at the head. Never empty. *)
 
-  topAlignAbsCol: int refDLS;
+  topAlignAbsCol: int ref;
   (** The absolute column of the top alignment *)
 
-  activeMarkups: int list refDLS;
+  activeMarkups: int list ref;
   (** We keep a list of active markup sections. For each one we keep the column we are in *)
 
-  breaks: bool ref list refDLS;
+  breaks: bool ref list ref;
   (** Keep a list of ref cells for the breaks, in the same order that we see them in the document *)
 
-  maxCol: int refDLS;
+  maxCol: int ref;
   (** The maximum column that we should use *)
 
-  breakAllMode: bool refDLS;
+  breakAllMode: bool ref;
   (** Sometimes we take all the optional breaks *)
 
-  alignDepth: int refDLS;
+  alignDepth: int ref;
 }
 
 let create_state (): state = {
-  aligns = refDLS [{ gainBreak = 0; isTaken = ref false; deltaFromPrev = ref 0; deltaToNext = ref 0; }];
-  topAlignAbsCol = refDLS 0;
-  activeMarkups = refDLS [];
-  breaks = refDLS [];
-  maxCol = refDLS 0;
-  breakAllMode = refDLS false;
-  alignDepth = refDLS 0;
+  aligns = ref [{ gainBreak = 0; isTaken = ref false; deltaFromPrev = ref 0; deltaToNext = ref 0; }];
+  topAlignAbsCol = ref 0;
+  activeMarkups = ref [];
+  breaks = ref [];
+  maxCol = ref 0;
+  breakAllMode = ref false;
+  alignDepth = ref 0;
 }
 
 let pushAlign ~state (abscol: int) =
-  let topalign = List.hd @@ DLS.get state.aligns in
+  let topalign = List.hd @@ !(state.aligns) in
   let (res : align) =
     { gainBreak = 0; isTaken = ref false;
       deltaFromPrev = topalign.deltaToNext; (* Share with the previous *)
       deltaToNext = ref 0; (* Allocate a new ref *)} in
-  DLS.set state.aligns (res :: DLS.get state.aligns);
-  let newdelta = abscol - DLS.get state.topAlignAbsCol in
+  state.aligns := (res :: !(state.aligns));
+  let newdelta = abscol - !(state.topAlignAbsCol) in
   res.deltaFromPrev := newdelta;
-  DLS.set state.topAlignAbsCol abscol
+  state.topAlignAbsCol := abscol
 
 let popAlign ~state =
-  match DLS.get state.aligns with
+  match !(state.aligns) with
     top :: t when t != [] ->
-      DLS.set state.aligns t;
-      DLS.set state.topAlignAbsCol (DLS.get state.topAlignAbsCol - !(top.deltaFromPrev))
+      state.aligns := t;
+      state.topAlignAbsCol := (!(state.topAlignAbsCol) - !(top.deltaFromPrev))
   | _ -> failwith "Unmatched unalign\n"
 
 (* We are taking a newline and moving left *)
 let newline ~state =
-  let topalign = List.hd (DLS.get state.aligns) in (* aligns is never empty *)
+  let topalign = List.hd (!(state.aligns)) in (* aligns is never empty *)
   if debug then
     dbgprintf "Taking a newline: reseting gain of %d\n" topalign.gainBreak;
   topalign.gainBreak <- 0;        (* Erase the current break info *)
-  if (DLS.get state.breakAllMode) && DLS.get state.topAlignAbsCol < DLS.get state.maxCol then
-    DLS.set state.breakAllMode false;
-  DLS.get state.topAlignAbsCol                          (* This is the new column *)
+  if (!(state.breakAllMode)) && !(state.topAlignAbsCol) < !(state.maxCol) then
+    state.breakAllMode := false;
+  !(state.topAlignAbsCol)                          (* This is the new column *)
 
 
 
@@ -344,7 +344,7 @@ let chooseBestGain ~state : align option =
         end else
           loop breakingAlign resta
   in
-  loop None (DLS.get state.aligns)
+  loop None (!(state.aligns))
 
 
 (* We have just advanced to a new column. See if we must take a line break *)
@@ -352,7 +352,7 @@ let movingRight ~state (abscol: int) : int =
   (* Keep taking the best break until we get back to the left of maxCol or no
      more are left *)
   let rec tryAgain abscol =
-    if abscol <= DLS.get state.maxCol then abscol else
+    if abscol <= !(state.maxCol) then abscol else
     begin
       if debug then
         dbgprintf "Looking for a break to take in column %d\n" abscol;
@@ -360,13 +360,13 @@ let movingRight ~state (abscol: int) : int =
       match if !fastMode then None else chooseBestGain ~state with
         None -> begin
           (* No breaks are available. Take all breaks from now on *)
-          DLS.set state.breakAllMode true;
+          state.breakAllMode := true;
           if debug then
             dbgprintf "Can't find any breaks\n";
           abscol
         end
       | Some breakingAlign -> begin
-          let topalign = List.hd (DLS.get state.aligns) in
+          let topalign = List.hd (!(state.aligns)) in
           let theGain = breakingAlign.gainBreak in
           assert (theGain > 0);
           if debug then dbgprintf "Taking break at %d. gain=%d\n" abscol theGain;
@@ -375,7 +375,7 @@ let movingRight ~state (abscol: int) : int =
           if breakingAlign != topalign then begin
             breakingAlign.deltaToNext :=
                !(breakingAlign.deltaToNext) - theGain;
-            DLS.set state.topAlignAbsCol (DLS.get state.topAlignAbsCol - theGain)
+            state.topAlignAbsCol := (!(state.topAlignAbsCol) - theGain)
           end;
           tryAgain (abscol - theGain)
       end
@@ -393,17 +393,17 @@ let useAlignDepth = true
 
 (** Start an align. Return true if we have just passed the threshhold *)
 let enterAlign ~state =
-  incrDLS state.alignDepth;
-  useAlignDepth && DLS.get state.alignDepth = !printDepth + 1
+  incr state.alignDepth;
+  useAlignDepth && !(state.alignDepth) = !printDepth + 1
 
 (** Exit an align *)
 let exitAlign ~state =
-  decrDLS state.alignDepth
+  decr state.alignDepth
 
 (** See if we are at a low-enough align level (and we should be printing
    normally) *)
 let shallowAlign ~state =
-  not useAlignDepth || DLS.get state.alignDepth <= !printDepth
+  not useAlignDepth || !(state.alignDepth) <= !printDepth
 
 
 (* Pass the current absolute column and compute the new column *)
@@ -436,7 +436,7 @@ let rec scan ~state (abscol: int) (d: doc) : int =
   | Unalign -> exitAlign ~state; popAlign ~state; abscol
 
   | Line when shallowAlign ~state -> (* A forced line break *)
-      if DLS.get state.activeMarkups != [] then
+      if !(state.activeMarkups) != [] then
         failwith "Line breaks inside markup sections";
       newline ~state
 
@@ -444,31 +444,31 @@ let rec scan ~state (abscol: int) (d: doc) : int =
 
   | Break when shallowAlign ~state -> (* An optional line break. Always a space
                                      followed by an optional line break *)
-      if DLS.get state.activeMarkups != [] then
+      if !(state.activeMarkups) != [] then
         failwith "Line breaks inside markup sections";
       let takenref = ref false in
-      DLS.set state.breaks (takenref :: DLS.get state.breaks);
-      let topalign = List.hd (DLS.get state.aligns) in (* aligns is never empty *)
-      if DLS.get state.breakAllMode then begin
+      state.breaks := (takenref :: !(state.breaks));
+      let topalign = List.hd (!(state.aligns)) in (* aligns is never empty *)
+      if !(state.breakAllMode) then begin
         takenref := true;
         newline ~state
       end else begin
         (* If there was a previous break there it stays not taken, forever.
            So we overwrite it. *)
         topalign.isTaken <- takenref;
-        topalign.gainBreak <- 1 + abscol - DLS.get state.topAlignAbsCol;
+        topalign.gainBreak <- 1 + abscol - !(state.topAlignAbsCol);
         if debug then
           dbgprintf "Registering a break at %d with gain %d\n"
             (1 + abscol) topalign.gainBreak;
         movingRight ~state (1 + abscol)
       end
 
-  | Mark -> DLS.set state.activeMarkups (abscol :: DLS.get state.activeMarkups);
+  | Mark -> state.activeMarkups := (abscol :: !(state.activeMarkups));
             abscol
 
   | Unmark -> begin
-      match DLS.get state.activeMarkups with
-        old :: rest -> DLS.set state.activeMarkups rest;
+      match !(state.activeMarkups) with
+        old :: rest -> state.activeMarkups := rest;
                        old
       | [] -> failwith "Too many unmark"
   end
@@ -554,10 +554,10 @@ let emitDoc ~state
     | Line when shallowAlign ~state  -> cont (newline ())
     | LeftFlush when shallowAlign ~state -> wantIndent := false;  cont (0)
     | Break when shallowAlign ~state -> begin
-        match DLS.get state.breaks with
+        match !(state.breaks) with
           [] -> failwith "Break without a takenref"
         | istaken :: rest ->
-            DLS.set state.breaks rest; (* Consume the break *)
+            state.breaks := rest; (* Consume the break *)
             if !istaken then cont (newline ())
             else begin
 	      indentIfNeeded ();
@@ -567,12 +567,12 @@ let emitDoc ~state
     end
 
     | Mark ->
-        DLS.set state.activeMarkups (abscol :: DLS.get state.activeMarkups);
+        state.activeMarkups := (abscol :: !(state.activeMarkups));
         cont abscol
 
     | Unmark -> begin
-        match DLS.get state.activeMarkups with
-          old :: rest -> DLS.set state.activeMarkups rest;
+        match !(state.activeMarkups) with
+          old :: rest -> state.activeMarkups := rest;
                          cont old
         | [] -> failwith "Unmark without a mark"
     end
@@ -586,7 +586,7 @@ let emitDoc ~state
 
 let print_with_state ~width f =
   let state = create_state () in
-  DLS.set state.maxCol width;
+  state.maxCol := width;
   f ~state
 
 (* Print a document on a channel *)
@@ -594,7 +594,7 @@ let fprint (chn: out_channel) ~(width: int) doc =
   let doc = if !flattenBeforePrint then flatten Nil doc else doc in
   print_with_state ~width (fun ~state ->
       ignore (scan ~state 0 doc);
-      DLS.set state.breaks @@ List.rev (DLS.get state.breaks);
+      state.breaks := List.rev (!(state.breaks));
       emitDoc ~state (fun s nrcopies ->
           for _ = 1 to nrcopies do
             output_string chn s
@@ -607,7 +607,7 @@ let sprint ~(width : int)  doc : string =
   let doc = if !flattenBeforePrint then flatten Nil doc else doc in
   print_with_state ~width (fun ~state ->
       ignore (scan ~state 0 doc);
-      DLS.set state.breaks @@ List.rev (DLS.get state.breaks);
+      state.breaks := List.rev (!(state.breaks));
       let buf = Buffer.create 1024 in
       let rec add_n_strings str num =
         if num <= 0 then ()
@@ -628,17 +628,17 @@ let gprintf (finish : doc -> 'b)
             (format : ('a, unit, doc, 'b) format4) : 'a =
   let format = string_of_format format in
 
-  let alignDepth = refDLS 0 in
+  let alignDepth = ref 0 in
   (* Special concatenation functions *)
   let dconcat (acc: doc) (another: doc) =
-    if DLS.get alignDepth > !printDepth then acc else acc ++ another in
+    if !alignDepth > !printDepth then acc else acc ++ another in
   let dctext1 (acc: doc) (str: string) =
-    if DLS.get alignDepth > !printDepth then acc else
+    if !alignDepth > !printDepth then acc else
     CText(acc, str)
   in
   (* Special finish function *)
   let dfinish (dc: doc) : 'b =
-    if DLS.get alignDepth <> 0 then
+    if !alignDepth <> 0 then
       prerr_string ("Unmatched align/unalign in " ^ format ^ "\n");
     finish dc
   in
@@ -760,20 +760,20 @@ let gprintf (finish : doc -> 'b)
                                         (* Now the special format characters *)
             '[' ->                      (* align *)
               let newacc =
-                if DLS.get alignDepth > !printDepth then
+                if !alignDepth > !printDepth then
                   acc
-                else if DLS.get alignDepth = !printDepth then
+                else if !alignDepth = !printDepth then
                   CText(acc, "...")
                 else
                   acc ++ align
               in
-              incrDLS alignDepth;
+              incr alignDepth;
               collect newacc (i + 2)
 
           | ']' ->                        (* unalign *)
-              decrDLS alignDepth;
+              decr alignDepth;
               let newacc =
-                if DLS.get alignDepth >= !printDepth then
+                if !alignDepth >= !printDepth then
                   acc
                 else
                   acc ++ unalign
