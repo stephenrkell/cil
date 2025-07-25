@@ -392,18 +392,18 @@ let printDepth = ref 10000000 (* WRW: must see whole thing *)
 let useAlignDepth = true
 
 (** Start an align. Return true if we have just passed the threshhold *)
-let enterAlign alignDepth =
-  incrDLS alignDepth;
-  useAlignDepth && DLS.get alignDepth = !printDepth + 1
+let enterAlign ~state =
+  incrDLS state.alignDepth;
+  useAlignDepth && DLS.get state.alignDepth = !printDepth + 1
 
 (** Exit an align *)
-let exitAlign alignDepth =
-  decrDLS alignDepth
+let exitAlign ~state =
+  decrDLS state.alignDepth
 
 (** See if we are at a low-enough align level (and we should be printing
    normally) *)
-let shallowAlign alignDepth =
-  not useAlignDepth || DLS.get alignDepth <= !printDepth
+let shallowAlign ~state =
+  not useAlignDepth || DLS.get state.alignDepth <= !printDepth
 
 
 (* Pass the current absolute column and compute the new column *)
@@ -411,14 +411,14 @@ let rec scan ~state (abscol: int) (d: doc) : int =
   match d with
     Nil -> abscol
   | Concat (d1, d2) -> scan ~state (scan ~state abscol d1) d2
-  | Text s when shallowAlign state.alignDepth ->
+  | Text s when shallowAlign ~state ->
       let sl = String.length s in
       if debug then
         dbgprintf "Done string: %s from %d to %d\n" s abscol (abscol + sl);
       movingRight ~state (abscol + sl)
   | CText (d, s) ->
       let abscol' = scan ~state abscol d in
-      if shallowAlign state.alignDepth then begin
+      if shallowAlign ~state then begin
         let sl = String.length s in
         if debug then
           dbgprintf "Done string: %s from %d to %d\n" s abscol' (abscol' + sl);
@@ -428,21 +428,21 @@ let rec scan ~state (abscol: int) (d: doc) : int =
 
   | Align ->
       pushAlign ~state abscol;
-      if enterAlign state.alignDepth then
+      if enterAlign ~state then
         movingRight ~state (abscol + 3) (* "..." *)
       else
         abscol
 
-  | Unalign -> exitAlign state.alignDepth; popAlign ~state; abscol
+  | Unalign -> exitAlign ~state; popAlign ~state; abscol
 
-  | Line when shallowAlign state.alignDepth -> (* A forced line break *)
+  | Line when shallowAlign ~state -> (* A forced line break *)
       if DLS.get state.activeMarkups != [] then
         failwith "Line breaks inside markup sections";
       newline ~state
 
-  | LeftFlush when shallowAlign state.alignDepth  -> (* Keep cursor left-flushed *) 0
+  | LeftFlush when shallowAlign ~state  -> (* Keep cursor left-flushed *) 0
 
-  | Break when shallowAlign state.alignDepth -> (* An optional line break. Always a space
+  | Break when shallowAlign ~state -> (* An optional line break. Always a space
                                      followed by an optional line break *)
       if DLS.get state.activeMarkups != [] then
         failwith "Line breaks inside markup sections";
@@ -518,7 +518,7 @@ let emitDoc ~state
     | Concat (d1, d2) ->
         loopCont abscol d1 (fun abscol' -> loopCont abscol' d2 cont)
 
-    | Text s when shallowAlign state.alignDepth ->
+    | Text s when shallowAlign ~state ->
         let sl = String.length s in
 	indentIfNeeded ();
         emitString s 1;
@@ -527,7 +527,7 @@ let emitDoc ~state
     | CText (d, s) ->
         loopCont abscol d
           (fun abscol' ->
-            if shallowAlign state.alignDepth then
+            if shallowAlign ~state then
               let sl = String.length s in
 	      indentIfNeeded ();
               emitString s 1;
@@ -537,7 +537,7 @@ let emitDoc ~state
 
     | Align ->
         aligns := (abscol :: !aligns);
-        if enterAlign state.alignDepth then begin
+        if enterAlign ~state then begin
           indentIfNeeded ();
           emitString "..." 1;
           cont (abscol + 3)
@@ -548,12 +548,12 @@ let emitDoc ~state
         match !aligns with
           [] -> failwith "Unmatched unalign"
         | _ :: rest ->
-            exitAlign state.alignDepth;
+            exitAlign ~state;
             aligns := rest; cont abscol
     end
-    | Line when shallowAlign state.alignDepth  -> cont (newline ())
-    | LeftFlush when shallowAlign state.alignDepth -> wantIndent := false;  cont (0)
-    | Break when shallowAlign state.alignDepth -> begin
+    | Line when shallowAlign ~state  -> cont (newline ())
+    | LeftFlush when shallowAlign ~state -> wantIndent := false;  cont (0)
+    | Break when shallowAlign ~state -> begin
         match DLS.get state.breaks with
           [] -> failwith "Break without a takenref"
         | istaken :: rest ->
