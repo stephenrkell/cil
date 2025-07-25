@@ -41,13 +41,6 @@
    structured text.
 *)
 
-module DLS =  Domain.DLS
-
-type 'a refDLS = 'a Domain.DLS.key
-let refDLS vl = DLS.new_key (fun () -> vl)
-let incrDLS rf = DLS.set rf (DLS.get rf + 1)
-let decrDLS rf = DLS.set rf (DLS.get rf - 1)
-
 let debug =  false
 
 let fastMode       = ref false
@@ -478,7 +471,7 @@ let rec scan ~state (abscol: int) (d: doc) : int =
 
 (** Keep a running counter of the newlines we are taking. You can read and
     reset this from user code, if you want *)
-let countNewLines = refDLS 0
+let countNewLines = Atomic.make 0
 
 (* The actual function that takes a document and prints it *)
 let emitDoc ~state
@@ -496,7 +489,7 @@ let emitDoc ~state
       [] -> failwith "Ran out of aligns"
     | x :: _ ->
 	emitString "\n" 1;
-        DLS.set countNewLines (DLS.get countNewLines + 1);
+        Atomic.incr countNewLines;
         wantIndent := true;
 	x
   in

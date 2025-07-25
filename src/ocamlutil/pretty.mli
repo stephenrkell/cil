@@ -52,9 +52,6 @@
 
 (** API *)
 
-(** refDLS is an alias for Domain.DLS.key *)
-type 'a refDLS = 'a Domain.DLS.key
-
 (** The type of unformated documents. Elements of this type can be 
    constructed in two ways. Either with a number of constructor shown below, 
    or using the {!Pretty.dprintf} function with a [printf]-like interface. 
@@ -315,7 +312,7 @@ val flattenBeforePrint : bool ref
 
 (** Keep a running count of the taken newlines. You can read and write this 
     from the client code if you want *)
-val countNewLines : int refDLS
+val countNewLines : int Atomic.t
 
 
 (** A function that when used at top-level in a module will direct 
