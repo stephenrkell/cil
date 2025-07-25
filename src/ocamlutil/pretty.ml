@@ -285,6 +285,8 @@ type state = {
 
   breakAllMode: bool refDLS;
   (** Sometimes we take all the optional breaks *)
+
+  alignDepth: int refDLS;
 }
 
 let create_state (): state = {
@@ -294,6 +296,7 @@ let create_state (): state = {
   breaks = refDLS [];
   maxCol = refDLS 0;
   breakAllMode = refDLS false;
+  alignDepth = refDLS 0;
 }
 
 let pushAlign ~state (abscol: int) =
@@ -385,22 +388,21 @@ let movingRight ~state (abscol: int) : int =
    have properly nested align/unalign pairs. When the nesting depth surpasses
    !printDepth then we print ... and we skip until the matching unalign *)
 let printDepth = ref 10000000 (* WRW: must see whole thing *)
-let alignDepth = refDLS 0
 
 let useAlignDepth = true
 
 (** Start an align. Return true if we have just passed the threshhold *)
-let enterAlign () =
+let enterAlign alignDepth =
   incrDLS alignDepth;
   useAlignDepth && DLS.get alignDepth = !printDepth + 1
 
 (** Exit an align *)
-let exitAlign () =
+let exitAlign alignDepth =
   decrDLS alignDepth
 
 (** See if we are at a low-enough align level (and we should be printing
    normally) *)
-let shallowAlign () =
+let shallowAlign alignDepth =
   not useAlignDepth || DLS.get alignDepth <= !printDepth
 
 
@@ -409,14 +411,14 @@ let rec scan ~state (abscol: int) (d: doc) : int =
   match d with
     Nil -> abscol
   | Concat (d1, d2) -> scan ~state (scan ~state abscol d1) d2
-  | Text s when shallowAlign () ->
+  | Text s when shallowAlign state.alignDepth ->
       let sl = String.length s in
       if debug then
         dbgprintf "Done string: %s from %d to %d\n" s abscol (abscol + sl);
       movingRight ~state (abscol + sl)
   | CText (d, s) ->
       let abscol' = scan ~state abscol d in
-      if shallowAlign () then begin
+      if shallowAlign state.alignDepth then begin
         let sl = String.length s in
         if debug then
           dbgprintf "Done string: %s from %d to %d\n" s abscol' (abscol' + sl);
@@ -426,21 +428,21 @@ let rec scan ~state (abscol: int) (d: doc) : int =
 
   | Align ->
       pushAlign ~state abscol;
-      if enterAlign () then
+      if enterAlign state.alignDepth then
         movingRight ~state (abscol + 3) (* "..." *)
       else
         abscol
 
-  | Unalign -> exitAlign (); popAlign ~state; abscol
+  | Unalign -> exitAlign state.alignDepth; popAlign ~state; abscol
 
-  | Line when shallowAlign () -> (* A forced line break *)
+  | Line when shallowAlign state.alignDepth -> (* A forced line break *)
       if DLS.get state.activeMarkups != [] then
         failwith "Line breaks inside markup sections";
       newline ~state
 
-  | LeftFlush when shallowAlign ()  -> (* Keep cursor left-flushed *) 0
+  | LeftFlush when shallowAlign state.alignDepth  -> (* Keep cursor left-flushed *) 0
 
-  | Break when shallowAlign () -> (* An optional line break. Always a space
+  | Break when shallowAlign state.alignDepth -> (* An optional line break. Always a space
                                      followed by an optional line break *)
       if DLS.get state.activeMarkups != [] then
         failwith "Line breaks inside markup sections";
@@ -516,7 +518,7 @@ let emitDoc ~state
     | Concat (d1, d2) ->
         loopCont abscol d1 (fun abscol' -> loopCont abscol' d2 cont)
 
-    | Text s when shallowAlign () ->
+    | Text s when shallowAlign state.alignDepth ->
         let sl = String.length s in
 	indentIfNeeded ();
         emitString s 1;
@@ -525,7 +527,7 @@ let emitDoc ~state
     | CText (d, s) ->
         loopCont abscol d
           (fun abscol' ->
-            if shallowAlign () then
+            if shallowAlign state.alignDepth then
               let sl = String.length s in
 	      indentIfNeeded ();
               emitString s 1;
@@ -535,7 +537,7 @@ let emitDoc ~state
 
     | Align ->
         aligns := (abscol :: !aligns);
-        if enterAlign () then begin
+        if enterAlign state.alignDepth then begin
           indentIfNeeded ();
           emitString "..." 1;
           cont (abscol + 3)
@@ -546,12 +548,12 @@ let emitDoc ~state
         match !aligns with
           [] -> failwith "Unmatched unalign"
         | _ :: rest ->
-            exitAlign ();
+            exitAlign state.alignDepth;
             aligns := rest; cont abscol
     end
-    | Line when shallowAlign ()  -> cont (newline ())
-    | LeftFlush when shallowAlign () -> wantIndent := false;  cont (0)
-    | Break when shallowAlign () -> begin
+    | Line when shallowAlign state.alignDepth  -> cont (newline ())
+    | LeftFlush when shallowAlign state.alignDepth -> wantIndent := false;  cont (0)
+    | Break when shallowAlign state.alignDepth -> begin
         match DLS.get state.breaks with
           [] -> failwith "Break without a takenref"
         | istaken :: rest ->
@@ -583,23 +585,9 @@ let emitDoc ~state
 
 
 let print_with_state ~width f =
-  let old_alignDepth = DLS.get alignDepth in
-  DLS.set alignDepth 0;
   let state = create_state () in
   DLS.set state.maxCol width;
-
-  let finally () =
-    DLS.set alignDepth old_alignDepth;
-  in
-
-  match f ~state with
-  | r ->
-    finally ();
-    r
-  | exception e ->
-    let bt = Printexc.get_raw_backtrace () in
-    finally ();
-    Printexc.raise_with_backtrace e bt
+  f ~state
 
 (* Print a document on a channel *)
 let fprint (chn: out_channel) ~(width: int) doc =
@@ -640,6 +628,7 @@ let gprintf (finish : doc -> 'b)
             (format : ('a, unit, doc, 'b) format4) : 'a =
   let format = string_of_format format in
 
+  let alignDepth = refDLS 0 in
   (* Record the starting align depth *)
   let startAlignDepth = DLS.get alignDepth in
   (* Special concatenation functions *)
