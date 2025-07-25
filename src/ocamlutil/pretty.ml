@@ -629,8 +629,6 @@ let gprintf (finish : doc -> 'b)
   let format = string_of_format format in
 
   let alignDepth = refDLS 0 in
-  (* Record the starting align depth *)
-  let startAlignDepth = DLS.get alignDepth in
   (* Special concatenation functions *)
   let dconcat (acc: doc) (another: doc) =
     if DLS.get alignDepth > !printDepth then acc else acc ++ another in
@@ -640,7 +638,7 @@ let gprintf (finish : doc -> 'b)
   in
   (* Special finish function *)
   let dfinish (dc: doc) : 'b =
-    if DLS.get alignDepth <> startAlignDepth then
+    if DLS.get alignDepth <> 0 then
       prerr_string ("Unmatched align/unalign in " ^ format ^ "\n");
     finish dc
   in
