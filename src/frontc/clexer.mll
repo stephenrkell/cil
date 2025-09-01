@@ -143,6 +143,7 @@ let init_lexicon _ =
       ("_Float64", fun loc -> FLOAT64 loc);
       ("_Float32x", fun loc -> FLOAT32X loc);
       ("_Float64x", fun loc -> FLOAT64X loc);
+      ("_Float16", fun loc -> FLOAT16 loc);
       ("double", fun loc -> DOUBLE loc);
       ("void", fun loc -> VOID loc);
       ("enum", fun loc -> ENUM loc);

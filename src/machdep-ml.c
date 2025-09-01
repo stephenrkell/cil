@@ -106,8 +106,8 @@ int main(int argc, char **argv)
 {
   int env = argc == 2 && !strcmp(argv[1], "--env");
   int alignof_short, alignof_int, alignof_long, alignof_ptr, alignof_enum,
-    alignof_float, alignof_float32x, alignof_float64x, alignof_double, alignof_longdouble, alignof_float128,
-    alignof_floatcomplex, alignof_doublecomplex, alignof_longdoublecomplex, alignof_float128complex,
+    alignof_float, alignof_float32x, alignof_float64x, alignof_double, alignof_longdouble, alignof_float128, alignof_float16,
+    alignof_floatcomplex, alignof_doublecomplex, alignof_longdoublecomplex, alignof_float128complex, alignof_float16complex,
     sizeof_fun,
     alignof_fun, alignof_str, alignof_aligned, alignof_longlong,
     little_endian, char_is_unsigned, alignof_bool;
@@ -231,6 +231,15 @@ int main(int argc, char **argv)
     alignof_float128 = (intptr_t)(&((struct s1*)0)->ld);
   }
 
+  // The alignment of float16
+  {
+    struct s1 {
+      char c;
+      _Float16 ld;
+    };
+    alignof_float16 = (intptr_t)(&((struct s1*)0)->ld);
+  }
+
   // The alignment of a float complex
   {
     struct floatstruct {
@@ -265,6 +274,15 @@ int main(int argc, char **argv)
       _Float128 _Complex ld;
     };
     alignof_float128complex = (intptr_t)(&((struct s1*)0)->ld);
+  }
+
+  // The alignment of float128 complex
+  {
+    struct s1 {
+      char c;
+      _Float16 _Complex ld;
+    };
+    alignof_float16complex = (intptr_t)(&((struct s1*)0)->ld);
   }
 
 
@@ -304,7 +322,7 @@ int main(int argc, char **argv)
     {
       fprintf(stderr, "Generating CIL_MACHINE machine dependency information string (for CIL)\n");
       printf("short=%d,%d int=%d,%d long=%d,%d long_long=%d,%d pointer=%d,%d "
-	     "alignof_enum=%d float=%d,%d float32x=%d,%d float64x=%d,%d double=%d,%d long_double=%d,%d float128=%d,%d float_complex=%d,%d double_complex=%d,%d long_double_complex=%d,%d float128_complex=%d,%d void=%d "
+	     "alignof_enum=%d float=%d,%d float32x=%d,%d float64x=%d,%d double=%d,%d long_double=%d,%d float128=%d,%d float16=%d,%d float_complex=%d,%d double_complex=%d,%d long_double_complex=%d,%d float128_complex=%d,%d float16_complex=%d,%d void=%d "
 	     "bool=%d,%d fun=%d,%d alignof_string=%d max_alignment=%d size_t=%s "
 	     "wchar_t=%s char16_t=%s char32_t=%s char_signed=%s "
 	     "big_endian=%s __thread_is_keyword=%s __builtin_va_list=%s "
@@ -322,9 +340,11 @@ int main(int argc, char **argv)
 	     (int)sizeof(float), alignof_float, (int)sizeof(double), alignof_double,
 	     (int)sizeof(long double), alignof_longdouble,
       (int)sizeof(_Float128), alignof_float128,
+       (int)sizeof(_Float16), alignof_float16,
        (int)sizeof(float _Complex), alignof_floatcomplex, (int)sizeof(double _Complex), alignof_doublecomplex,
 	     (int)sizeof(long double _Complex), alignof_longdoublecomplex,
        (int)sizeof(_Float128 _Complex), alignof_float128complex,
+       (int)sizeof(_Float16 _Complex), alignof_float16complex,
        (int)sizeof(void),
 	     (int)sizeof(bool), alignof_bool,
 	     sizeof_fun, alignof_fun, alignof_str, alignof_aligned,
@@ -359,10 +379,12 @@ int main(int argc, char **argv)
       printf("\t sizeof_double              = %d;\n", (int)sizeof(double));
       printf("\t sizeof_longdouble          = %d;\n", (int)sizeof(long double));
       printf("\t sizeof_float128            = %d;\n", (int)sizeof(_Float128));
+      printf("\t sizeof_float16             = %d;\n", (int)sizeof(_Float16));
       printf("\t sizeof_floatcomplex        = %d;\n", (int)sizeof(float _Complex));
       printf("\t sizeof_doublecomplex       = %d;\n", (int)sizeof(double _Complex));
       printf("\t sizeof_longdoublecomplex   = %d;\n", (int)sizeof(long double _Complex));
       printf("\t sizeof_float128complex     = %d;\n", (int)sizeof(_Float128 _Complex));
+      printf("\t sizeof_float16complex      = %d;\n", (int)sizeof(_Float16 _Complex));
       printf("\t sizeof_void                = %d;\n", (int)sizeof(void));
       printf("\t sizeof_fun                 = %d;\n", (int)sizeof_fun);
       printf("\t size_t                     = \"%s\";\n", TYPE_SIZE_T);
@@ -386,10 +408,12 @@ int main(int argc, char **argv)
       printf("\t alignof_double             = %d;\n", alignof_double);
       printf("\t alignof_longdouble         = %d;\n", alignof_longdouble);
       printf("\t alignof_float128           = %d;\n", alignof_float128);
+      printf("\t alignof_float16            = %d;\n", alignof_float16);
       printf("\t alignof_floatcomplex       = %d;\n", alignof_floatcomplex);
       printf("\t alignof_doublecomplex      = %d;\n", alignof_doublecomplex);
       printf("\t alignof_longdoublecomplex  = %d;\n", alignof_longdoublecomplex);
       printf("\t alignof_float128complex    = %d;\n", alignof_float128complex);
+      printf("\t alignof_float16complex     = %d;\n", alignof_float16complex);
       printf("\t alignof_str                = %d;\n", alignof_str);
       printf("\t alignof_fun                = %d;\n", alignof_fun);
       printf("\t alignof_aligned            = %d;\n", alignof_aligned);

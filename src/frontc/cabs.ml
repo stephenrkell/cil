@@ -72,6 +72,7 @@ type typeSpecifier = (* Merge all specifiers into one type *)
   | Tfloat128 (* TODO needed? *)
   | Tfloat32x
   | Tfloat64x
+  | Tfloat16
   | Tdouble
   | Tsigned
   | Tsizet    (* used temporarily to translate offsetof() *)
