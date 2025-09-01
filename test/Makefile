@@ -130,6 +130,9 @@ endif
 # Disable GCC 14 new warnings as errors because some tests contain them
 CFLAGS += -Wno-error=implicit-int -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=incompatible-pointer-types
 
+# TODO: Force gnu11 because we're not ready for c23 yet
+CFLAGS += -std=gnu11 
+
 # sm: this will make gcc warnings into errors; it's almost never
 # what we want, but for a particular testcase (combine_copyptrs)
 # I need it to show the difference between something which works
@@ -176,7 +179,7 @@ SMALL1 := $(TESTDIR)/small1
 
 test/% : $(SMALL1)/%.c
 	cd $(SMALL1); $(CILLY) --nomerge --commPrintLn \
-	       $(CONLY) -std=gnu90 $(CFLAGS) $(ASMONLY)$*.s $*.c
+	       $(CONLY) $(CFLAGS) -std=gnu90 $(ASMONLY)$*.s $*.c
 	echo SUCCESS
 
 testobj/% : $(SMALL1)/%.c
