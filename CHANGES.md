@@ -1,3 +1,9 @@
+## 2.0.7
+* Add initializer support for anonymous struct in union (#176, #184).
+* Fix enumerator printing (#185).
+* Remove global state from `Pretty` (#187).
+* Remove OCaml <4.12 support (#180, #181).
+
 ## 2.0.6
 * Optimize `Pretty.text` (#169, #177).
 * Remove dynlink and findlib dependencies from library (#170).
