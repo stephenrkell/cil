@@ -386,11 +386,11 @@ MYSAFECC := $(CILLY)
 comb: $(TESTDIR)/small2/comb1.c $(TESTDIR)/small2/comb2.c
 	rm -f $(TESTDIR)/small2/comb.exe
 	cd $(TESTDIR)/small2; \
-	  $(MYSAFECC) -fcommon comb1.c $(CONLY) $(OBJOUT) comb1.o; \
-	  $(MYSAFECC) -fcommon comb2.c $(CONLY) $(OBJOUT) comb2.o; \
-	  $(MYSAFECC) -fcommon comb3.c $(CONLY) $(OBJOUT) comb3.o; \
-	  $(MYSAFECC) -fcommon comb4.c $(CONLY) $(OBJOUT) comb4.o; \
-          $(MYSAFECC) -fcommon comb1.o comb2.o comb3.o comb4.o $(EXEOUT)comb.exe
+	  $(MYSAFECC) -std=gnu11 -fcommon comb1.c $(CONLY) $(OBJOUT) comb1.o; \
+	  $(MYSAFECC) -std=gnu11 -fcommon comb2.c $(CONLY) $(OBJOUT) comb2.o; \
+	  $(MYSAFECC) -std=gnu11 -fcommon comb3.c $(CONLY) $(OBJOUT) comb3.o; \
+	  $(MYSAFECC) -std=gnu11 -fcommon comb4.c $(CONLY) $(OBJOUT) comb4.o; \
+          $(MYSAFECC) -std=gnu11 -fcommon comb1.o comb2.o comb3.o comb4.o $(EXEOUT)comb.exe
 	$(TESTDIR)/small2/comb.exe
 
 #call cilly on a .c file, a .i file, a .s file, and a .o file.
@@ -398,10 +398,10 @@ comb: $(TESTDIR)/small2/comb1.c $(TESTDIR)/small2/comb2.c
 mixedcomb: $(TESTDIR)/small2/comb1.c $(TESTDIR)/small2/comb2.c
 	rm -f $(TESTDIR)/small2/comb.exe
 	cd $(TESTDIR)/small2; \
-	  gcc -fcommon -E -o comb2.i comb2.c; \
-	  gcc -fcommon -S -o comb3.s comb3.c; \
-	  gcc -fcommon -c -o comb4.o comb4.c; \
-	  $(MYSAFECC) -fcommon  comb1.c comb2.i comb3.s comb4.o $(EXEOUT)comb.exe
+	  gcc -std=gnu11 -fcommon -E -o comb2.i comb2.c; \
+	  gcc -std=gnu11 -fcommon -S -o comb3.s comb3.c; \
+	  gcc -std=gnu11 -fcommon -c -o comb4.o comb4.c; \
+	  $(MYSAFECC) -std=gnu11 -fcommon  comb1.c comb2.i comb3.s comb4.o $(EXEOUT)comb.exe
 	$(TESTDIR)/small2/comb.exe
 
 # sm: another merger test
