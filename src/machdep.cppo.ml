@@ -54,6 +54,7 @@ type mach = {
   little_endian: bool; (* whether the machine is little endian *)
   __thread_is_keyword: bool; (* whether __thread is a keyword *)
   __builtin_va_list: bool; (* whether __builtin_va_list is builtin (gccism) *)
+  have_float16: bool; (* Whether _Float16 is supported. *)
 }
 
 let gcc = {
