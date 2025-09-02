@@ -184,7 +184,9 @@ let init_lexicon _ =
       ("__alignof", fun loc -> ALIGNOF loc);
       ("_Alignof", fun loc -> ALIGNOF loc);
       ("__alignof__", fun loc -> ALIGNOF loc);
+      ("alignof", fun loc -> ALIGNOF loc);
       ("_Alignas", fun loc -> ALIGNAS loc);
+      ("alignas", fun loc -> ALIGNAS loc);
       ("__volatile__", fun loc -> VOLATILE loc);
       ("__volatile", fun loc -> VOLATILE loc);
       ("__real__", fun loc -> REAL loc);
