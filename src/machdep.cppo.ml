@@ -16,10 +16,12 @@ type mach = {
   sizeof_double: int;     (* Size of "double" *)
   sizeof_longdouble: int; (* Size of "long double" *)
   sizeof_float128: int;   (* Size of "_Float128" *)
+  sizeof_float16: int;   (* Size of "_Float16" *)
   sizeof_floatcomplex: int;      (* Size of "float _Complex" *)
   sizeof_doublecomplex: int;     (* Size of "double _Complex" *)
   sizeof_longdoublecomplex: int; (* Size of "long double _Complex" *)
   sizeof_float128complex: int; (* Size of "_Float128 _Complex" *)
+  sizeof_float16complex: int; (* Size of "_Float16 _Complex" *)
   sizeof_void: int;       (* Size of "void" *)
   sizeof_fun: int;        (* Size of function *)
   size_t: string;         (* Type of "sizeof(T)" *)
@@ -39,10 +41,12 @@ type mach = {
   alignof_double: int;    (* Alignment of "double" *)
   alignof_longdouble: int;  (* Alignment of "long double" *)
   alignof_float128: int;  (* Alignment of "_Float128" *)
+  alignof_float16: int;  (* Alignment of "_Float16" *)
   alignof_floatcomplex: int;     (* Alignment of "float _Complex" *)
   alignof_doublecomplex: int;    (* Alignment of "double _Complex" *)
   alignof_longdoublecomplex: int;  (* Alignment of "long double _Complex" *)
   alignof_float128complex: int;  (* Alignment of "_Float128 _Complex" *)
+  alignof_float16complex: int;  (* Alignment of "_Float16 _Complex" *)
   alignof_str: int;       (* Alignment of strings *)
   alignof_fun: int;       (* Alignment of function *)
   alignof_aligned: int;   (* Alignment of anything with the "aligned" attribute *)
@@ -50,6 +54,7 @@ type mach = {
   little_endian: bool; (* whether the machine is little endian *)
   __thread_is_keyword: bool; (* whether __thread is a keyword *)
   __builtin_va_list: bool; (* whether __builtin_va_list is builtin (gccism) *)
+  have_float16: bool; (* Whether _Float16 is supported. *)
 }
 
 let gcc = {

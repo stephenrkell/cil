@@ -1373,7 +1373,7 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
     (t2: typ) : typ =
   let resultingFType fkind1 t1 fkind2 t2 =
     (* t1 and t2 are the original types before unrollType, so TNamed is preserved if possible *)
-    let isComplex f = f = FComplexFloat || f = FComplexDouble || f = FComplexLongDouble || f = FComplexFloat128 in
+    let isComplex f = f = FComplexFloat || f = FComplexDouble || f = FComplexLongDouble || f = FComplexFloat128 || f = FComplexFloat16 in
     match fkind1, fkind2 with
     | FComplexFloat128, _ -> t1
     | _, FComplexFloat128 -> t2
@@ -1389,7 +1389,11 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
     | other, FDouble -> if isComplex other then TFloat(FComplexDouble, []) else t2
     | FComplexFloat, other -> t1
     | other, FComplexFloat -> t2
-    | FFloat, FFloat -> t1
+    | FFloat, other -> if isComplex other then TFloat(FComplexFloat, []) else t1
+    | other, FFloat -> if isComplex other then TFloat(FComplexFloat, []) else t2
+    | FComplexFloat16, other -> t1
+    | other, FComplexFloat16 -> t2
+    | FFloat16, FFloat16 -> t1
   in
   match unrollType t1, unrollType t2 with
   | TFloat(fkind1, _), TFloat(fkind2, _) -> resultingFType fkind1 t1 fkind2 t2
@@ -2620,6 +2624,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
 
     | [A.Tlong; A.Tdouble] -> TFloat(FLongDouble, [])
     | [A.Tfloat128] -> TFloat(FFloat128, [])
+    | [A.Tfloat16] -> TFloat(FFloat16, [])
      (* Now the other type specifiers *)
     | [A.Tdefault] -> E.s (error "Default outside generic associations")
     | [A.Tnamed n] -> begin
@@ -3739,6 +3744,8 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
             let baseint, kind =
               if hasSuffix str "F128" then
                 String.sub str 0 (l - 4), FFloat128
+              else if hasSuffix str "F16" then
+                String.sub str 0 (l - 3), FFloat16
               else if hasSuffix str "Q" then
                 String.sub str 0 (l - 1), FFloat128
               else if hasSuffix str "L" then
@@ -3773,6 +3780,8 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
             let baseint, kind =
               if hasSuffix str "iF128" || hasSuffix str "F128i" then
                 String.sub str 0 (l - 5), FComplexFloat128
+              else if hasSuffix str "iF16" || hasSuffix str "F16i" then
+                String.sub str 0 (l - 4), FComplexFloat16
               else if hasSuffix str "Qi" || hasSuffix str "iQ" then
                 String.sub str 0 (l - 2), FComplexFloat128
               else if hasSuffix str "iL" || hasSuffix str "Li" then
@@ -3860,11 +3869,13 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
           | FFloat
           | FDouble
           | FLongDouble
-          | FFloat128 -> 8
+          | FFloat128
+          | FFloat16 -> 8
           | FComplexFloat
           | FComplexDouble
           | FComplexLongDouble
-          | FComplexFloat128 -> 9
+          | FComplexFloat128
+          | FComplexFloat16 -> 9
           end
         | TEnum _ -> 3
         | TPtr _ -> 5
@@ -4530,7 +4541,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                             (* if the t we determined here is complex, but the return types of all the fptrs are not, the return *)
                             (* type should not be complex *)
                             let isComplex t = match t with
-                              | TFloat(f, _) -> f = FComplexFloat || f = FComplexDouble || f = FComplexLongDouble || f = FComplexFloat128
+                              | TFloat(f, _) -> f = FComplexFloat || f = FComplexDouble || f = FComplexLongDouble || f = FComplexFloat128 || f = FComplexFloat16
                               | _ -> false
                             in
                             if List.for_all (fun x -> not (isComplex x)) retTypes then
