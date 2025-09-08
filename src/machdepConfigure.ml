@@ -1,5 +1,7 @@
 module C = Configurator.V1
 
+let c_flags = ref []
+
 let has_header_code f =
   Format.sprintf {|
 #include <%s>
@@ -7,7 +9,7 @@ int main() { return 0; } // Just so that dune-configurator linking works
   |} f
 
 let has_header c f =
-  C.c_test c (has_header_code f)
+  C.c_test c ~c_flags:!c_flags (has_header_code f)
 
 let builtin_va_list_code = {|
 int
@@ -59,7 +61,7 @@ int main() { return 0; } // Just so that dune-configurator linking works
 exception FoundType of string
 
 let cil_check_integer_type_type c t1 t2 =
-  if C.c_test c (cil_check_integer_type_type_code t1 t2) then
+  if C.c_test c ~c_flags:!c_flags (cil_check_integer_type_type_code t1 t2) then
     raise (FoundType t2)
 
 let cil_check_integer_type_signs c t1 t2 =
@@ -78,13 +80,21 @@ let cil_check_integer_type c t1 =
     t2
 
 let () =
-  C.main ~name:"machdep" (fun c ->
-      let have_builtin_va_list = C.c_test c builtin_va_list_code in
-      let thread_is_keyword = not @@ C.c_test c thread_is_keyword_code in
-      let underscore_name = C.c_test c underscore_name_code in
-      let have_float16 = C.c_test c have_float16_code in
+  let fname = ref "machdep-config.h" in
+  let args = Arg.[
+      ("-m", String (fun s ->
+          c_flags := ("-m" ^ s) :: !c_flags;
+          fname := "machdep" ^ s ^ "-config.h";
+        ), "");
+    ]
+  in
+  C.main ~name:"machdep" ~args (fun c ->
+      let have_builtin_va_list = C.c_test c ~c_flags:!c_flags builtin_va_list_code in
+      let thread_is_keyword = not @@ C.c_test c ~c_flags:!c_flags thread_is_keyword_code in
+      let underscore_name = C.c_test c ~c_flags:!c_flags underscore_name_code in
+      let have_float16 = C.c_test c ~c_flags:!c_flags have_float16_code in
 
-      C.C_define.gen_header_file c ~fname:"machdep-config.h" [
+      C.C_define.gen_header_file c ~fname:!fname [
         ("HAVE_STDLIB_H", Switch (has_header c "stdlib.h"));
         ("HAVE_WCHAR_H", Switch (has_header c "wchar.h"));
         ("HAVE_STDBOOL_H", Switch (has_header c "stdbool.h"));
