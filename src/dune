@@ -17,9 +17,17 @@
  (action (run ./machdepConfigure.exe)))
 
 (rule
+ (target machdep32-config.h)
+ (action (run ./machdepConfigure.exe -m 32)))
+
+(rule
+ (target machdep64-config.h)
+ (action (run ./machdepConfigure.exe -m 64)))
+
+(rule
  (deps machdep-config.h machdep-ml.c)
  (target machdep-ml.exe)
- (action (run %{read-lines:../bin/real-gcc} -D_GNUCC machdep-ml.c -o %{target})))
+ (action (run %{read-lines:../bin/real-gcc} -D_GNUCC -include machdep-config.h machdep-ml.c -o %{target})))
 
 (executable
  (name machdepArchConfigure)
@@ -27,12 +35,12 @@
  (libraries dune-configurator))
 
 (rule
- (deps machdep-config.h machdep-ml.c)
+ (deps machdep32-config.h machdep-ml.c)
  (target machdep32)
  (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 32))))
 
 (rule
- (deps machdep-config.h machdep-ml.c)
+ (deps machdep64-config.h machdep-ml.c)
  (target machdep64)
  (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 64))))
 
@@ -44,13 +52,13 @@
 
 ; for Cilly.pm
 (rule
- (deps machdep-config.h machdep-ml.c)
+ (deps machdep32-config.h machdep-ml.c)
  (target gcc32model)
  (action (with-stdout-to %{target} (run ./modelConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 32))))
 
 ; for Cilly.pm
 (rule
- (deps machdep-config.h machdep-ml.c)
+ (deps machdep64-config.h machdep-ml.c)
  (target gcc64model)
  (action (with-stdout-to %{target} (run ./modelConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 64))))
 

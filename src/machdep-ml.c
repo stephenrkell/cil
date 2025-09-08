@@ -35,7 +35,8 @@
 
  */
 
-#include "machdep-config.h"
+// Correct config header is now included from command line using -include.
+// #include "machdep-config.h"
 
 #include <stdio.h>
 #include <string.h>

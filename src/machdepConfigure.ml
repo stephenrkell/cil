@@ -1,5 +1,11 @@
 module C = Configurator.V1
 
+let c_flags = ref []
+
+let base_code = {|
+int main() { return 0; }
+|}
+
 let has_header_code f =
   Format.sprintf {|
 #include <%s>
@@ -7,7 +13,7 @@ int main() { return 0; } // Just so that dune-configurator linking works
   |} f
 
 let has_header c f =
-  C.c_test c (has_header_code f)
+  C.c_test c ~c_flags:!c_flags (has_header_code f)
 
 let builtin_va_list_code = {|
 int
@@ -59,7 +65,7 @@ int main() { return 0; } // Just so that dune-configurator linking works
 exception FoundType of string
 
 let cil_check_integer_type_type c t1 t2 =
-  if C.c_test c (cil_check_integer_type_type_code t1 t2) then
+  if C.c_test c ~c_flags:!c_flags (cil_check_integer_type_type_code t1 t2) then
     raise (FoundType t2)
 
 let cil_check_integer_type_signs c t1 t2 =
@@ -78,27 +84,40 @@ let cil_check_integer_type c t1 =
     t2
 
 let () =
-  C.main ~name:"machdep" (fun c ->
-      let have_builtin_va_list = C.c_test c builtin_va_list_code in
-      let thread_is_keyword = not @@ C.c_test c thread_is_keyword_code in
-      let underscore_name = C.c_test c underscore_name_code in
-      let have_float16 = C.c_test c have_float16_code in
+  let fname = ref "machdep-config.h" in
+  let args = Arg.[
+      ("-m", String (fun s ->
+          c_flags := ("-m" ^ s) :: !c_flags;
+          fname := "machdep" ^ s ^ "-config.h";
+        ), "");
+    ]
+  in
+  C.main ~name:"machdep" ~args (fun c ->
+      if C.c_test c ~c_flags:!c_flags base_code then (
+        let have_builtin_va_list = C.c_test c ~c_flags:!c_flags builtin_va_list_code in
+        let thread_is_keyword = not @@ C.c_test c ~c_flags:!c_flags thread_is_keyword_code in
+        let underscore_name = C.c_test c ~c_flags:!c_flags underscore_name_code in
+        let have_float16 = C.c_test c ~c_flags:!c_flags have_float16_code in
 
-      C.C_define.gen_header_file c ~fname:"machdep-config.h" [
-        ("HAVE_STDLIB_H", Switch (has_header c "stdlib.h"));
-        ("HAVE_WCHAR_H", Switch (has_header c "wchar.h"));
-        ("HAVE_STDBOOL_H", Switch (has_header c "stdbool.h"));
-        ("HAVE_INTTYPES_H", Switch (has_header c "inttypes.h"));
-        ("HAVE_STDINT_H", Switch (has_header c "stdint.h"));
+        C.C_define.gen_header_file c ~fname:!fname [
+          ("HAVE_STDLIB_H", Switch (has_header c "stdlib.h"));
+          ("HAVE_WCHAR_H", Switch (has_header c "wchar.h"));
+          ("HAVE_STDBOOL_H", Switch (has_header c "stdbool.h"));
+          ("HAVE_INTTYPES_H", Switch (has_header c "inttypes.h"));
+          ("HAVE_STDINT_H", Switch (has_header c "stdint.h"));
 
-        ("HAVE_BUILTIN_VA_LIST_DEF", Switch have_builtin_va_list);
-        ("THREAD_IS_KEYWORD_DEF", Switch thread_is_keyword);
-        ("UNDERSCORE_NAME_DEF", Switch underscore_name);
-        ("HAVE_FLOAT16_DEF", Switch have_float16);
+          ("HAVE_BUILTIN_VA_LIST_DEF", Switch have_builtin_va_list);
+          ("THREAD_IS_KEYWORD_DEF", Switch thread_is_keyword);
+          ("UNDERSCORE_NAME_DEF", Switch underscore_name);
+          ("HAVE_FLOAT16_DEF", Switch have_float16);
 
-        ("TYPE_SIZE_T", String (cil_check_integer_type c "size_t"));
-        ("TYPE_WCHAR_T", String (cil_check_integer_type c "wchar_t"));
-        ("TYPE_CHAR16_T", String (cil_check_integer_type c "char16_t"));
-        ("TYPE_CHAR32_T", String (cil_check_integer_type c "char32_t"));
-      ]
+          ("TYPE_SIZE_T", String (cil_check_integer_type c "size_t"));
+          ("TYPE_WCHAR_T", String (cil_check_integer_type c "wchar_t"));
+          ("TYPE_CHAR16_T", String (cil_check_integer_type c "char16_t"));
+          ("TYPE_CHAR32_T", String (cil_check_integer_type c "char32_t"));
+        ]
+      )
+      else (
+        C.C_define.gen_header_file c ~fname:!fname []
+      )
     )
