@@ -1,3 +1,6 @@
+## 2.0.8
+* Fix 32bit `Machdep` generation on 64bit host (#195).
+
 ## 2.0.7
 * Add `_Float16` type support (#190, #193).
 * Add C23 `alignof` and `alignas` support (#189, #191).
