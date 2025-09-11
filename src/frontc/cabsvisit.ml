@@ -404,7 +404,7 @@ and childrenStatement vis s =
       let _ = vis#vExitScope () in
       if fc1' != fc1 || e2' != e2 || e3' != e3 || s4' != s4 
       then FOR (fc1', e2', e3', s4', l) else s
-  | BREAK _ | CONTINUE _ | GOTO _ -> s
+  | BREAK _ | CONTINUE _ | GOTO _ | FALLTHROUGH _-> s
   | RETURN (e, l) ->
       let e' = ve e in
       if e' != e then RETURN (e', l) else s

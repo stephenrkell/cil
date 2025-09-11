@@ -43,6 +43,7 @@
 
 open Pretty
 open Cil
+open Option
 module E=Errormsg
 
 (* entry points: cfgFun, printCfgChannel, printCfgFilename *)
@@ -197,6 +198,7 @@ and cfgStmt (s: stmt) (next:stmt option) (break:stmt option) (cont:stmt option)
   | Goto (p,_) -> addSucc !p
   | ComputedGoto (e,_) -> List.iter addSucc rlabels
   | Break _ -> addOptionSucc break
+  | Fallthrough _ -> addOptionSucc (some dummyStmt)
   | Continue _ -> addOptionSucc cont
   | If (_, blk1, blk2, _) ->
       (* The succs of If is [true branch;false branch] *)
@@ -249,7 +251,7 @@ and fasStmt (todo) (s : stmt) =
       | If (_, tb, fb, _) -> (fasBlock todo tb; fasBlock todo fb)
       | Switch (_, b, _, _) -> fasBlock todo b
       | Loop (b, _, _, _) -> fasBlock todo b
-      | (Return _ | Break _ | Continue _ | Goto _ | ComputedGoto _ | Instr _) -> ()
+      | (Return _ | Fallthrough _ | Break _ | Continue _ | Goto _ | ComputedGoto _ | Instr _) -> ()
       | TryExcept _ | TryFinally _ -> E.s (E.unimp "try/except/finally")
   end
 ;;
@@ -267,6 +269,7 @@ let d_cfgnodelabel () (s : stmt) =
       | If (e, _, _, _)  -> "if" (*sprint ~width:999 (dprintf "if %a" d_exp e)*)
       | Loop _ -> "loop"
       | Break _ -> "break"
+      | Fallthrough _ -> "fallthrough"
       | Continue _ -> "continue"
       | Goto _ | ComputedGoto _ -> "goto"
       | Instr _ -> "instr"

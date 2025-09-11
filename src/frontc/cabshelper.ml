@@ -72,6 +72,7 @@ begin
   | DOWHILE(_,_,loc) -> loc
   | FOR(_,_,_,_,loc) -> loc
   | BREAK(loc) -> loc
+  | FALLTHROUGH(loc) -> loc
   | CONTINUE(loc) -> loc
   | RETURN(_,loc) -> loc
   | SWITCH(_,_,loc) -> loc

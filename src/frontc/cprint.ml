@@ -622,6 +622,9 @@ and print_statement stat =
   | BREAK (loc)->
       setLoc(loc);
       print "break;"; new_line ()
+  | FALLTHROUGH (loc)->
+      setLoc(loc);
+      print "[[fallthrough]];"; new_line()
   | CONTINUE (loc) ->
       setLoc(loc);
       print "continue;"; new_line ()
