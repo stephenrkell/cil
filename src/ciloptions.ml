@@ -207,22 +207,20 @@ let options : (string * Arg.spec * string) list =
     "--MSVC",
     Arg.Unit (fun _ ->
                 Cil.msvcMode := true;
-                Frontc.setMSVCMode ();
-                if not Machdep.hasMSVC then
-                  ignore (E.warn "Will work in MSVC mode but will be using machine-dependent parameters for GCC since you do not have the MSVC compiler installed")),
+                Frontc.setMSVCMode ()),
     " Enable MSVC compatibility; default is GNU";
 
    "--envmachine",
    Arg.Unit (fun _ ->
      try
        let machineModel = Sys.getenv "CIL_MACHINE" in
-       Cil.envMachine := Some (Machdepenv.modelParse machineModel);
+       Cil.envMachine := Some machineModel;
      with 
        Not_found ->
 	 ignore (E.error "CIL_MACHINE environment variable is not set")
      | Failure msg ->
-	 ignore (E.error "CIL_MACHINE machine model is invalid: %s" msg)),
-   " Use machine model specified in CIL_MACHINE environment variable";
+	 ignore (E.error "CIL_MACHINE machine model (header content) is invalid: %s" msg)),
+   " Use machine model (header content) specified in CIL_MACHINE environment variable";
 
     "--ignore-merge-conflicts",
     Arg.Set Mergecil.ignore_merge_conflicts,

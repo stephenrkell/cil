@@ -36,7 +36,7 @@ dispatch begin function
         [A (try Sys.getenv "MAKE" with Not_found -> "make");
          A "-C"; P ".."; P ("_build" / target)]))
       in
-      make "machdep.ml";
+      (* make "machdep.ml" *) () ;
 
     (* Build mllib for plugins by listing the content of their directory *)
     rule "plugin dir -> mllib"

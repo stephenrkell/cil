@@ -150,20 +150,10 @@ abi-defaults.h: print-abi
 
 # $(CILLYMOD).pm.in is suffixed '.in' but really we take care of the
 # substitutions ourselves. We substituve CIL_VERSION with a version number
-# and (optionally) nogcc32model with the -m32 output of machdep-ml
-# and (optionally) nogcc64model with the -m64 output of machdep-ml
 $(CILLYDIR)/App/$(CILLYMOD).pm: $(CILLYDIR)/App/$(CILLYMOD).pm.in configure.ac Makefile.in
 	cp $(CILLYDIR)/App/$(CILLYMOD).pm.in $(CILLYDIR)/App/$(CILLYMOD).pm
 	sed -e "s|CIL_VERSION|$(CIL_VERSION)|" $(CILLYDIR)/App/$(CILLYMOD).pm > $(CILLYDIR)/App/$(CILLYMOD).pm.tmp; \
-	cp --backup $(CILLYDIR)/App/$(CILLYMOD).pm.tmp $(CILLYDIR)/App/$(CILLYMOD).pm; \
-	if $(CC) -D_GNUCC -m32 src/machdep-ml.c -o $(OBJDIR)/machdep-ml32.exe ;then \
-	  sed -e "s|nogcc32model|`$(OBJDIR)/machdep-ml32.exe --env`|" $(CILLYDIR)/App/$(CILLYMOD).pm > $(CILLYDIR)/App/$(CILLYMOD).pm.tmp; \
-	  mv $(CILLYDIR)/App/$(CILLYMOD).pm.tmp $(CILLYDIR)/App/$(CILLYMOD).pm; \
-	fi
-	if $(CC) -D_GNUCC -m64 src/machdep-ml.c -o $(OBJDIR)/machdep-ml64.exe ;then \
-	  sed -e "s|nogcc64model|`$(OBJDIR)/machdep-ml64.exe --env`|" $(CILLYDIR)/App/$(CILLYMOD).pm > $(CILLYDIR)/App/$(CILLYMOD).pm.tmp; \
-	  cp --backup $(CILLYDIR)/App/$(CILLYMOD).pm.tmp $(CILLYDIR)/App/$(CILLYMOD).pm; \
-	fi
+	cp --backup $(CILLYDIR)/App/$(CILLYMOD).pm.tmp $(CILLYDIR)/App/$(CILLYMOD).pm
 
 ### DOCUMENTATION
 
@@ -214,7 +204,7 @@ distclean: clean
 	rm -f config.status
 	rm -f doc/header.html
 	rm -f doc/index.html
-	rm -f src/machdep-ml.c src/cilversion.ml
+	rm -f src/cilversion.ml
 	rm -f stamp-h
 
 clean: $(CILLYDIR)/Makefile

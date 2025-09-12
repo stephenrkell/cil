@@ -622,25 +622,6 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 UNDERSCORE_NAME
 THREAD_IS_KEYWORD
-HAVE_BUILTIN_FLOAT16X_COMPLEX
-HAVE_BUILTIN_FLOAT16_COMPLEX
-HAVE_BUILTIN_FLOAT32X_COMPLEX
-HAVE_BUILTIN_FLOAT32_COMPLEX
-HAVE_BUILTIN_FLOAT64X_COMPLEX
-HAVE_BUILTIN_FLOAT64_COMPLEX
-HAVE_BUILTIN_FLOAT128X_COMPLEX
-HAVE_BUILTIN_FLOAT128_COMPLEX
-HAVE_SHORT_FLOAT_COMPLEX
-HAVE_BUILTIN_FLOAT16X
-HAVE_BUILTIN_FLOAT16
-HAVE_BUILTIN_FLOAT32X
-HAVE_BUILTIN_FLOAT32
-HAVE_BUILTIN_FLOAT64X
-HAVE_BUILTIN_FLOAT64
-HAVE_BUILTIN_FLOAT128X
-HAVE_BUILTIN_FLOAT128
-HAVE_BUILTIN___FLOAT128
-HAVE_SHORT_FLOAT
 HAVE_BUILTIN_VA_LIST
 CIL_VERSION
 CIL_VERSION_REV
@@ -5264,159 +5245,6 @@ else
   HAVE_BUILTIN_VA_LIST=false
 fi
 
-# When testing for float types, we really care about whether
-# they are defined as builtins by the compiler, not as typedefs
-# by the standard headers. So we substitute INCLUDES with -nostdinc
-ac_fn_c_check_type "$LINENO" "short float" "ac_cv_type_short_float" "$ac_includes_default"
-if test "x$ac_cv_type_short_float" = xyes; then :
-  HAVE_SHORT_FLOAT=1
-else
-  HAVE_SHORT_FLOAT=0
-fi
-
-ac_fn_c_check_type "$LINENO" "__float128" "ac_cv_type___float128" "$ac_includes_default"
-if test "x$ac_cv_type___float128" = xyes; then :
-  HAVE_BUILTIN___FLOAT128=1
-else
-  HAVE___FLOAT128=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float128" "ac_cv_type__Float128" "
-"
-if test "x$ac_cv_type__Float128" = xyes; then :
-  HAVE_BUILTIN_FLOAT128=1
-else
-  HAVE_BUILTIN_FLOAT128=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float128x" "ac_cv_type__Float128x" "
-"
-if test "x$ac_cv_type__Float128x" = xyes; then :
-  HAVE_BUILTIN_FLOAT128X=1
-else
-  HAVE_BUILTIN_FLOAT128X=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float64" "ac_cv_type__Float64" "
-"
-if test "x$ac_cv_type__Float64" = xyes; then :
-  HAVE_BUILTIN_FLOAT64=1
-else
-  HAVE_BUILTIN_FLOAT64=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float64x" "ac_cv_type__Float64x" "
-"
-if test "x$ac_cv_type__Float64x" = xyes; then :
-  HAVE_BUILTIN_FLOAT64X=1
-else
-  HAVE_BUILTIN_FLOAT64X=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float32" "ac_cv_type__Float32" "
-"
-if test "x$ac_cv_type__Float32" = xyes; then :
-  HAVE_BUILTIN_FLOAT32=1
-else
-  HAVE_BUILTIN_FLOAT32=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float32x" "ac_cv_type__Float32x" "
-"
-if test "x$ac_cv_type__Float32x" = xyes; then :
-  HAVE_BUILTIN_FLOAT32X=1
-else
-  HAVE_BUILTIN_FLOAT32X=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float16" "ac_cv_type__Float16" "
-"
-if test "x$ac_cv_type__Float16" = xyes; then :
-  HAVE_BUILTIN_FLOAT16=1
-else
-  HAVE_BUILTIN_FLOAT16=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float16x" "ac_cv_type__Float16x" "
-"
-if test "x$ac_cv_type__Float16x" = xyes; then :
-  HAVE_BUILTIN_FLOAT16X=1
-else
-  HAVE_BUILTIN_FLOAT16X=0
-fi
-
-ac_fn_c_check_type "$LINENO" "short float _Complex" "ac_cv_type_short_float__Complex" "
-"
-if test "x$ac_cv_type_short_float__Complex" = xyes; then :
-  HAVE_SHORT_FLOAT_COMPLEX=1
-else
-  HAVE_SHORT_FLOAT_COMPLEX=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float128 _Complex" "ac_cv_type__Float128__Complex" "
-"
-if test "x$ac_cv_type__Float128__Complex" = xyes; then :
-  HAVE_BUILTIN_FLOAT128_COMPLEX=1
-else
-  HAVE_BUILTIN_FLOAT128_COMPLEX=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float128x _Complex" "ac_cv_type__Float128x__Complex" "
-"
-if test "x$ac_cv_type__Float128x__Complex" = xyes; then :
-  HAVE_BUILTIN_FLOAT128X_COMPLEX=1
-else
-  HAVE_BUILTIN_FLOAT128X_COMPLEX=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float64 _Complex" "ac_cv_type__Float64__Complex" "
-"
-if test "x$ac_cv_type__Float64__Complex" = xyes; then :
-  HAVE_BUILTIN_FLOAT64_COMPLEX=1
-else
-  HAVE_BUILTIN_FLOAT64_COMPLEX=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float64x _Complex" "ac_cv_type__Float64x__Complex" "
-"
-if test "x$ac_cv_type__Float64x__Complex" = xyes; then :
-  HAVE_BUILTIN_FLOAT64X_COMPLEX=1
-else
-  HAVE_BUILTIN_FLOAT64X_COMPLEX=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float32 _Complex" "ac_cv_type__Float32__Complex" "
-"
-if test "x$ac_cv_type__Float32__Complex" = xyes; then :
-  HAVE_BUILTIN_FLOAT32_COMPLEX=1
-else
-  HAVE_BUILTIN_FLOAT32_COMPLEX=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float32x _Complex" "ac_cv_type__Float32x__Complex" "
-"
-if test "x$ac_cv_type__Float32x__Complex" = xyes; then :
-  HAVE_BUILTIN_FLOAT32X_COMPLEX=1
-else
-  HAVE_BUILTIN_FLOAT32X_COMPLEX=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float16 _Complex" "ac_cv_type__Float16__Complex" "
-"
-if test "x$ac_cv_type__Float16__Complex" = xyes; then :
-  HAVE_BUILTIN_FLOAT16_COMPLEX=1
-else
-  HAVE_BUILTIN_FLOAT16_COMPLEX=0
-fi
-
-ac_fn_c_check_type "$LINENO" "_Float16x _Complex" "ac_cv_type__Float16x__Complex" "
-"
-if test "x$ac_cv_type__Float16x__Complex" = xyes; then :
-  HAVE_BUILTIN_FLOAT16X_COMPLEX=1
-else
-  HAVE_BUILTIN_FLOAT16X_COMPLEX=0
-fi
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking if __thread is a keyword" >&5
 $as_echo_n "checking if __thread is a keyword... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -6300,25 +6128,6 @@ $as_echo "$real_type" >&6; }
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # finish the configure script and generate various files; ./configure
 # will apply variable substitutions to <filename>.in to generate <filename>;
 
@@ -6383,15 +6192,6 @@ $as_echo "$real_type" >&6; }
   else
     true
     #echo "skipping [doc/header.html] because it's not in this distribution"
-  fi
-}
-{
-  if test -f src/machdep-ml.c.in; then
-    ac_config_files="$ac_config_files src/machdep-ml.c"
-
-  else
-    true
-    #echo "skipping [src/machdep-ml.c] because it's not in this distribution"
   fi
 }
 {
@@ -7103,7 +6903,6 @@ do
     "lib/perl5/App/Cilly/CilConfig.pm") CONFIG_FILES="$CONFIG_FILES lib/perl5/App/Cilly/CilConfig.pm" ;;
     "doc/index.html") CONFIG_FILES="$CONFIG_FILES doc/index.html" ;;
     "doc/header.html") CONFIG_FILES="$CONFIG_FILES doc/header.html" ;;
-    "src/machdep-ml.c") CONFIG_FILES="$CONFIG_FILES src/machdep-ml.c" ;;
     "src/cilversion.ml") CONFIG_FILES="$CONFIG_FILES src/cilversion.ml" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
@@ -7665,7 +7464,6 @@ $as_echo "$as_me: $ac_file is unchanged" >&6;}
     "lib/perl5/App/Cilly/CilConfig.pm":F) chmod a-w lib/perl5/App/Cilly/CilConfig.pm ;;
     "doc/index.html":F) chmod a-w doc/index.html ;;
     "doc/header.html":F) chmod a-w doc/header.html ;;
-    "src/machdep-ml.c":F) chmod a-w src/machdep-ml.c ;;
     "src/cilversion.ml":F) chmod a-w src/cilversion.ml ;;
 
   esac
