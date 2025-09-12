@@ -597,7 +597,8 @@ rule initial =
 	
 |		'{'		       {dbgToken (LBRACE (currentLoc ()))}
 |		'}'		       {dbgToken (RBRACE (currentLoc ()))}
-|		'['				{LBRACKET}
+|		"[["				{dbgToken (DOUBLE_LBRACKET (currentLoc ()))}
+|		'['				{dbgToken (LBRACKET (currentLoc ()))}
 |		']'				{RBRACKET}
 |		'('		       {dbgToken (LPAREN (currentLoc ())) }
 |		')'				{RPAREN}
