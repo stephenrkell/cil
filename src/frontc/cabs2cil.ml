@@ -757,6 +757,30 @@ end
 let constFoldType (t:typ) : typ =
   visitCilType constFoldTypeVisitor t
 
+(* Transform any expressions in an initializer. FIXME: we might prefer to
+ * use a visitor and visitCilInit, but that  *)
+let rec rewriteInitExprs (f: exp->exp) (i:init) : init =
+  match i with
+      SingleInit e -> SingleInit (f e)
+    | CompoundInit (t, oiList) -> CompoundInit (t,
+        List.map (fun (offs, i) -> (offs, rewriteInitExprs f i) ) oiList)
+
+(* Rewrite SizeOfE / AlignOfE to use the type of the expression only. This is
+ * useful when moving such expressions out of local binding contexts, e.g. when
+ * we turn a static local into a static global... an initializer referencing the
+ * size of alignment of a local will not work, but using its type works fine. *)
+let eliminateSizeOfAlignOfExpVisitor = object (self)
+  inherit nopCilVisitor
+  method! vexpr e: exp visitAction =
+    match e with
+      SizeOfE e' -> ChangeTo (SizeOf (typeOf e'))
+    | AlignOfE e' -> ChangeTo (AlignOf (typeOf e'))
+    | _ -> DoChildren
+end
+let eliminateSizeOfAlignOfExpr (e:exp) : exp =
+    visitCilExpr eliminateSizeOfAlignOfExpVisitor e
+
+
 let typeSigNoAttrs: typ -> typsig = typeSigWithAttrs (fun _ -> [])
 
 (* Create a new temporary variable *)
@@ -5484,7 +5508,7 @@ and doInitializer
   if debugInit then
     ignore (E.log "Finished the initializer for %s\n  init=%a\n  typ=%a\n  acc=%a\n"
            vi.vname d_init init d_type typ' d_chunk acc);
-  acc, init, typ''
+  acc, rewriteInitExprs eliminateSizeOfAlignOfExpr init, typ''
 
 
 
