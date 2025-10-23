@@ -1257,6 +1257,9 @@ let consLabContinue (c: chunk) =
   | While :: rest -> c
   | NotWhile lr :: rest -> if !lr = "" then c else consLabel !lr c !currentLoc false
 
+let consLabLoopCondition (c: chunk) =
+  consLabel (newLabelName "__loop_condition") c !currentLoc false
+
 let break_env = Stack.create ()
 
 let enter_break_env () = Stack.push () break_env
@@ -6792,7 +6795,7 @@ and doStatement (s : A.statement) : chunk =
         exitLoop ();
         currentLoc := SynthetizeLoc.doLoc loc';
         currentExpLoc := SynthetizeLoc.doLoc eloc';
-        loopChunk ((doCondition false e skipChunk break_cond)
+        loopChunk (consLabLoopCondition (doCondition false e skipChunk break_cond)
                    @@ s')
 
     | A.DOWHILE(e,s,loc,eloc) ->
@@ -6803,7 +6806,7 @@ and doStatement (s : A.statement) : chunk =
         currentLoc := SynthetizeLoc.doLoc loc';
         currentExpLoc := SynthetizeLoc.doLoc eloc';
         let s'' =
-          consLabContinue (doCondition false e skipChunk (breakChunk loc')) (* TODO: use eloc'? *)
+          consLabContinue (consLabLoopCondition (doCondition false e skipChunk (breakChunk loc'))) (* TODO: use eloc'? *)
         in
         exitLoop ();
         loopChunk (s' @@ s'')
@@ -6837,9 +6840,9 @@ and doStatement (s : A.statement) : chunk =
         let res =
           match e2 with
             A.NOTHING -> (* This means true *)
-              se1 @@ loopChunk (s' @@ s'')
+              se1 @@ loopChunk (consLabLoopCondition s' @@ s'')
           | _ ->
-              se1 @@ loopChunk ((doCondition false e2 skipChunk break_cond)
+              se1 @@ loopChunk (consLabLoopCondition (doCondition false e2 skipChunk break_cond)
                                 @@ s' @@ s'')
         in
         exitScope ();
