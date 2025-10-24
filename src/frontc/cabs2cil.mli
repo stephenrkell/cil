@@ -56,6 +56,9 @@ val nocil: int ref
 *)
 val addNestedScopeAttr: bool ref
 
+(** Add [__loop_condition] labels before syntactic loop conditions. *)
+val addLoopConditionLabels: bool ref
+
 (** Indicates whether we're allowed to duplicate small chunks of code. *)
 val allowDuplication: bool ref
 

@@ -86,6 +86,8 @@ let alwaysGenerateVarDecl = false
 *)
 let addNestedScopeAttr = ref false
 
+let addLoopConditionLabels = ref false
+
 (** Indicates whether we're allowed to duplicate small chunks. *)
 let allowDuplication: bool ref = ref true
 
@@ -1258,7 +1260,10 @@ let consLabContinue (c: chunk) =
   | NotWhile lr :: rest -> if !lr = "" then c else consLabel !lr c !currentLoc false
 
 let consLabLoopCondition (c: chunk) =
-  consLabel (newLabelName "__loop_condition") c !currentLoc false
+  if !addLoopConditionLabels then
+    consLabel (newLabelName "__loop_condition") c !currentLoc false
+  else
+    c
 
 let break_env = Stack.create ()
 
