@@ -268,10 +268,20 @@ let init_lexicon _ =
       ("__builtin_types_compatible_p", fun loc -> BUILTIN_TYPES_COMPAT loc);
       ("__builtin_offsetof", fun loc -> BUILTIN_OFFSETOF loc);
       (* On some versions of GCC __thread is a regular identifier *)
-      ("__thread", fun loc -> 
-                      if !Machdep.theMachine.Machdep.__thread_is_keyword then 
+      ("__thread", fun loc ->
+                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
                          THREAD loc
-                       else 
+                       else
+                         IDENT ("__thread", loc));
+      ("thread_local", fun loc ->
+                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
+                         THREAD loc
+                       else
+                         IDENT ("__thread", loc));
+      ("_Thread_local", fun loc ->
+                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
+                         THREAD loc
+                       else
                          IDENT ("__thread", loc));
     ]
 
