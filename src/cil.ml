@@ -3111,6 +3111,7 @@ let initGccBuiltins () : unit =
                             (intType, [ !typeOfSizeOf;(* Sizeof the type *)
                                         !typeOfSizeOf (* Sizeof the type *) ],
                                false);
+  H.add h "__builtin_convertvector" (TVoid[Attr("overloaded",[])], [ ], true);
   H.add h "__builtin_tan" (doubleType, [ doubleType ], false);
   H.add h "__builtin_tanf" (floatType, [ floatType ], false);
   H.add h "__builtin_tanl" (longDoubleType, [ longDoubleType ], false);
@@ -3712,6 +3713,21 @@ class defaultCilPrinterClass : cilPrinter = object (self)
     | Call(_, Lval(Var vi, NoOffset), _, l, el)
         when vi.vname = "__builtin_types_compatible_p" && not !printCilAsIs ->
         E.s (bug "__builtin_types_compatible_p: cabs2cil should have added sizeof to the arguments.")
+
+    | Call(dest, Lval(Var vi, NoOffset), [e; SizeOf t], l, el)
+        when vi.vname = "__builtin_convertvector" && not !printCilAsIs ->
+        self#pLineDirective l
+          (* Print the destination *)
+        ++ (match dest with
+              None -> nil
+            | Some lv -> self#pLval () lv ++ text " = ")
+          (* Now the call itself *)
+        ++ dprintf "%s(%a, %a)" vi.vname
+             self#pExp e (self#pType None) t
+        ++ text printInstrTerminator
+    | Call(_, Lval(Var vi, NoOffset), _, l, el)
+        when vi.vname = "__builtin_convertvector" && not !printCilAsIs ->
+        E.s (bug "__builtin_convertvector: cabs2cil should have added sizeof to the arguments.")
 
     | Call(dest,e,args,l,el) ->
         let rec patchTypeNotVLA t =
@@ -5707,7 +5723,8 @@ class constFoldVisitorClass (machdep: bool) : cilVisitor = object
          See the comments for these above. *)
       Call(_,(Lval (Var vi,NoOffset)),_,_,_)
         when ((vi.vname = "__builtin_va_arg")
-              || (vi.vname = "__builtin_types_compatible_p")) ->
+              || (vi.vname = "__builtin_types_compatible_p")
+              || (vi.vname = "__builtin_convertvector")) ->
           SkipChildren
     | _ -> DoChildren
   method! vexpr (e: exp) =

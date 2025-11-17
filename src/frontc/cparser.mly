@@ -309,7 +309,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> BUILTIN_VA_ARG ATTRIBUTE_USED
 %token BUILTIN_VA_LIST
 %token BLOCKATTRIBUTE
-%token<Cabs.cabsloc> BUILTIN_TYPES_COMPAT BUILTIN_OFFSETOF
+%token<Cabs.cabsloc> BUILTIN_TYPES_COMPAT BUILTIN_OFFSETOF BUILTIN_CONVVEC
 %token<Cabs.cabsloc> DECLSPEC
 %token<string * Cabs.cabsloc> PRAGMA_LINE
 %token<Cabs.cabsloc> PRAGMA
@@ -516,6 +516,10 @@ postfix_expression:                     /*(* 6.5.2 *)*/
                                 [TYPE_SIZEOF(b1,d1); TYPE_SIZEOF(b2,d2)]), $1 }
 |               BUILTIN_OFFSETOF LPAREN type_name COMMA offsetof_member_designator RPAREN
                         { transformOffsetOf $3 $5, $1 }
+|               BUILTIN_CONVVEC LPAREN expression COMMA type_name RPAREN
+                        { let b, d = $5 in
+                          CALL (VARIABLE "__builtin_convertvector",
+                                [fst $3; TYPE_SIZEOF (b, d)]), $1 }
 |		postfix_expression DOT id_or_typename
 		        {MEMBEROF (fst $1, $3), snd $1}
 |		postfix_expression ARROW id_or_typename
