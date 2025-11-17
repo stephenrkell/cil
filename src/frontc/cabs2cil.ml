@@ -4517,6 +4517,27 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         (* Try to intercept some builtins *)
         (match !pf with 
           Lval(Var fv, NoOffset) -> begin
+            if fv.vname = "__builtin_convertvector" then
+              begin
+                match !pargs with
+                  | [ e; SizeOf t] -> begin
+                    resType' := t;
+                    let vecSize (v: typ) =
+                      match unrollType v with
+                      | TInt(_, attrs) | TFloat(_, attrs) -> begin
+                        match List.find_opt (fun (Attr(an', _)) -> an' = "__vector_size__" || an' = "vector_size") attrs with
+                        | Some(Attr(_, [AInt sz])) -> Some sz
+                        | _ -> None
+                      end
+                      | _ -> None
+                    in
+                      match vecSize (typeOf e), vecSize t with
+                      | Some sz1, Some sz2 -> if sz1 <> sz2 then
+                          ignore (warn "Incompatible vector sizes in call to builtin_convertvector")
+                      | _ -> ignore (warn "Invalid types in call to builtin_convertvector")
+                  end
+                  | _ -> ignore (warn "Invalid call to builtin_convertvector");
+              end
             (* Most atomic builtins are overloaded: check the type of the
                first argument and fix the return type accordingly for those
                annotated with "overloaded" in src/cil.ml.
@@ -4526,7 +4547,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                http://gcc.gnu.org/onlinedocs/gcc/_005f_005fsync-Builtins.html#g_t_005f_005fsync-Builtins
                http://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html
              *)
-            if !resType' = TVoid[Attr("overloaded",[])] then begin
+            else if !resType' = TVoid[Attr("overloaded",[])] then begin
               match !pargs  with
                 ptr :: _ -> begin match typeOf ptr with
                 TPtr (vtype, _) ->
