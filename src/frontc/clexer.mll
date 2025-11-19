@@ -266,6 +266,7 @@ let init_lexicon _ =
        fun _ -> NAMED_TYPE ("__builtin_va_list", currentLoc ()));
       ("__builtin_va_arg", fun loc -> BUILTIN_VA_ARG loc);
       ("__builtin_types_compatible_p", fun loc -> BUILTIN_TYPES_COMPAT loc);
+      ("__builtin_convertvector", fun loc -> BUILTIN_CONVVEC loc);
       ("__builtin_offsetof", fun loc -> BUILTIN_OFFSETOF loc);
       (* On some versions of GCC __thread is a regular identifier *)
       ("__thread", fun loc ->
