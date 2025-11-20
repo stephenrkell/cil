@@ -1,3 +1,6 @@
+## 2.0.9
+* Add `__loop_condition` labels before syntactic loop conditions (#197).
+
 ## 2.0.8
 * Fix 32bit `Machdep` generation on 64bit host (#195).
 
