@@ -4588,8 +4588,8 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
             end
              
             (* More weird buitins *)
-            else if fv.vname = "__builtin_object_size" then begin
-              (* Side-effects make __builtin_object_size return -1 or 0 *)
+            else if fv.vname = "__builtin_object_size" || fv.vname = "__builtin_dynamic_object_size" then begin
+              (* Side-effects make __builtin_object_size/__builtin_dynamic_object_size return -1 or 0 *)
               if (not (isEmpty (!prechunk ()))) then
               (match !pargs with
                 [ ptr; typ ] -> begin

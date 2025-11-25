@@ -3156,6 +3156,7 @@ let initGccBuiltins () : unit =
   H.add h "__builtin_nansl" (longDoubleType, [ charConstPtrType ], false);
   H.add h "__builtin_next_arg" ((if hasbva then TBuiltin_va_list [] else voidPtrType), [], false) (* When we parse builtin_next_arg we drop the argument *);
   H.add h "__builtin_object_size" (sizeType, [ voidPtrType; intType ], false);
+  H.add h "__builtin_dynamic_object_size" (sizeType, [ voidPtrType; intType ], false);
   H.add h "__builtin_isnan" (intType, [ doubleType ], false);
   H.add h "__builtin_isinf_sign" (intType, [ doubleType ], false);
 
@@ -6975,7 +6976,7 @@ let rec xform_switch_stmt s break_dest cont_dest = begin
        * label_break: ; // break_stmt
        *
        * The default case, if present, must be used only if *all*
-       * non-default cases fail [ISO/IEC 9899:1999, §6.8.4.2, ¶5]. As
+       * non-default cases fail [ISO/IEC 9899:1999, ï¿½6.8.4.2, ï¿½5]. As
        * a result, we test all cases first, and hit 'default' only if
        * no case matches. However, we do not reorder the switch's
        * body, so fall-through still works as expected.
