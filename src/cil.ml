@@ -58,90 +58,6 @@ let cilVersionMajor    = Cilversion.cilVersionMajor
 let cilVersionMinor    = Cilversion.cilVersionMinor
 let cilVersionRevision = Cilversion.cilVersionRev
 
-(* A few globals that control the interpretation of C source:
- *
- * - which C standard 'base' we are targeting (C90, C99, C11, C18, ...)
- * - which compiler's 'extension dialect' (GCC or MSVC)
- * - the specific version of the latter.
- *
- * We try to pick up the specific version ourselves from preprocessing
- * content. Generating this, e.g. by preprocessing with -dD, is a job
- * for clients/drivers (cilly, etc.), not us the library. We only take our
- * 'guess of last resort' from a build-time generated/probed header (formerly
- * Machdep, but now much simpler), if there is no macro content in our input.
- *)
-type c_impl = {
-    msvc : bool; (* Determines whether the pretty printer should 
-                  * print output for the MS VC 
-                  * compiler. Default is GCC *)
-    dialectVersion : int;
-    isC99OrLater : bool;   (* True to handle ISO C 99 vs 90 changes.
-                              So far only affects integer parsing. *)
-    little_endian : bool;
-    char_is_unsigned : bool;
-    underscore_name : bool;
-    __builtin_va_list : bool;
-    const_string_literals : bool;
-    sizeof_bool : int;
-    sizeof_complex_double : int;
-    sizeof_complex_float : int;
-    sizeof_complex_longdouble : int;
-    sizeof_double : int;
-    sizeof_float : int;
-    sizeof_fun : int;
-    sizeof_int : int;
-    sizeof_long : int;
-    sizeof_longdouble : int;
-    sizeof_longlong : int;
-    sizeof_ptr : int;
-    sizeof_short : int;
-    sizeof_shortfloat : int;
-    sizeof_void : int;
-    (* size_t *)
-    (* wchar_t *)
-}
-
-let seen_c_impl : c_impl option ref = ref None
-
-let theImpl () : c_impl = match !seen_c_impl with Some(i) -> i
-    | None -> failwith "unknown implementation of C (CIL client: have you read any C file yet?)"
-
-(* Each time we read a file, we either create a c_impl from its #defines
- * (or from our guess), or we check consistency with the one we already have.
- * We don't want to process multi-file jobs that are not assuming a compatible
- * implementation. *)
-
-(* The following are behaviours of CIL, not properties of a C implementation. *)
-
-(* Set this to true to get old-style handling of gcc's extern inline C extension:
-   old-style: the extern inline definition is used until the actual definition is
-     seen (as long as optimization is enabled)
-   new-style: the extern inline definition is used only if there is no actual
-     definition (as long as optimization is enabled)
-   Note that CIL assumes that optimization is always enabled ;-) *)
-let oldstyleExternInline = ref false
-
-let makeStaticGlobal = ref true
-
-let useLogicalOperators = ref false
-
-let useComputedGoto = ref false
-
-let useCaseRange = ref false
-
-(* ciloptions.ml may set this to the environment-supplied machine
-   description, if --envmachine is given (etc). This will get
-   picked up for 'theMachine' by initCIL below. This will only
-   be used if the file contains no macro information about
-   machine/compiler details. As a final fallback, initCIL will
-   use the description generated at CIL build time. *)
-let envMachine : string option ref = ref None
-
-let lowerConstants: bool ref = ref true
-    (** Do lower constants (default true) *)
-let insertImplicitCasts: bool ref = ref true
-    (** Do insert implicit casts (default true) *)
-
 type lineDirectiveStyle =
   | LineComment                (** Before every element, print the line 
                                 * number in comments. This is ignored by 
@@ -942,6 +858,90 @@ and typsig =
   | TSFun of typsig * typsig list option * bool * attribute list
   | TSEnum of string * attribute list
   | TSBase of typ
+and c_impl = {
+    msvc : bool; (* Determines whether the pretty printer should 
+                  * print output for the MS VC 
+                  * compiler. Default is GCC *)
+    dialectVersion : int;
+    isC99OrLater : bool;   (* True to handle ISO C 99 vs 90 changes.
+                              So far only affects integer parsing. *)
+    little_endian : bool;
+    char_is_unsigned : bool;
+    underscore_name : bool;
+    __builtin_va_list : bool;
+    const_string_literals : bool;
+    sizeof_bool : int;
+    sizeof_complex_double : int;
+    sizeof_complex_float : int;
+    sizeof_complex_longdouble : int;
+    sizeof_double : int;
+    sizeof_float : int;
+    sizeof_fun : int;
+    sizeof_int : int;
+    sizeof_long : int;
+    sizeof_longdouble : int;
+    sizeof_longlong : int;
+    sizeof_ptr : int;
+    sizeof_short : int;
+    sizeof_shortfloat : int;
+    sizeof_void : int;
+    size_t : ikind;
+    wchar_t : ikind;
+    thread_is_keyword : bool;
+}
+(* A few globals that control the interpretation of C source:
+ *
+ * - which C standard 'base' we are targeting (C90, C99, C11, C18, ...)
+ * - which compiler's 'extension dialect' (GCC or MSVC)
+ * - the specific version of the latter.
+ *
+ * We try to pick up the specific version ourselves from preprocessing
+ * content. Generating this, e.g. by preprocessing with -dD, is a job
+ * for clients/drivers (cilly, etc.), not us the library. We only take our
+ * 'guess of last resort' from a build-time generated/probed header (formerly
+ * Machdep, but now much simpler), if there is no macro content in our input.
+ *)
+
+let seen_c_impl : c_impl option ref = ref None
+
+let theImpl () : c_impl = match !seen_c_impl with Some(i) -> i
+    | None -> failwith "unknown implementation of C (CIL client: have you read any C file yet?)"
+
+(* Each time we read a file, we either create a c_impl from its #defines
+ * (or from our guess), or we check consistency with the one we already have.
+ * We don't want to process multi-file jobs that are not assuming a compatible
+ * implementation. *)
+
+(* The following are behaviours of CIL, not properties of a C implementation. *)
+
+(* Set this to true to get old-style handling of gcc's extern inline C extension:
+   old-style: the extern inline definition is used until the actual definition is
+     seen (as long as optimization is enabled)
+   new-style: the extern inline definition is used only if there is no actual
+     definition (as long as optimization is enabled)
+   Note that CIL assumes that optimization is always enabled ;-) *)
+let oldstyleExternInline = ref false
+
+let makeStaticGlobal = ref true
+
+let useLogicalOperators = ref false
+
+let useComputedGoto = ref false
+
+let useCaseRange = ref false
+
+(* ciloptions.ml may set this to the environment-supplied machine
+   description, if --envmachine is given (etc). This will get
+   picked up for 'theMachine' by initCIL below. This will only
+   be used if the file contains no macro information about
+   machine/compiler details. As a final fallback, initCIL will
+   use the description generated at CIL build time. *)
+let envMachine : string option ref = ref None
+
+let lowerConstants: bool ref = ref true
+    (** Do lower constants (default true) *)
+let insertImplicitCasts: bool ref = ref true
+    (** Do insert implicit casts (default true) *)
 
 let locUnknown = { line = -1; 
 		   file = ""; 
@@ -1761,7 +1761,7 @@ let d_storage () = function
 let mostNeg32BitInt : int64 = (Int64.of_string "-0x80000000")
 let mostNeg64BitInt : int64 = (Int64.of_string "-0x8000000000000000")
 
-let bytesSizeOfInt (ik: ikind): int = 
+let bytesSizeOfIntegerKind (ik: ikind): int = 
   match ik with 
   | IChar | ISChar | IUChar -> 1
   | IBool -> (theImpl ()).sizeof_bool
@@ -1770,6 +1770,27 @@ let bytesSizeOfInt (ik: ikind): int =
   | ILong | IULong -> (theImpl ()).sizeof_long
   | ILongLong | IULongLong -> (theImpl ()).sizeof_longlong
   | IInt128 | IUInt128 -> 16
+
+let rec bytesSizeOfFloatKind (fk: fkind): int =
+  match fk with
+  | FShortFloat -> (theImpl ()).sizeof_shortfloat
+  | FFloat -> (theImpl ()).sizeof_float
+  | FDouble ->  (theImpl ()).sizeof_double
+  | FLongDouble -> (theImpl ()).sizeof_longdouble
+  | FFloat128 -> 16
+  | FComplexFloat -> 2 * bytesSizeOfFloatKind FFloat
+  | FComplexShortFloat -> 2 * bytesSizeOfFloatKind FShortFloat
+  | FComplexDouble -> 2 * bytesSizeOfFloatKind FDouble
+  | FComplexLongDouble -> 2 * bytesSizeOfFloatKind FLongDouble
+  | FComplexFloat128 -> 32
+  | FFloat128x -> 16
+  | FFloat64x -> 8
+  | FFloat32x -> 4
+  | FFloat16x -> 2
+  | FComplexFloat128x -> 32
+  | FComplexFloat64x -> 16
+  | FComplexFloat32x -> 8
+  | FComplexFloat16x -> 4
 
 (* constant *)
 let d_const () c = 
@@ -1796,7 +1817,7 @@ let d_const () c =
       (* Watch out here for negative integers that we should be printing as 
        * large positive ones *)
       if i < Int64.zero && (not (isSigned ik)) then
-        if bytesSizeOfInt ik <> 8 then
+        if bytesSizeOfIntegerKind ik <> 8 then
           (* I am convinced that we shall never store smaller than 64-bits
            * integers in negative form. -- Gabriel *)
           E.s (E.bug "unexpected negative unsigned integer (please report this bug)")
@@ -2086,7 +2107,7 @@ let commonIntKind (ik1:ikind) (ik2:ikind) : ikind =
        (unsigned short + long) is converted to signed long,
        but (unsigned int + long) is converted to unsigned long.*)
     if unsignedRank >= signedRank then unsignedKind
-    else if (bytesSizeOfInt signedKind) > (bytesSizeOfInt unsignedKind) then
+    else if (bytesSizeOfIntegerKind signedKind) > (bytesSizeOfIntegerKind unsignedKind) then
       signedKind
     else 
       unsignedVersionOf signedKind
@@ -2138,7 +2159,7 @@ let truncateCilint (k: ikind) (i: cilint) : cilint * truncation =
     else
       one_cilint, NoTruncation
   else
-    let nrBits = 8 * (bytesSizeOfInt k) in
+    let nrBits = 8 * (bytesSizeOfIntegerKind k) in
     if isSigned k then
       truncate_signed_cilint i nrBits
     else
@@ -2243,51 +2264,14 @@ type bitOffsetAcc =
 (* Hack to prevent infinite recursion in alignments *)
 let ignoreAlignmentAttrs = ref false
 
-let rec alignOf_int t = match t with
- | TInt((IChar|ISChar|IUChar), _) -> 1
- | TInt(IBool, _) -> sizeOf t (* HACK *)
- | TInt((IShort|IUShort), _) -> sizeOf t (* HACK *)
- | TInt((IInt|IUInt), _) -> sizeOf t (* HACK *)
- | TInt((ILong|IULong), _) -> sizeOf t (* HACK *)
- | TInt((ILongLong|IULongLong), _) -> sizeOf t (* HACK *)
- | TInt((IInt128|IUInt128), _) -> sizeOf t (* HACK *)
- | TFloat(FShortFloat, _) -> sizeOf t (* HACK *)
- | TFloat(FFloat, _) -> sizeOf t (* HACK *)
- | TFloat(FDouble, _) -> sizeOf t (* HACK *)
- | TFloat(FLongDouble, _) -> sizeOf t (* HACK *)
- | TFloat(FFloat128, _) -> sizeOf t (* HACK *)
- | TFloat(FComplexShortFloat, _) -> sizeOf t (* HACK *)
- | TFloat(FComplexFloat, _) -> sizeOf t (* HACK *)
- | TFloat(FComplexDouble, _) -> sizeOf t (* HACK *)
- | TFloat(FComplexLongDouble, _) -> sizeOf t (* HACK *)
- | TFloat(FComplexFloat128, _) -> sizeOf t (* HACK *)
- | TFloat(FFloat16x, _) -> sizeOf t (* HACK *)
- | TFloat(FFloat32x, _) -> sizeOf t (* HACK *)
- | TFloat(FFloat64x, _) -> sizeOf t (* HACK *)
- | TFloat(FFloat128x, _) -> sizeOf t (* HACK *)
- | TFloat(FComplexFloat16x, _) -> sizeOf t (* HACK *)
- | TFloat(FComplexFloat32x, _) -> sizeOf t (* HACK *)
- | TFloat(FComplexFloat64x, _) -> sizeOf t (* HACK *)
- | TFloat(FComplexFloat128x, _) -> sizeOf t (* HACK *)
-
-and alignOfField (fi: fieldinfo) =
-  let fieldIsPacked = hasAttribute "packed" fi.fattr 
-                      || hasAttribute "packed" fi.fcomp.cattr in
-  if fieldIsPacked then 1
-  else alignOf_int fi.ftype
-    
-
-and bytesSizeOf t = (bitsSizeOf t) / 8 (* HACK *) 
-
-and intOfAttrparam (a:attrparam) : int option = 
+let rec intOfAttrparam (a:attrparam) : int option = 
   let rec doit a : int =
     match a with
       AInt(n) -> n
     | ABinOp(Shiftlt, a1, a2) -> (doit a1) lsl (doit a2)
     | ABinOp(Div, a1, a2) -> (doit a1) / (doit a2)
-    | ASizeOf(t) -> bytesSizeOf t 
-    | AAlignOf(t) ->
-        alignOf_int t
+    | ASizeOf(t) -> raise (SizeOfError ("can't compute sizes of types", t))
+    | AAlignOf(t) -> raise (SizeOfError ("can't compute alignment of types", t))
     | _ -> raise (SizeOfError ("", voidType))
   in
   (* Use ignoreAlignmentAttrs here to prevent stack overflow if a buggy
@@ -2304,322 +2288,6 @@ and intOfAttrparam (a:attrparam) : int option =
   with SizeOfError _ -> (* Can't compile *)
     ignoreAlignmentAttrs := false;
     None
-
-
-(* GCC version *)
-(* Does not use the sofar.oaPrevBitPack *)
-and bitsOffsetOfFieldAcc_GCC
-                         (fi: fieldinfo) 
-                         (sofar: bitOffsetAcc) : bitOffsetAcc = 
-  (* field type *)
-  let ftype = unrollType fi.ftype in
-  let ftypeAlign = 8 * alignOfField fi in
-  let ftypeBits = bitsSizeOf ftype in
-  match ftype, fi.fbitfield with
-    (* A width of 0 means that we must end the current packing. It seems that 
-     * GCC pads only up to the alignment boundary for the type of this field. 
-     * *)
-  | _, Some 0 -> 
-      let firstFree      = addTrailingBits sofar.oaFirstFree ftypeAlign in
-      { oaFirstFree      = firstFree;
-        oaLastFieldStart = firstFree;
-        oaLastFieldWidth = 0;
-        oaPrevBitPack    = None }
-
-    (* A bitfield cannot span more alignment boundaries of its type than the 
-     * type itself *)
-  | _, Some wdthis 
-      when (sofar.oaFirstFree + wdthis + ftypeAlign - 1) / ftypeAlign 
-            - sofar.oaFirstFree / ftypeAlign > ftypeBits / ftypeAlign -> 
-          let start = addTrailingBits sofar.oaFirstFree ftypeAlign in    
-          { oaFirstFree      = start + wdthis;
-            oaLastFieldStart = start;
-            oaLastFieldWidth = wdthis;
-            oaPrevBitPack    = None }
-        
-   (* Try a simple method. Just put the field down *)
-  | _, Some wdthis -> 
-      { oaFirstFree      = sofar.oaFirstFree + wdthis;
-        oaLastFieldStart = sofar.oaFirstFree; 
-        oaLastFieldWidth = wdthis;
-        oaPrevBitPack    = None
-      } 
-
-     (* Non-bitfield *)
-  | _, None -> 
-      (* Align this field *)
-      let newStart = addTrailingBits sofar.oaFirstFree ftypeAlign  in
-      { oaFirstFree = newStart + ftypeBits;
-        oaLastFieldStart = newStart;
-        oaLastFieldWidth = ftypeBits;
-        oaPrevBitPack = None;
-      } 
-
-(* MSVC version *)
-and bitsOffsetOfFieldAcc_MSVC (fi: fieldinfo) 
-                              (sofar: bitOffsetAcc) : bitOffsetAcc = 
-  (* field type *)
-  let ftype = unrollType fi.ftype in
-  let ftypeAlign = 8 * alignOf_int ftype in
-  let ftypeBits = bitsSizeOf ftype in
-(*
-  ignore (E.log "bitsOffsetOfFieldAcc_MSVC(%s of %s:%a%a,firstFree=%d, pack=%a)\n" 
-            fi.fname fi.fcomp.cname 
-            d_type ftype
-            insert
-            (match fi.fbitfield with
-              None -> nil
-            | Some wdthis -> dprintf ":%d" wdthis)
-            sofar.oaFirstFree 
-            insert
-            (match sofar.oaPrevBitPack with 
-              None -> text "None"
-            | Some (prevpack, _, wdpack) -> dprintf "Some(prev=%d,wd=%d)"
-                  prevpack wdpack));
-*)
-  match ftype, fi.fbitfield, sofar.oaPrevBitPack with
-    (* Ignore zero-width bitfields that come after non-bitfields *)
-  | TInt (ikthis, _), Some 0, None -> 
-      let firstFree      = sofar.oaFirstFree in
-      { oaFirstFree      = firstFree;
-        oaLastFieldStart = firstFree;
-        oaLastFieldWidth = 0;
-        oaPrevBitPack    = None }
-
-    (* If we are in a bitpack and we see a bitfield for a type with the 
-     * different width than the pack, then we finish the pack and retry *)
-  | _, Some _, Some (packstart, _, wdpack) when wdpack != ftypeBits ->
-      let firstFree = 
-        if sofar.oaFirstFree = packstart then packstart else
-        packstart + wdpack
-      in
-      bitsOffsetOfFieldAcc_MSVC fi
-        { oaFirstFree      = addTrailingBits firstFree ftypeAlign;
-          oaLastFieldStart = sofar.oaLastFieldStart;
-          oaLastFieldWidth = sofar.oaLastFieldWidth;
-          oaPrevBitPack    = None }
-
-    (* A width of 0 means that we must end the current packing. *)
-  | TInt (ikthis, _), Some 0, Some (packstart, _, wdpack) -> 
-      let firstFree = 
-        if sofar.oaFirstFree = packstart then packstart else
-        packstart + wdpack
-      in
-      let firstFree      = addTrailingBits firstFree ftypeAlign in
-      { oaFirstFree      = firstFree;
-        oaLastFieldStart = firstFree;
-        oaLastFieldWidth = 0;
-        oaPrevBitPack    = Some (firstFree, ikthis, ftypeBits) }
-
-   (* Check for a bitfield that fits in the current pack after some other 
-    * bitfields *)
-  | TInt(ikthis, _), Some wdthis, Some (packstart, ikprev, wdpack)
-      when  packstart + wdpack >= sofar.oaFirstFree + wdthis ->
-              { oaFirstFree = sofar.oaFirstFree + wdthis;
-                oaLastFieldStart = sofar.oaFirstFree; 
-                oaLastFieldWidth = wdthis;
-                oaPrevBitPack = sofar.oaPrevBitPack
-              } 
-
-
-  | _, _, Some (packstart, _, wdpack) -> (* Finish up the bitfield pack and 
-                                          * restart. *)
-      let firstFree = 
-        if sofar.oaFirstFree = packstart then packstart else
-        packstart + wdpack
-      in
-      bitsOffsetOfFieldAcc_MSVC fi
-        { oaFirstFree      = addTrailingBits firstFree ftypeAlign;
-          oaLastFieldStart = sofar.oaLastFieldStart;
-          oaLastFieldWidth = sofar.oaLastFieldWidth;
-          oaPrevBitPack    = None }
-
-        (* No active bitfield pack. But we are seeing a bitfield. *)
-  | TInt(ikthis, _), Some wdthis, None -> 
-      let firstFree     = addTrailingBits sofar.oaFirstFree ftypeAlign in
-      { oaFirstFree     = firstFree + wdthis;
-        oaLastFieldStart = firstFree;
-        oaLastFieldWidth = wdthis;
-        oaPrevBitPack = Some (firstFree, ikthis, ftypeBits); }
-
-     (* No active bitfield pack. Non-bitfield *)
-  | _, None, None -> 
-      (* Align this field *)
-      let firstFree = addTrailingBits sofar.oaFirstFree ftypeAlign  in
-      { oaFirstFree = firstFree + ftypeBits;
-        oaLastFieldStart = firstFree;
-        oaLastFieldWidth = ftypeBits;
-        oaPrevBitPack = None;
-      } 
-
-  | _, Some _, None -> E.s (E.bug "bitOffsetAcc")
-
-
-and bitsOffsetOfFieldAcc ~(fi: fieldinfo) 
-                     ~(sofar: bitOffsetAcc) : bitOffsetAcc = 
-  if (theImpl ()).msvc then bitsOffsetOfFieldAcc_MSVC fi sofar
-  else bitsOffsetOfFieldAcc_GCC fi sofar
-
-(* The size of a type, in bits. If a struct or array, then trailing padding is 
- * added *)
-and bitsSizeOf t = 
-  if not !initCIL_called then 
-    E.s (E.error "You did not call Cil.initCIL before using the CIL library");
-  match t with 
-  | TInt (ik,_) -> 8 * (bytesSizeOfInt ik)
-  | TFloat(FShortFloat, _) -> 8 * (theImpl ()).sizeof_shortfloat
-  | TFloat(FFloat, _) -> 8 * (theImpl ()).sizeof_float
-  | TFloat(FDouble, _) -> 8 * (theImpl ()).sizeof_double
-  | TFloat(FLongDouble, _) -> 8 * (theImpl ()).sizeof_longdouble
-  | TFloat(FFloat128, _) -> 128
-  | TFloat(FComplexFloat, _) -> 8 * (theImpl ()).sizeof_complex_float
-  | TFloat(FComplexDouble, _) -> 8 * (theImpl ()).sizeof_complex_double
-  | TFloat(FComplexLongDouble, _) -> 8 * (theImpl ()).sizeof_complex_longdouble
-  | TFloat(FFloat16x, _) -> 16
-  | TFloat(FFloat32x, _) -> 32
-  | TFloat(FFloat64x, _) -> 64
-  | TFloat(FFloat128x, _) -> 128
-  | TFloat(FComplexFloat16x, _) -> 2*16 (* FIXME: is this correct? *)
-  | TFloat(FComplexFloat32x, _) -> 2*32
-  | TFloat(FComplexFloat64x, _) -> 2*64
-  | TFloat(FComplexFloat128x, _) -> 2*128
-  | TEnum (ei, _) -> bitsSizeOf (TInt(ei.ekind, []))
-  | TPtr _ -> 8 * (theImpl ()).sizeof_ptr
-  | TBuiltin_va_list _ -> 8 * (theImpl ()).sizeof_ptr
-  | TNamed (t, _) -> bitsSizeOf t.ttype
-  | TComp (comp, _) when comp.cfields == [] -> begin
-      (* Empty structs are allowed in msvc mode *)
-      if not comp.cdefined && not (theImpl ()).msvc then
-        raise (SizeOfError ("abstract type", t)) (*abstract type*)
-      else
-        0
-  end
-
-  | TComp (comp, _) when comp.cstruct -> (* Struct *)
-        (* Go and get the last offset *)
-      let startAcc = 
-        { oaFirstFree = 0;
-          oaLastFieldStart = 0;
-          oaLastFieldWidth = 0;
-          oaPrevBitPack = None;
-        } in
-      let lastoff = 
-        List.fold_left (fun acc fi -> bitsOffsetOfFieldAcc ~fi ~sofar:acc) 
-          startAcc comp.cfields 
-      in
-      if (theImpl ()).msvc && lastoff.oaFirstFree = 0 && comp.cfields <> [] then
-          (* On MSVC if we have just a zero-width bitfields then the length 
-           * is 32 and is not padded  *)
-        32
-      else begin
-        (* Drop e.g. the align attribute from t.  For this purpose,
-           consider only the attributes on comp itself.*)
-        let structAlign = 8 * alignOf_int 
-                            (TComp (comp, [])) in
-        addTrailingBits lastoff.oaFirstFree structAlign
-      end
-        
-  | TComp (comp, _) -> (* when not comp.cstruct *)
-        (* Get the maximum of all fields *)
-      let startAcc = 
-        { oaFirstFree = 0;
-          oaLastFieldStart = 0;
-          oaLastFieldWidth = 0;
-          oaPrevBitPack = None;
-        } in
-      let max = 
-        List.fold_left (fun acc fi -> 
-          let lastoff = bitsOffsetOfFieldAcc ~fi ~sofar:startAcc in
-          if lastoff.oaFirstFree > acc then
-            lastoff.oaFirstFree else acc) 0 comp.cfields in
-        (* Add trailing by simulating adding an extra field *)
-      addTrailingBits max (8 * alignOf_int t)
-
-  | TArray(bt, Some len, _) -> begin
-      match constFold true len with 
-        Const(CInt64(l,lk,_)) -> 
-	  let sz = mul_cilint (mkCilint lk l) (cilint_of_int  (bitsSizeOf bt)) in
-          (* Check for overflow.
-             There are other places in these cil.ml that overflow can occur,
-             but this multiplication is the most likely to be a problem. *)
-          if not (is_int_cilint sz) then
-            raise (SizeOfError ("Array is so long that its size can't be "
-                                  ^"represented with an OCaml int.", t))
-          else
-            addTrailingBits (int_of_cilint sz) (8 * alignOf_int t)
-      | _ -> raise (SizeOfError ("array non-constant length", t))
-  end
-
-
-  | TVoid _ -> 8 * (theImpl ()).sizeof_void
-  | TFun _ when not (theImpl ()).msvc -> (* On GCC the size of a function is defined *)
-      8 * (theImpl ()).sizeof_fun
-
-  | TArray (_, None, _) -> (* it seems that on GCC the size of such an 
-                            * array is 0 *) 
-      0
-
-  | TFun _ -> raise (SizeOfError ("function", t))
-
-
-and addTrailingBits nrbits roundto = 
-    (nrbits + roundto - 1) land (lnot (roundto - 1))
-
-and sizeOf t = 
-  try
-    integer ((bitsSizeOf t) lsr 3)
-  with SizeOfError _ -> SizeOf(t)
-
- 
-and bitsOffset (baset: typ) (off: offset) : int * int = 
-  let rec loopOff (baset: typ) (width: int) (start: int) = function
-      NoOffset -> start, width
-    | Index(e, off) -> begin
-        let ei = 
-          match getInteger e with
-            Some i -> cilint_to_int i
-          | None -> raise (SizeOfError ("index not constant", baset))
-        in
-        let bt = 
-          match unrollType baset with
-            TArray(bt, _, _) -> bt
-          | _ -> E.s (E.bug "bitsOffset: Index on a non-array")
-        in
-        let bitsbt = bitsSizeOf bt in
-        loopOff bt bitsbt (start + ei * bitsbt) off
-    end
-    | Field(f, off) when not f.fcomp.cstruct -> 
-        (* All union fields start at offset 0 *)
-        loopOff f.ftype (bitsSizeOf f.ftype) start off
-
-    | Field(f, off) -> 
-        (* Construct a list of fields preceeding and including this one *)
-        let prevflds = 
-          let rec loop = function
-              [] -> E.s (E.bug "bitsOffset: Cannot find field %s in %s\n" 
-                           f.fname f.fcomp.cname)
-            | fi' :: _ when fi' == f -> [fi']
-            | fi' :: rest -> fi' :: loop rest
-          in
-          loop f.fcomp.cfields
-        in
-        let lastoff =
-          List.fold_left (fun acc fi' -> bitsOffsetOfFieldAcc ~fi:fi' ~sofar:acc)
-            { oaFirstFree      = 0; (* Start at 0 because each struct is done 
-                                     * separately *)
-              oaLastFieldStart = 0;
-              oaLastFieldWidth = 0;
-              oaPrevBitPack    = None } prevflds
-        in
-        (* ignore (E.log "Field %s of %s: start=%d, lastFieldStart=%d\n"
-                  f.fname f.fcomp.cname start lastoff.oaLastFieldStart); *)
-        loopOff f.ftype lastoff.oaLastFieldWidth 
-               (start + lastoff.oaLastFieldStart) off
-  in
-  loopOff baset (bitsSizeOf baset) 0 off
-        
-
-
 
 (** Do constant folding on an expression. If the first argument is true then 
     will also compute compiler-dependent expressions such as sizeof.
@@ -2652,35 +2320,12 @@ and constFold (machdep: bool) (e: exp) : exp =
   | Const(CEnum (v, _, _)) -> constFold machdep v
   | SizeOf t when machdep -> begin
       try
-        let bs = bitsSizeOf t in
-        kinteger !kindOfSizeOf (bs / 8)
+        let bysz = bytesSizeOfIntegerType (* may or may not be integer... *) t in
+        kinteger !kindOfSizeOf bysz
       with SizeOfError _ -> e
   end
   | SizeOfE e when machdep -> constFold machdep (SizeOf (typeOf e))
   | SizeOfStr s when machdep -> kinteger !kindOfSizeOf (1 + String.length s)
-  | AlignOf t when machdep -> kinteger !kindOfSizeOf (alignOf_int t)
-  | AlignOfE e when machdep -> begin
-      (* The alignment of an expression is not always the alignment of its 
-       * type. I know that for strings this is not true *)
-      match e with 
-        Const (CStr _) when not (theImpl ()).msvc -> 
-          kinteger !kindOfSizeOf (theImpl ()).alignof_str
-            (* For an array, it is the alignment of the array ! *)
-      | _ -> constFold machdep (AlignOf (typeOf e))
-  end
-
-  | CastE(it, 
-          AddrOf (Mem (CastE(TPtr(bt, _), z)), off)) 
-    when machdep && isZero z -> begin
-      try 
-        let start, width = bitsOffset bt off in
-        if start mod 8 <> 0 then 
-          E.s (error "Using offset of bitfield");
-        constFold machdep (CastE(it, (kinteger !kindOfSizeOf (start / 8))))
-      with SizeOfError _ -> e
-  end
-
- 
   | CastE (t, e) -> begin
       match constFold machdep e, unrollType t with 
         (* Might truncate silently *)
@@ -2696,6 +2341,14 @@ and constFold (machdep: bool) (e: exp) : exp =
   | AddrOf lv -> AddrOf (constFoldLval machdep lv)
   | StartOf lv -> StartOf (constFoldLval machdep lv)
   | _ -> e
+
+and bytesSizeOfIntegerType (t:typ) = 
+ (* FIXME: ask the impl *)
+    raise (SizeOfError ("can't compute sizes of (most) types", t))
+
+and bytesSizeOfIntegerKind (k:ikind) = 
+ (* FIXME: ask the impl *)
+    raise (SizeOfError ("can't compute sizes of (most) types", TInt(k, [])))
 
 and constFoldLval machdep (host,offset) =
   let newhost = 
@@ -2732,7 +2385,7 @@ and constFoldBinOp (machdep: bool) bop e1 e2 tres =
         if machdep then
           try
             compare_cilint i2 zero_cilint >= 0 && 
-	    compare_cilint i2 (cilint_of_int (bitsSizeOf (typeOf e1'))) < 0
+	    compare_cilint i2 (cilint_of_int (bytesSizeOfIntegerType (typeOf e1'))) < 0
           with SizeOfError _ -> false
         else false
       in
@@ -2832,7 +2485,7 @@ let parseInt (str: string) : exp =
       3, [ILongLong]
     else
       0, if octalhex then [IInt; IUInt; ILong; IULong; ILongLong; IULongLong]
-      else if not !c99Mode then [ IInt; ILong; IULong; ILongLong; IULongLong]
+      else if not (theImpl ()).isC99OrLater then [ IInt; ILong; IULong; ILongLong; IULongLong]
       else [IInt; ILong; ILongLong]
   in
     (* Convert to integer. To prevent overflow we do the arithmetic on
@@ -6448,30 +6101,13 @@ let rec makeZeroInit (t: typ) : init =
         | [] -> E.s (unimp "Cannot create init for empty union")
       in
       let fieldToInit = 
-        if (theImpl ()).msvc then
           (* ISO C99 [6.7.8.10] says that the first field of the union
              is the one we should initialize. *)
           fstfield
-        else begin
-          (* gcc initializes the whole union to zero.  So choose the largest
-             field, and set that to zero.  Choose the first field if possible.
-             MSVC also initializes the whole union, but use the ISO behavior
+          (* FIXME: gcc initializes the whole union to zero.  So choose the largest
+             field, and set that to zero.  (It's OK to use the ISO behavior
              for MSVC because it only allows compound initializers to refer
              to the first union field. *)
-          let fieldSize f = try bitsSizeOf f.ftype with SizeOfError _ -> 0 in
-          let widestField, widestFieldWidth =
-            List.fold_left (fun acc thisField ->
-                              let widestField, widestFieldWidth = acc in
-                              let thisSize = fieldSize thisField in
-                              if thisSize > widestFieldWidth then
-                                thisField, thisSize
-                              else
-                                acc)
-              (fstfield, fieldSize fstfield)
-              rest
-          in
-          widestField
-        end
       in
       CompoundInit(t, [(Field(fieldToInit, NoOffset), 
                         makeZeroInit fieldToInit.ftype)])
@@ -7080,6 +6716,17 @@ let computeCFGInfo (f : fundec) (global_numbering : bool) : unit =
   f.sallstmts <- res;
   ()
 
+
+(* We wrote above: 
+   ciloptions.ml may set `envmachine` to the environment-supplied machine
+   description, if --envmachine is given (etc). This will get
+   picked up for 'theMachine' by initCIL below. This will only
+   be used if the file contains no macro information about
+   machine/compiler details. As a final fallback, initCIL will
+   use the description generated at CIL build time.
+   
+   ... so now we have to make that a reality. First idea: take
+   an optional file argument? *)
 let initCIL () = 
   if not !initCIL_called then begin 
     (* Pick type for string literals *)
@@ -7094,30 +6741,12 @@ let initCIL () =
       with Not_found -> 
         E.s(E.unimp "initCIL: cannot find the right ikind for size %d\n" sz)
     in      
-    (* Find the right ikind given the name *)
-    let findIkindName (name: string) : ikind = 
-      (* Test the most common sizes first *)
-      if name = "int" then IInt
-      else if name = "unsigned int" then IUInt
-      else if name = "long" then ILong
-      else if name = "unsigned long" then IULong
-      else if name = "long long" then ILongLong
-      else if name = "unsigned long long" then IULongLong
-      else if name = "short" then IShort
-      else if name = "unsigned short" then IUShort
-      else if name = "char" then IChar
-      else if name = "unsigned char" then IUChar
-      else E.s(E.unimp "initCIL: cannot find the right ikind for type %s\n" name)
-    in      
     upointType := TInt(findIkindSz true (theImpl ()).sizeof_ptr, []);
     ptrdiffType := TInt(findIkindSz false (theImpl ()).sizeof_ptr, []);
-    kindOfSizeOf := findIkindName (theImpl ()).size_t;
+    kindOfSizeOf := (theImpl ()).size_t;
     typeOfSizeOf := TInt(!kindOfSizeOf, []);
-    wcharKind := findIkindName (theImpl ()).wchar_t;
+    wcharKind := (theImpl ()).wchar_t;
     wcharType := TInt(!wcharKind, []);
-    char_is_unsigned := (theImpl ()).char_is_unsigned;
-    little_endian := (theImpl ()).little_endian;
-    underscore_name := (theImpl ()).underscore_name;
 (*     nextGlobalVID := 1; *)
 (*     nextCompinfoKey := 1; *)
 
@@ -7285,7 +6914,7 @@ let msvcBuiltins = builtinFunctions
    Returns a flag saying whether the value was changed
    during truncation (because it was too large to fit in k). *)
 let truncateInteger64 (k: ikind) (i: int64) : int64 * bool = 
-  let nrBits = 8 * (bytesSizeOfInt k) in
+  let nrBits = 8 * bytesSizeOfIntegerKind k in
   let signed = isSigned k in
   if nrBits = 64 then 
     i, false
@@ -7347,7 +6976,7 @@ let convertInts (i1:int64) (ik1:ikind) (i2:int64) (ik2:ikind)
            (unsigned short + long) is converted to signed long,
            but (unsigned int + long) is converted to unsigned long.*)
         if unsignedRank >= signedRank then unsignedKind
-        else if (bytesSizeOfInt signedKind) > (bytesSizeOfInt unsignedKind) then
+        else if (bytesSizeOfIntegerKind signedKind) > (bytesSizeOfIntegerKind unsignedKind) then
           signedKind
         else 
           unsignedVersionOf signedKind

@@ -1147,8 +1147,40 @@ and typsig =
   | TSFun of typsig * typsig list option * bool * attribute list
   | TSEnum of string * attribute list
   | TSBase of typ
+and c_impl = {
+    msvc : bool; (* Determines whether the pretty printer should 
+                  * print output for the MS VC 
+                  * compiler. Default is GCC *)
+    dialectVersion : int;  (* For GCC mode, the GNU C dialect version *)
+    isC99OrLater : bool;   (* True to handle ISO C 99 vs 90 changes.
+                              So far only affects integer parsing. *)
+    little_endian : bool;
+    char_is_unsigned : bool;
+    underscore_name : bool;
+    __builtin_va_list : bool;
+    const_string_literals : bool;
+    sizeof_bool : int;
+    sizeof_complex_double : int;
+    sizeof_complex_float : int;
+    sizeof_complex_longdouble : int;
+    sizeof_double : int;
+    sizeof_float : int;
+    sizeof_fun : int;
+    sizeof_int : int;
+    sizeof_long : int;
+    sizeof_longdouble : int;
+    sizeof_longlong : int;
+    sizeof_ptr : int;
+    sizeof_short : int;
+    sizeof_shortfloat : int;
+    sizeof_void : int;
+    size_t : ikind;
+    wchar_t : ikind;
+    thread_is_keyword : bool;
+}
 
-
+(** Details of the C implementation that have been inferred *)
+val theImpl : unit -> c_impl
 
 (** {b Lowering Options} *)
 
@@ -2023,13 +2055,6 @@ val visitCilAttributes: cilVisitor -> attribute list -> attribute list
 
 (** {b Utility functions} *)
 
-(** Whether the pretty printer should print output for the MS VC compiler.
-   Default is GCC. After you set this function you should call {!Cil.initCIL}. *)
-val msvcMode: bool ref
-
-(** The version of GNU C we input and output in non-MSVC mode, as 100*major + minor. *)
-val gnucDialectVersion : int ref
-
 (** Whether to convert local static variables into global static variables *)
 val makeStaticGlobal: bool ref
 
@@ -2563,13 +2588,13 @@ val intKindForSize : int -> bool -> ikind
 val floatKindForSize : ?complex:bool -> int -> fkind
 
 (** The size in bytes of the given int kind. *)
-val bytesSizeOfInt: ikind -> int 
+val bytesSizeOfIntegerKind: ikind -> int 
 
-(** The size of a type, in bits. Trailing padding is added for structs and 
- * arrays. Raises {!Cil.SizeOfError} when it cannot compute the size. This 
- * function is architecture dependent, so you should only call this after you 
- * call {!Cil.initCIL}. Remember that on GCC sizeof(void) is 1! *)
-val bitsSizeOf: typ -> int
+(** The size in bytes of the given float kind. *)
+val bytesSizeOfFloatKind: fkind -> int 
+
+(** The size in bytes of the given type (must be integer). *)
+val bytesSizeOfIntegerType: typ -> int 
 
 (** Represents an integer as for a given kind.  Returns a truncation
  * flag saying that the value fit in the kind (NoTruncation), didn't
@@ -2594,36 +2619,6 @@ val intKindForValue: cilint -> bool -> ikind
  * getting the actual constant value from a CInt64(n, ik, _)
  * constant. *)
 val mkCilint : ikind -> int64 -> cilint
-
-(** The size of a type, in bytes. Returns a constant expression or a
- * "sizeof" expression if it cannot compute the size. This function
- * is architecture dependent, so you should only call this after you
- * call {!Cil.initCIL}.  *)
-val sizeOf: typ -> exp
-
-(** The minimum alignment (in bytes) for a type. This function is 
- * architecture dependent, so you should only call this after you call 
- * {!Cil.initCIL}. *)
-val alignOf_int: typ -> int
-
-(** Give a type of a base and an offset, returns the number of bits from the 
- * base address and the width (also expressed in bits) for the subobject 
- * denoted by the offset. Raises {!Cil.SizeOfError} when it cannot compute 
- * the size. This function is architecture dependent, so you should only call 
- * this after you call {!Cil.initCIL}. *)
-val bitsOffset: typ -> offset -> int * int
-
-
-(** Whether "char" is unsigned. Set after you call {!Cil.initCIL} *)
-val char_is_unsigned: bool ref
-
-(** Whether the machine is little endian. Set after you call {!Cil.initCIL} *)
-val little_endian: bool ref
-
-(** Whether the compiler generates assembly labels by prepending "_" to the 
-    identifier. That is, will function foo() have the label "foo", or "_foo"?
-    Set after you call {!Cil.initCIL} *)
-val underscore_name: bool ref
 
 (** Represents a location that cannot be determined *)
 val locUnknown: location
@@ -2705,8 +2700,7 @@ val d_formatarg: unit -> formatArg -> Pretty.doc
 (** Emit warnings when truncating integer constants (default true) *)
 val warnTruncate: bool ref
 
-(** Machine model specified via CIL_MACHINE environment variable *)
-val envMachine : Machdep.mach option ref
+
 
 (* ------------------------------------------------------------------------- *)
 (*                            DEPRECATED FUNCTIONS                           *)

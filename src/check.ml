@@ -221,7 +221,7 @@ let rec checkType (t: typ) (ctx: ctxType) =
         (ctx = CTStruct || ctx = CTUnion 
          || ctx = CTSizeof || ctx = CTDecl || ctx = CTArray || ctx = CTPtr)
     | TFun _ -> 
-        if ctx = CTSizeof && !msvcMode then
+        if ctx = CTSizeof && (theImpl ()).msvc then
           (ignore(warn "sizeof(function) is not defined in MSVC."); false)
         else
           ctx = CTPtr || ctx = CTDecl || ctx = CTSizeof
@@ -359,7 +359,7 @@ and checkCompInfo (isadef: defuse) comp =
         (match unrollType f.ftype, f.fbitfield with
         | TInt (ik, a), Some w -> 
             checkAttributes a;
-            if w < 0 || w > bitsSizeOf (TInt(ik, a)) then
+            if w < 0 || w > 8 * bytesSizeOfIntegerKind ik then
               ignore (warn "Wrong width (%d) in bitfield" w)
         | _, Some w -> 
             ignore (E.error "Bitfield on a non integer type")
@@ -686,7 +686,7 @@ and checkInit  (i: init) : typ =
                     [(Field(f, NoOffset), ei)] -> 
                       if f.fcomp != comp then 
                         ignore (bug "Wrong designator for union initializer");
-                      if !msvcMode && f != List.hd comp.cfields then
+                      if (theImpl ()).msvc && f != List.hd comp.cfields then
                         ignore (warn "On MSVC you can only initialize the first field of a union");
                       checkInitType ei f.ftype
                       

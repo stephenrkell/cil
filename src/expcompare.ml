@@ -85,7 +85,7 @@ and compareLval (lv1: lval) (lv2: lval) : bool =
       compareExp e1 e2 && compareOffset off1 off2
   | _ -> false
 
-(* Remove casts that do not effect the value of the expression, such
+(* Remove casts that do not affect the value of the expression, such
  * as casts between different pointer types.  Of course, these casts
  * change the type, so don't use this within e.g. an arithmetic
  * expression.
@@ -104,18 +104,18 @@ let rec stripNopCasts (e:exp): exp =
           stripNopCasts e'
       (* strip casts from pointers to unsigned int/long*)
       | (TPtr _ as t1), (TInt(ik,_) as t2) 
-          when bitsSizeOf t1 = bitsSizeOf t2 
+          when (theImpl ()).sizeof_ptr = bytesSizeOfIntegerKind ik
             && not (isSigned ik) ->
           stripNopCasts e'
       | (TInt(ik1,_) as t1), (TInt(ik2,_) as t2)
           (* promotion when signedness is the same doesn't change value *)
           (* promotion of unsigned to signed of larger bitsize doesn't change
              value *)
-          when bitsSizeOf t1 = bitsSizeOf t2 ||
+          when bytesSizeOfIntegerType t1 = bytesSizeOfIntegerType t2 ||
                (isSigned ik1 = isSigned ik2 &&
-                bitsSizeOf t1 < bitsSizeOf t2) ||
+                bytesSizeOfIntegerKind ik1 < bytesSizeOfIntegerKind ik2) ||
                (not(isSigned ik1) &&
-                bitsSizeOf t1 < bitsSizeOf t2) -> (* Okay to strip.*)
+                bytesSizeOfIntegerKind ik1 < bytesSizeOfIntegerKind ik2) -> (* Okay to strip.*)
           stripNopCasts e'
       |  _ -> e
     end
@@ -123,6 +123,24 @@ let rec stripNopCasts (e:exp): exp =
 
 let compareExpStripCasts (e1: exp) (e2: exp) : bool =
   compareExp (stripNopCasts e1) (stripNopCasts e2)
+
+let typesMustHaveSameSize t1 t2 =
+    let ts1, ts2 = (Cil.typeSig t1, Cil.typeSig t2) in
+    let sameTypeSig = (ts1 == ts2) in (* srk is hazy: avoid recursive comparison of typesigs? *)
+    let bothPointers = isPointerType t1 && isPointerType t2 in
+    (* FIXME: pointers to function may have different size from pointers to object.
+     * But I think in CIL we don't allow this? -srk *)
+    let bothSameSizeArithmeticTypes =
+        isArithmeticType t1 && isArithmeticType t2 &&
+         let getBitSize t = match unrollType t with
+             TEnum (ei, _) -> 8 * bytesSizeOfIntegerKind ei.ekind
+           | TInt  (ik, _) -> 8 * bytesSizeOfIntegerKind ik
+           | TFloat(fk, _) -> 8 * bytesSizeOfFloatKind fk
+         in
+         getBitSize t1 = getBitSize t2
+    in
+    bothPointers || bothSameSizeArithmeticTypes
+
 
 (* A more conservative form of stripNopCasts.  Here, we only strip pointer
    casts if the base types have the same width.  Using this on the left operand
@@ -136,29 +154,31 @@ let rec stripCastsForPtrArith (e:exp): exp =
        * eliminated. *)
       | TPtr (TVoid _, _), TPtr (bt2, _) when not (isVoidType bt2) ->
           e
-      (* Remove casts between pointers with equal-sized base types. *)
+      (* Remove casts between pointers with equal-sized target types.
+         Since we can no longer compute the byte size of a composite type,
+         we need to be conservative. *)
       | TPtr (bt1, a1), TPtr (bt2, a2) -> begin
           try
-            if bitsSizeOf bt1 = bitsSizeOf bt2 &&
-               isConstType bt1 = isConstType bt2 then
+            let sameConstness = (isConstType bt1 = isConstType bt2) in
+            if sameConstness && typesMustHaveSameSize bt1 bt2 then
               stripCastsForPtrArith e'
-            else 
+            else
               e
           with SizeOfError _ -> (* bt1 or bt2 is abstract; don't strip. *)
             e
         end
       (* strip casts from pointers to unsigned int/long*)
       | (TPtr _ as t1), (TInt(ik,_) as t2) 
-          when bitsSizeOf t1 = bitsSizeOf t2 
+          when (theImpl ()).sizeof_ptr = bytesSizeOfIntegerKind ik
             && not (isSigned ik) ->
           stripCastsForPtrArith e'
       | (TInt(ik1,_) as t1), (TInt(ik2,_) as t2) 
           (*when bitsSizeOf t1 = bitsSizeOf t2 ->*) (* Okay to strip.*)
-          when bitsSizeOf t1 = bitsSizeOf t2 ||
+          when bytesSizeOfIntegerKind ik1 = bytesSizeOfIntegerKind ik2 ||
                (isSigned ik1 = isSigned ik2 &&
-                bitsSizeOf t1 < bitsSizeOf t2) ||
+                bytesSizeOfIntegerKind ik1 < bytesSizeOfIntegerKind ik2) ||
                (not(isSigned ik1) &&
-                bitsSizeOf t1 < bitsSizeOf t2) -> (* Okay to strip.*)
+                bytesSizeOfIntegerKind ik1 < bytesSizeOfIntegerKind ik2) -> (* Okay to strip.*)
           stripCastsForPtrArith e'
       |  _ -> e
     end
@@ -222,8 +242,9 @@ let rec stripCastsDeepForPtrArith (e:exp): exp =
       (* Remove casts between pointers with equal-sized base types. *)
       | TPtr (bt1, a1), TPtr (bt2, a2) -> begin
           try
-            if bitsSizeOf bt1 = bitsSizeOf bt2 &&
-               isConstType bt1 = isConstType bt2 then
+            let sameConstness = (isConstType bt1 = isConstType bt2) in
+            if sameConstness && typesMustHaveSameSize bt1 bt2
+               then
               e'
             else 
               CastE(t,e')

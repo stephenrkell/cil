@@ -39,26 +39,26 @@ exception Not_an_integer
 
 let unbox_int_type (ye : typ) : (int * sign) =
   let tp = unrollType ye in
-  let s = 
+  let s, ik = 
     match tp with 
       TInt (i, _) -> 
 	if (isSigned i) then
-	  Signed
+	  (Signed, i)
 	else
-	  Unsigned
+	  (Unsigned, i)
     | _ -> raise Not_an_integer
   in
-  (bitsSizeOf tp), s
+  (8 * bytesSizeOfIntegerKind ik), s
   
 exception Weird_bitwidth
 
 (* (int64 * int * sign) : exp *)
 let ocaml_int_to_cil v n s =
-  let char_size = bitsSizeOf charType in 
-  let int_size = bitsSizeOf intType in
-  let short_size = bitsSizeOf (TInt(IShort,[]))in 
-  let long_size = bitsSizeOf longType in
-  let longlong_size = bitsSizeOf (TInt(ILongLong,[])) in
+  let char_size = bytesSizeOfIntegerType charType in 
+  let int_size = bytesSizeOfIntegerType intType in
+  let short_size = bytesSizeOfIntegerType (TInt(IShort,[]))in 
+  let long_size = bytesSizeOfIntegerType longType in
+  let longlong_size = bytesSizeOfIntegerType (TInt(ILongLong,[])) in
   let i = 
     match s with
       Signed ->

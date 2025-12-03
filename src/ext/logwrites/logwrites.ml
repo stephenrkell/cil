@@ -51,15 +51,25 @@ let rec is_bitfield lo = match lo with
   | Field(_,lo) -> is_bitfield lo
   | Index(_,lo) -> is_bitfield lo 
 
-(* Return an expression that evaluates to the address of the given lvalue.
- * For most lvalues, this is merely AddrOf(lv). However, for bitfields
- * we do some offset gymnastics. 
+(* callLogRead and callLogWrite receive an lvalue and make an AddrOf from it,
+ * in order to log the address being read. For most lvalues, it could simply
+ * do AddrOf(lv). However, for bitfields this doesn't work.
+ *
+ * We used to do some offset gymnastics: figure out what the address would be
+ * without the final bitfield offset, and then we add in the byte offset of the
+ * bitfield from the beginning of its enclosing comp. The final result is returned
+ * as a PlusPI rather than an AddrOf, where the PlusPI is adding the rounded-down-to-a-byte
+ * offset of the bitfield, and the whole PlusPI is a pointer to an unsigned long.
+ *
+ * Since we no longer support calculating the bit and byte offsets of fields,
+ * let's just return the addr of the enclosing comp.
  *)
-let addr_of_lv (lh,lo) = 
-  if is_bitfield lo then begin
-    (* we figure out what the address would be without the final bitfield
-     * access, and then we add in the offset of the bitfield from the
-     * beginning of its enclosing comp *) 
+let addr_of_lv (lv: lval) = 
+  let lh, lo = lv in 
+  if not (is_bitfield lo) then 
+  (mkAddrOf (lh,lo)) 
+  else begin
+    (*  *) 
     let rec split_offset_and_bitfield lo = match lo with 
       | NoOffset -> failwith "logwrites: impossible" 
       | Field(fi,NoOffset) -> (NoOffset,fi)
@@ -67,16 +77,19 @@ let addr_of_lv (lh,lo) =
                         ((Field(e,a)),b)
       | Index(e,lo) ->  let a,b = split_offset_and_bitfield lo in
                         ((Index(e,a)),b)
-    in 
+    in
     let new_lv_offset, bf = split_offset_and_bitfield lo in
     let new_lv = (lh, new_lv_offset) in 
+    (*
     let enclosing_type = TComp(bf.fcomp, []) in 
     let bits_offset, bits_width = 
       bitsOffset enclosing_type (Field(bf,NoOffset)) in
-    let bytes_offset = bits_offset / 8 in 
+    let bytes_offset = bits_offset / 8 in
     let lvPtr = mkCast ~e:(mkAddrOf (new_lv)) ~newt:(charPtrType) in
     (BinOp(PlusPI, lvPtr, (integer bytes_offset), ulongType))
-  end else (AddrOf (lh,lo)) 
+    *)
+    mkAddrOf (lh, new_lv_offset)
+  end
 
 class logWriteVisitor = object
   inherit nopCilVisitor

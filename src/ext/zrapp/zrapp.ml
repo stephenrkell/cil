@@ -445,7 +445,7 @@ class zraCilPrinterClass : cilPrinter = object (self)
       
     (* print global variable 'extern' declarations, and function prototypes *)
     | GVarDecl (vi, l) ->
-        let builtins = if !msvcMode then msvcBuiltins else gccBuiltins in
+        let builtins = if (theImpl ()).msvc then msvcBuiltins else gccBuiltins in
         if not !printCilAsIs && H.mem builtins vi.vname then begin
           (* Compiler builtins need no prototypes. Just print them in
              comments. *)
@@ -469,7 +469,7 @@ class zraCilPrinterClass : cilPrinter = object (self)
         (* nor 'cilnoremove' *)
         let suppress =
           not !print_CIL_Input && 
-          not !msvcMode &&
+          not (theImpl ()).msvc &&
           ((startsWith "box" an) ||
            (startsWith "ccured" an) ||
            (an = "merger") ||

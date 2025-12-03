@@ -114,6 +114,14 @@ let dbgToken (t: token) =
 let lexicon = H.create 211
 let init_lexicon _ =
   H.clear lexicon;
+  (* Some identifiers need to be lexed as built-in type names only at some
+   * dialect/compiler versions.... *)
+  let identOrPrimitiveType identString lexemeWithLoc loc ~(atGnuC: int) =
+      if (Cil.theImpl ()).msvc 
+      || (Cil.theImpl ()).dialectVersion < atGnuC
+      then (identString, fun _ -> IDENT (identString, loc))
+      else (identString, fun _ -> lexemeWithLoc)
+  in
   List.iter 
     (fun (key, builder) -> H.add lexicon key builder)
     [ ("auto", fun loc -> AUTO loc);
@@ -194,51 +202,25 @@ let init_lexicon _ =
       ("__restrict__", fun loc -> RESTRICT loc);
       ("restrict", fun loc -> RESTRICT loc);
 (*      ("__extension__", EXTENSION); *)
-      ("__int128", fun _ -> INT128 (currentLoc ()));
-      ("__float128", fun _ -> FLOAT128 (currentLoc ()));
-      ("_Float128", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
-                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float128 as its own token type\n") in
-                         FLOAT128 (currentLoc ())
-                       else
-                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float128 as an ident\n") in
-                         IDENT ("_Float128", currentLoc()));
-      ("_Float128x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float128x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
-                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float128x as its own token type\n") in
-                         FLOAT128X (currentLoc ())
-                       else
-                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float128x as an ident\n") in
-                         IDENT ("_Float128x", currentLoc()));
-      ("_Float64", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
-                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float64 as its own token type\n") in
-                         FLOAT64 (currentLoc ())
-                       else
-                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float64 as an ident\n") in
-                         IDENT ("_Float64", currentLoc())
-                         );
-      ("_Float64x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float64x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
-                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float64x as its own token type\n") in
-                         FLOAT64X (currentLoc ())
-                       else
-                         let _ = output_string Pervasives.stderr ("Warning: lexing _Float64 as an ident\n") in
-                         IDENT ("_Float64x", currentLoc()));
-      ("_Float32", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float32 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
-                         FLOAT32 (currentLoc ())
-                       else
-                         IDENT ("_Float32", currentLoc())
-                         );
-      ("_Float32x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float32x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
-                         FLOAT32X (currentLoc ())
-                       else
-                         IDENT ("_Float32x", currentLoc()));
-      ("_Float16", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float16 && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
-                         FLOAT16 (currentLoc ())
-                       else
-                         IDENT ("_Float16", currentLoc())
-                         );
-      ("_Float16x", fun _ -> if 0 <> !Machdep.theMachine.Machdep.alignof_float16x && not !Cprint.msvcMode && !Cil.gnucDialectVersion >= 700 then
-                         FLOAT16X (currentLoc ())
-                       else
-                         IDENT ("_Float16x", currentLoc()));
+      (* Extension types like __int128, __float128, _Float64, etc.:
+       * While we are lexing, we may not yet have witnessed
+       * enough of the impl to know which dialect we are
+       * dealing with. How to square this? We need to scan ahead,
+       * effectively. Or do we? It seems reasonable to assume
+       * we have seen __GNUC__ already. If we haven't, assume
+       * we're not GNU! Hmm. How does this interact with defaults?
+       * For now, assume we konw how we are lexing. We may have to
+       * pull some tricks to bring that knowledge forward. *)
+      identOrPrimitiveType "__int128"   ~atGnuC:700 (INT128   (currentLoc ())) (currentLoc ());
+      identOrPrimitiveType "__float128" ~atGnuC:700 (FLOAT128 (currentLoc ())) (currentLoc ());
+      identOrPrimitiveType "_Float128"  ~atGnuC:700 (FLOAT128 (currentLoc ())) (currentLoc ());
+      identOrPrimitiveType "_Float128x" ~atGnuC:700 (FLOAT128 (currentLoc ())) (currentLoc ());
+      identOrPrimitiveType "_Float64"   ~atGnuC:700 (FLOAT64  (currentLoc ())) (currentLoc ());
+      identOrPrimitiveType "_Float64x"  ~atGnuC:700 (FLOAT64  (currentLoc ())) (currentLoc ());
+      identOrPrimitiveType "_Float32"   ~atGnuC:700 (FLOAT32  (currentLoc ())) (currentLoc ());
+      identOrPrimitiveType "_Float32x"  ~atGnuC:700 (FLOAT32  (currentLoc ())) (currentLoc ());
+      identOrPrimitiveType "_Float16"   ~atGnuC:700 (FLOAT16  (currentLoc ())) (currentLoc ());
+      identOrPrimitiveType "_Float16x"  ~atGnuC:700 (FLOAT16  (currentLoc ())) (currentLoc ());
       (* GCC non-standard __int128 aliases (not typedefs!) FIXME: in which version of GNU C did these appear? *)
       ("__int128_t", fun _ -> INT128 (currentLoc ()));
       ("__uint128_t", fun _ -> UINT128 (currentLoc ()));
@@ -269,7 +251,7 @@ let init_lexicon _ =
       ("__builtin_offsetof", fun loc -> BUILTIN_OFFSETOF loc);
       (* On some versions of GCC __thread is a regular identifier *)
       ("__thread", fun loc -> 
-                      if !Machdep.theMachine.Machdep.__thread_is_keyword then 
+                      if (Cil.theImpl ()).thread_is_keyword then 
                          THREAD loc
                        else 
                          IDENT ("__thread", loc));

@@ -45,7 +45,6 @@ module E = Errormsg
 module H = Hashtbl
 module IH = Inthash
 module AL = Alpha
-module M = Machdep
 
 open Cabs
 open Cabshelper
@@ -189,11 +188,11 @@ let convLoc (l : cabsloc) =
 
 
 let isOldStyleVarArgName n = 
-  if !msvcMode then n = "va_alist"
+  if (theImpl ()).msvc then n = "va_alist"
   else n = "__builtin_va_alist"
 
 let isOldStyleVarArgTypeName n = 
-  if !msvcMode then n = "va_list"  || n = "__ccured_va_list" 
+  if (theImpl ()).msvc then n = "va_list"  || n = "__ccured_va_list" 
   else n = "__builtin_va_alist_t"
 
 let isVariadicListType t =
@@ -225,7 +224,7 @@ let isVariadicListType t =
  * treated as multi-digit numbers with radix given by the bit width of
  * the specified type (either char or wchar_t). *)
 let reduce_multichar typ : int64 list -> int64 =
-  let radix = bitsSizeOf typ in
+  let radix = 8 * bytesSizeOfIntegerType typ in
   List.fold_left
     (fun acc -> Int64.add (Int64.shift_left acc radix))
     Int64.zero
@@ -763,6 +762,13 @@ end
 let constFoldType (t:typ) : typ =
   visitCilType constFoldTypeVisitor t
 
+(* Const-fold init any expressions in an initializer. *)
+let rec constFoldInit (i:init) : init =
+  match i with
+      SingleInit e -> SingleInit (constFold (*machdep*)true e)
+    | CompoundInit (t, oiList) -> CompoundInit (t, 
+        List.map (fun (offs, i) -> (offs, constFoldInit i) ) oiList)
+
 let typeSigNoAttrs: typ -> typsig = typeSigWithAttrs (fun _ -> [])
 
 (* Create a new temporary variable *)
@@ -1268,7 +1274,7 @@ end
 
 (** ALLOCA ***)
 let allocaFun () = 
-  if !msvcMode then begin
+  if (theImpl ()).msvc then begin
     let name = "alloca" in
     let fdec = emptyFunction name in
     fdec.svar.vtype <- 
@@ -1325,7 +1331,7 @@ let rec integralPromotion (t : typ) : typ = (* c.f. ISO 6.3.1.1 *)
   match unrollType t with
     TInt (IBool, a) -> TInt (IInt, a) (* _Bool can only be 0 or 1, irrespective of its size *)
   | TInt ((IShort|IUShort|IChar|ISChar|IUChar) as ik, a) -> 
-      if bitsSizeOf t < bitsSizeOf (TInt (IInt, [])) || isSigned ik then
+      if bytesSizeOfIntegerType t < bytesSizeOfIntegerType (TInt (IInt, [])) || isSigned ik then
 	TInt(IInt, a)
       else
 	TInt(IUInt, a)
@@ -1418,7 +1424,7 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
          * unsigned integer type, then the operand with unsigned integer
          * type is converted to the type of the operand with signed integer
          * type. *)
-        else if bytesSizeOfInt signedKind > bytesSizeOfInt unsignedKind
+        else if bytesSizeOfIntegerKind signedKind > bytesSizeOfIntegerKind unsignedKind
         then signedType
 
         (* Otherwise, both operands are converted to the unsigned integer
@@ -1521,9 +1527,9 @@ let cabsTypeAddAttributes a0 t =
 			try
 			  let size = match stripUnderscores mode with
 			    "byte" -> 1
-			  | "word" -> !Machdep.theMachine.Machdep.sizeof_int
-			  | "pointer" -> !Machdep.theMachine.Machdep.sizeof_ptr
-			  | "unwind_word" -> !Machdep.theMachine.Machdep.sizeof_ptr (* FIXME: always ptrsized? *)
+			  | "word" -> (Cil.theImpl ()).sizeof_int
+			  | "pointer" -> (Cil.theImpl ()).sizeof_ptr
+			  | "unwind_word" -> (Cil.theImpl ()).sizeof_ptr (* FIXME: always ptrsized? *)
 			  | "QI" -> 1
 			  | "HI" -> 2
 			  | "SI" -> 4
@@ -1591,7 +1597,7 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
         if oldk = k then oldk else
         (* GCC allows a function definition to have a more precise integer 
          * type than a prototype that says "int" *)
-        if not !msvcMode && oldk = IInt && bitsSizeOf t <= 32 
+        if not (theImpl ()).msvc && oldk = IInt && 8 * (bytesSizeOfIntegerType t) <= 32 
            && (what = CombineFunarg || what = CombineFunret) then
           k
         else
@@ -1603,7 +1609,7 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
         if oldk = k then oldk else
         (* GCC allows a function definition to have a more precise integer 
          * type than a prototype that says "double" *)
-        if not !msvcMode && oldk = FDouble && k = FFloat 
+        if not (theImpl ()).msvc && oldk = FDouble && k = FFloat 
            && (what = CombineFunarg || what = CombineFunret) then
           k
         else
@@ -2218,7 +2224,7 @@ let rec collectInitializer
               collectFieldInitializer isconst !pArray.(idx) f
           | _ -> E.s (error "Can initialize only one field for union")
         in
-        if !msvcMode && !pMaxIdx != 0 then 
+        if (theImpl ()).msvc && !pMaxIdx != 0 then 
           ignore (warn "On MSVC we can initialize only the first field of a union");
         CompoundInit (thistype, [ findField 0 comp.cfields ]), thistype
 
@@ -2507,7 +2513,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     (* GCC allows a named type that appears first to be followed by things 
      * like "short", "signed", "unsigned" or "long". *)
     match tspecs with 
-      A.Tnamed n :: (_ :: _ as rest) when not !msvcMode -> 
+      A.Tnamed n :: (_ :: _ as rest) when not (theImpl ()).msvc -> 
         (* If rest contains "short" or "long" then drop the Tnamed *)
         if List.exists (function A.Tshort -> true 
                                | A.Tlong -> true | _ -> false) rest then
@@ -2646,7 +2652,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
      (* Now the other type specifiers *)
     | [A.Tnamed n] -> begin
         if n = "__builtin_va_list" && 
-          !Machdep.theMachine.Machdep.__builtin_va_list then begin
+          (Cil.theImpl ()).__builtin_va_list then begin
             TBuiltin_va_list []
         end else
           let t = 
@@ -2725,7 +2731,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
 	    smallest := i;
 	  if compare_cilint i !largest > 0 then
 	    largest := i;
-	  if !msvcMode then 
+	  if (theImpl ()).msvc then 
 	    IInt
 	  else
 	    (* This matches gcc's behaviour *)
@@ -2773,18 +2779,18 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
         (* Now set the right set of items *)
         enum.eitems <- Util.list_map (fun (_, x) -> x) fields;
 	(* Pick the enum's kind - see discussion above *)
-	if not !msvcMode then begin
+	if not (theImpl ()).msvc then begin
 	  let unsigned = compare_cilint !smallest zero_cilint >= 0 in
 	  let smallKind = intKindForValue !smallest unsigned in
 	  let largeKind = intKindForValue !largest unsigned in
 	  let ekind = 
-	    if (bytesSizeOfInt smallKind) > (bytesSizeOfInt largeKind) then
+	    if (bytesSizeOfIntegerKind smallKind) > (bytesSizeOfIntegerKind largeKind) then
 	      smallKind
 	    else
 	      largeKind
 	  in
 	  enum.ekind <-
-	    if bytesSizeOfInt ekind < bytesSizeOfInt IInt then
+	    if bytesSizeOfIntegerKind ekind < bytesSizeOfIntegerKind IInt then
 	      if hasAttribute "packed" enum.eattr then
 		ekind
 	      else
@@ -2883,7 +2889,7 @@ and makeVarSizeVarInfo (ldecl : location)
                        spec_res
                        (n,ndt,a)
    : varinfo * chunk * exp * bool = 
-  if not !msvcMode then 
+  if not (theImpl ()).msvc then 
     match isVariableSizedArray ndt with
       None -> 
         makeVarInfoCabs ~isformal:false 
@@ -3070,7 +3076,7 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
               else
                 cabsTypeAddAttributes a2f
                   (cabsTypeAddAttributes a1f restyp)
-          | TPtr ((TFun _ as tf), ap) when not !msvcMode ->
+          | TPtr ((TFun _ as tf), ap) when not (theImpl ()).msvc ->
               if a1fadded then
                 TPtr(cabsTypeAddAttributes a2f tf, ap)
               else
@@ -3155,7 +3161,7 @@ and doType (nameortype: attributeClass) (* This is AttrName if we are doing
          * builtin_va_alist_t". On MSVC we do not have the ellipsis and we 
          * have a last argument "va_alist: va_list" *)
         let args', isva' = 
-          if args != [] && !msvcMode = not isva then begin
+          if args != [] && (theImpl ()).msvc = not isva then begin
             let newisva = ref isva in 
             let rec doLast = function
                 [([A.SpecType (A.Tnamed atn)], (an, A.JUSTBASE, [], _))] 
@@ -3996,26 +4002,8 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
              * taking the address of the argument that was removed while 
              * processing the function type. We compute the address based on 
              * the address of the last real argument *)
-            if !msvcMode then begin
-              let rec getLast = function
-                  [] -> E.s (unimp "old-style variable argument function without real arguments")
-                | [a] -> a
-                | _ :: rest -> getLast rest 
-              in
-              let last = getLast !currentFunctionFDEC.sformals in
-              let res = mkAddrOfAndMark (var last) in
-              let tres = typeOf res in
-              let tres', res' = castTo tres (TInt(IULong, [])) res in
-              (* Now we must add to this address to point to the next 
-              * argument. Round up to a multiple of 4  *)
-              let sizeOfLast = 
-                (((bitsSizeOf last.vtype) + 31) / 32) * 4
-              in
-              let res'' = 
-                BinOp(PlusA, res', kinteger IULong sizeOfLast, tres')
-              in
-              finishExp empty res'' tres'
-            end else begin (* On GCC the only reliable way to do this is to 
+            if (theImpl ()).msvc then E.s (unimp "old-style variable argument function in MSVC mode")
+            else begin (* On GCC the only reliable way to do this is to 
                           * call builtin_next_arg. If we take the address of 
                           * a local we are going to get the address of a copy 
                           * of the local ! *)
@@ -4981,7 +4969,7 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
   | (Mod|BAnd|BOr|BXor) -> doIntegralArithmetic ()
   | (Shiftlt|Shiftrt) -> (* ISO 6.5.7. Only integral promotions. The result 
                           * has the same type as the left hand side *)
-      if !msvcMode then
+      if (theImpl ()).msvc then
         (* MSVC has a bug. We duplicate it here *)
         doIntegralArithmetic ()
       else
@@ -5340,7 +5328,7 @@ and doInit
     when(let bt' = unrollType bt in
          match bt' with 
            (* compare bt to wchar_t, ignoring signed vs. unsigned *)
-	   TInt _ when (bitsSizeOf bt') = (bitsSizeOf !wcharType) -> true
+	   TInt _ when (bytesSizeOfIntegerType bt') = (bytesSizeOfIntegerType !wcharType) -> true
 	 | TInt _ ->
               (*Base type is a scalar other than wchar_t.  Maybe a char?*)
 	      E.s (error "Using a wide string literal to initialize something other than a wchar_t array.")
@@ -5348,7 +5336,7 @@ and doInit
         )             (* it with the other arrays below.*)
     -> 
       let maxWChar =  (*  (2**(bitsSizeOf !wcharType)) - 1  *)
-        Int64.sub (Int64.shift_left Int64.one (bitsSizeOf !wcharType)) 
+        Int64.sub (Int64.shift_left Int64.one (8 * bytesSizeOfIntegerKind (theImpl ()).wchar_t)) 
           Int64.one in
       let charinits = 
 	let init c = 
@@ -6849,7 +6837,7 @@ and doStatement (s : A.statement) : chunk =
 	  match details with
 	  | None ->
 	      let tmpls' =
-		if !msvcMode then
+		if (theImpl ()).msvc then
 		  tmpls
 		else
 		  let pattern = Str.regexp "%" in
@@ -6940,80 +6928,9 @@ end
 
 let stripParenFile file = V.visitCabsFile (new stripParenClass) file
 
-(* While lexing, we build up on the side a list of the macro definitions
- * that the preprocessor left in place (e.g. if run with -dMD). Here we
- * check for any disagreements with the machine spec. Morally this list
- * is part of the Cabs, although it exists outside the AST.
- *
- * One quick way to test this: configure with GCC, run cilly with
- * CILLY_NATIVE_CC=clang-18, pass args -Xpreprocessor -dD and check that a
- * warning is generated (clang emulates GNU C 4.2.1 at least up to version 18). *)
-let checkMachineSpecAgainstMacros () =
-    List.iter (fun (a1, a2, loc) ->
-      if loc.filename = "<built-in>" then
-            let warnIf cond msg =
-                if cond then output_string Pervasives.stderr ("Warning: " ^
-                    "machine mismatch: " ^ msg ^ "\n") else ()
-            in
-            let readInt (s:string) = try int_of_string (String.trim s)
-                with Failure _ -> (output_string Pervasives.stderr ("Not an int: " ^ s ^ "\n"); 0)
-            in
-            (* ("Saw a built-in macro: " ^ a1 ^ " defined as " ^ a2 ^ "\n") *)
-            match a1 with
-                (* which macros do we know about that can define a part of a machine? *)
-                "__GNUC__" (* e.g. "10" *) -> let seenMacroVer = readInt a2 in
-                    (* FIXME: we should really combine the major, minor and patchlevel
-                     * as documented, to get our value to compare against assumedVer *)
-                    let assumedVer = !gnucDialectVersion / 100 in
-                    warnIf (assumedVer > seenMacroVer)
-                    ("CIL is assuming a later GNU C dialect version (" ^
-                    (string_of_int assumedVer)
-                    ^ ", compared to macro __GNUC__ seen defined as " ^ a2 ^ ")")
-                | "__GNUC_MINOR__" (* e.g. "2" *) -> ()
-                | "__GNUC_PATCHLEVEL__" (* e.g. "1" *) -> ()
-                | "__SIZEOF_INT__" (* e.g. "4" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_int) "sizeof (int) mismatch"
-                | "__SIZEOF_LONG__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_long) "sizeof (long) mismatch"
-                | "__SIZEOF_LONG_LONG__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_longlong) "sizeof (long long) mismatch"
-                | "__SIZEOF_SHORT__" (* e.g. "2" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_short) "sizeof (short) mismatch"
-                | "__SIZEOF_FLOAT__" (* e.g. "4" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_float) "sizeof (float) mismatch"
-                | "__SIZEOF_DOUBLE__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_double) "sizeof (double) mismatch"
-                | "__SIZEOF_LONG_DOUBLE__" (* e.g. "16" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_longdouble) "sizeof (double) mismatch"
-                (*| "__SIZEOF_SIZE_T__" (* e.g. "8" *) ->*)
-                | "__SIZEOF_POINTER__" (* e.g. "8" *) -> warnIf (readInt a2 <> !Machdep.theMachine.sizeof_ptr) "sizeof (double) mismatch"
-                (*| "__SIZE_TYPE__" (* e.g. "long unsigned int" *) ->*)
-                (*| "__PTRDIFF_TYPE__" (* e.g. "long int" *) ->*)
-                | "__WCHAR_TYPE__" (* e.g. "int" *) -> warnIf (String.trim a2 <> !Machdep.theMachine.wchar_t) "wchar_t mismatch"
-                (*| "__INTMAX_TYPE__" (* e.g. "long int" *) ->*)
-                (*| "__UINTMAX_TYPE__" (* e.g. "long unsigned int" *) ->*)
-                (*| "__SIZEOF_INT128__" (* e.g. "16" *) ->*)
-                (*| "__SIZEOF_WCHAR_T__" (* e.g. "4" *) ->*)
-                (*| "__SIZEOF_WINT_T__" (* e.g. "4" *) ->*)
-                (*| "__SIZEOF_PTRDIFF_T__" (* e.g. "8" *) ->*)
-                (*| "__SIZEOF_FLOAT80__" (* e.g. "16" *) ->*)
-                | "__SIZEOF_FLOAT128__" (* e.g. "16" *) -> warnIf (0 = !Machdep.theMachine.alignof_float128) "_Float128 mismatch"
-                (*
-                    What to do about the float stuff? We need to detect whether
-                    the various floatx types are builtins.
-                    And we need to know it ages ago, i.e. during lexing!
-                    Or do we? Are we still lexing the remainder of the file?
-                    I just notice that our warning messages here appear *before*
-                    the problem. Oh, no... we are too late right now. We would have
-                    to scrape all the #defines before we know how to lex the file.
-                    Is there another way around this?
-                    Quickest fix: extend the machdep to include the GNU C dialect version
-                    (or just a dialect version number), then create a special env machine
-                    for clang.
-                    Right fix: pre-lex? Or do the processing here at the time of lexing.
-                 *)
-              | _ -> ()
-      else ()
-   ) !Clexer.macDefs
-
 (* Translate a file *)
 let convFile (f : A.file) : Cil.file =
   Cil.initCIL (); (* make sure we have initialized CIL *)
-
-  checkMachineSpecAgainstMacros (); (* warn if we've seen macros that disagree with machine spec *)
 
   (* remove parentheses from the Cabs *)
   let fname,dl = stripParenFile f in 
