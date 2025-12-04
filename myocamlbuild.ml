@@ -23,21 +23,6 @@ let cil_version =
 
 dispatch begin function
 | After_rules ->
-    (* the main CIL library *)
-    ocaml_lib "src/cil";
-
-    (* residual reliance on make to build some OCaml source files *)
-    let make target =
-      let basename = Pathname.basename target in
-      rule ("make " ^ target)
-      ~dep: "Makefile"
-      ~prod: basename
-      (fun _ _ -> Cmd (S
-        [A (try Sys.getenv "MAKE" with Not_found -> "make");
-         A "-C"; P ".."; P ("_build" / target)]))
-      in
-      (* make "machdep.ml" *) () ;
-
     (* Build mllib for plugins by listing the content of their directory *)
     rule "plugin dir -> mllib"
     ~prod: "src/ext/%.mllib"

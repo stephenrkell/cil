@@ -99,7 +99,7 @@ $(OCAMLBUILD_TARGETS): ocamlbuild
 
 .PHONY: ocamlbuild
 ocamlbuild:
-	export CIL_VERSION
+	export CIL_VERSION=$(CIL_VERSION)
 	MAKE=$(MAKE) $(OCAMLBUILD) $(patsubst $(OBJDIR)/%,%,$(OCAMLBUILD_TARGETS))
 
 .PHONY: META
