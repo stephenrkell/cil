@@ -2187,10 +2187,10 @@ let kinteger (k: ikind) (i: int) =
 (** Construct an integer of kind IInt. On targets where C's 'int' is 16-bits,
     the integer may get truncated. *)
 let integer (i: int) = kinteger IInt i
-            
-let one       = integer 1
-let mone      = integer (-1)
-     
+
+let one       = Const(CInt64(Int64.one, IInt, None))
+let mone      = Const(CInt64(Int64.minus_one, IInt, None))
+
 (* True if the integer fits within the kind's range *)
 let fitsInInt (k: ikind) (i: cilint) : bool = 
   let _, truncated = truncateCilint k i in

@@ -6932,6 +6932,10 @@ let stripParenFile file = V.visitCabsFile (new stripParenClass) file
 let convFile (f : A.file) : Cil.file =
   Cil.initCIL (); (* make sure we have initialized CIL *)
 
+  (* warn if we've seen macros that disagree with machine spec *)
+  output_string stderr ("We have now seen " ^ (string_of_int (List.length !Clexer.macDefs))
+    ^ " macro definitions\n");
+
   (* remove parentheses from the Cabs *)
   let fname,dl = stripParenFile f in 
     
