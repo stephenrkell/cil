@@ -23,6 +23,10 @@ let cil_version =
 
 dispatch begin function
 | After_rules ->
+
+    (* the main CIL library *)
+    ocaml_lib "src/cil";
+
     (* Build mllib for plugins by listing the content of their directory *)
     rule "plugin dir -> mllib"
     ~prod: "src/ext/%.mllib"
