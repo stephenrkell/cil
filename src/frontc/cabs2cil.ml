@@ -1462,8 +1462,13 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
 
 
 (* Specify whether the cast is from the source code *)
-let rec castTo ?(fromsource=false)
+let rec castTo ?(kind=Unknown)
                 (ot : typ) (nt : typ) (e : exp) : (typ * exp ) =
+  let fromsource =
+    match kind with
+    | Explicit -> true
+    | Unknown -> false
+  in
   let debugCast = false in
   if debugCast then
     ignore (E.log "%t: castTo:%s %a->%a\n"
@@ -1478,7 +1483,7 @@ let rec castTo ?(fromsource=false)
   else begin
     let nt' = if fromsource then nt else !typeForInsertedCast nt in
     let result = (nt',
-                  if !insertImplicitCasts || fromsource then Cil.mkCastT ~kind:(if fromsource then Explicit else Unknown) ~e:e ~oldt:ot ~newt:nt' else e) in (* TODO: change fromsource argument to castkind *)
+                  if !insertImplicitCasts || fromsource then Cil.mkCastT ~kind ~e:e ~oldt:ot ~newt:nt' else e) in
 
     if debugCast then
       ignore (E.log "castTo: ot=%a nt=%a\n  result is %a\n"
@@ -1558,7 +1563,7 @@ let rec castTo ?(fromsource=false)
               | _ -> E.s (unimp "castTo: transparent union expression is not an lval: %a\n" d_exp e)
             in
             (* Continue casting *)
-            castTo ~fromsource:fromsource fstfield.ftype nt' e'
+            castTo ~kind fstfield.ftype nt' e'
         end
     end
     | _ ->
@@ -3986,7 +3991,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                  need the check. *)
               let newtyp, newexp =
                 if needcast then
-                  castTo ~fromsource:true t' typ e'
+                  castTo ~kind:Explicit t' typ e'
                 else
                   t', e'
               in
