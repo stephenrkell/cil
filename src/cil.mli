@@ -2397,6 +2397,9 @@ val d_binop: unit -> binop -> Pretty.doc
 (** Pretty-print a unary operator *)
 val d_unop: unit -> unop -> Pretty.doc
 
+(** Pretty-print a cast kind *)
+val d_castkind: unit -> castkind -> Pretty.doc
+
 (** Pretty-print an attribute using {!defaultCilPrinter}  *)
 val d_attr: unit -> attribute -> Pretty.doc
 
