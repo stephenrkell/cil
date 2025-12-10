@@ -1462,7 +1462,7 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
 
 
 (* Specify whether the cast is from the source code *)
-let rec castTo ?(kind=Unknown)
+let rec castTo ~kind
                 (ot : typ) (nt : typ) (e : exp) : (typ * exp ) =
   let fromsource =
     match kind with
@@ -3500,7 +3500,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
             (SynthetizeLoc.doChunkTail se, e, t)
         | _ ->
             let (e', t') = processArrayFun e t in
-            let (t'', e'') = castTo t' lvt e' in
+            let (t'', e'') = castTo ~kind:Unknown t' lvt e' in
 (*
             ignore (E.log "finishExp: e = %a\n  e'' = %a\n" d_plainexp e d_plainexp e'');
 *)
@@ -4280,7 +4280,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
              let tresult, result = doBinOp bop' e1' t1 e2' t2 in
              (* We must cast the result to the type of the lv1, which may be
                 different than t1 if lv1 was a Cast *)
-             let tresult', result' = castTo tresult (typeOfLval lv1) result in
+             let tresult', result' = castTo ~kind:Unknown tresult (typeOfLval lv1) result in
              (* Catch the case of an lval that might depend on itself,
                 e.g. p[p[0]] when p[0] == 0.  We need to use a temporary
                 here if the result of the expression will be used:
@@ -4322,7 +4322,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         | CEExp (se, e) ->
           let e' =
             let te = typeOf e in
-            let _, zte = castTo intType te zero in
+            let _, zte = castTo ~kind:Unknown intType te zero in
             BinOp(Ne, e, zte, intType)
           in
           finishExp se e' intType
@@ -4445,7 +4445,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                   test/small1/union5, in which a transparent union is passed
                   as an argument *)
               let (sa, a', att) = force_right_to_left_evaluation (doExp false a (AExp None)) in
-              let (_, a'') = castTo att at a' in
+              let (_, a'') = castTo ~kind:Unknown att at a' in
               (sa :: ss, a'' :: args')
             | ([], args) -> (* No more types *)
               (* Do not give a warning for functions without a prototype*)
@@ -4463,7 +4463,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                       (sa :: ss, a' :: args')
                     else
                       let promoted_type = defaultArgumentPromotion at in
-                      let _, a'' = castTo at promoted_type a' in
+                      let _, a'' = castTo ~kind:Unknown at promoted_type a' in
                       (sa :: ss, a'' :: args')
               in
               loop args
@@ -4838,23 +4838,23 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         let tresult = conditionalConversion t2 t3 e_of_t2 e3' in
         match ce1 with
           CEExp (se1, e1') when isConstFalse e1' && canDrop se2 && (!Cil.removeBranchingOnConstants || asconst) ->
-             finishExp (se1 @@ se3) (snd (castTo t3 tresult e3')) tresult
+             finishExp (se1 @@ se3) (snd (castTo ~kind:Unknown t3 tresult e3')) tresult
         | CEExp (se1, e1') when isConstTrue e1' && canDrop se3 && (!Cil.removeBranchingOnConstants || asconst) ->
            begin
              match e2'o with
                None -> (* use e1' *)
-                 finishExp (se1 @@ se2) (snd (castTo t2 tresult e1')) tresult
+                 finishExp (se1 @@ se2) (snd (castTo ~kind:Unknown t2 tresult e1')) tresult
              | Some e2' ->
-                 finishExp (se1 @@ se2) (snd (castTo t2 tresult e2')) tresult
+                 finishExp (se1 @@ se2) (snd (castTo ~kind:Unknown t2 tresult e2')) tresult
            end
         | CEExp (se1, e1') when !useLogicalOperators && isEmpty se2 && isEmpty se3 ->
            let e2' = match e2'o with
                None -> (* use e1' *)
-                 snd (castTo t2 tresult e1')
+                 snd (castTo ~kind:Unknown t2 tresult e1')
              | Some e2' ->
-                 snd (castTo t2 tresult e2')
+                 snd (castTo ~kind:Unknown t2 tresult e2')
            in
-           let e3' = snd (castTo t3 tresult e3') in
+           let e3' = snd (castTo ~kind:Unknown t3 tresult e3') in
            finishExp se1 (Question (e1', e2', e3', tresult)) tresult
         | _ -> (* Use a conditional *) begin
             match e2'o with
@@ -6675,7 +6675,7 @@ and assignInit (lv: lval)
                (acc: chunk) : chunk =
   match ie with
     SingleInit e ->
-      let (_, e'') = castTo iet (typeOfLval lv) e in
+      let (_, e'') = castTo ~kind:Unknown iet (typeOfLval lv) e in
       acc +++ (Set(lv, e'', !currentLoc, !currentExpLoc))
   | CompoundInit (t, initl) -> begin
     match unrollType t with
@@ -6892,7 +6892,7 @@ and doStatement (s : A.statement) : chunk =
 	    typeRemoveAttributes ["warn_unused_result"] !currentReturnType
 	  in
           let (se, e', et) = doExp false e (AExp (Some rt)) in
-          let (et'', e'') = castTo et rt e' in
+          let (et'', e'') = castTo ~kind:Unknown et rt e' in
           se @@ (returnChunk (Some e'') loc' eloc')
         end
 
