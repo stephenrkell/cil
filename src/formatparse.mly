@@ -504,12 +504,12 @@ expression:
 		         { ((fun args ->
                               let t = (fst $2) args in
                               let e = (fst $4) args in
-                              mkCast ~kind:Unknown ~e:e ~newt:t),
+                              mkCast ~kind:Explicit ~e:e ~newt:t),
 
                             (fun e ->
                               let t', e' =
                                 match e with
-                                  CastE (Unknown, t', e') -> t', e'
+                                  CastE (_, t', e') -> t', e'
                                 | _ -> typeOf e, e
                               in
                               match (snd $2) t', (snd $4 e') with

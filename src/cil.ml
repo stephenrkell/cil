@@ -616,6 +616,7 @@ and binop =
   | LOr                                 (** logical or *)
 
 and castkind =
+  | Explicit (** Explicit conversion *)
   | Unknown (* TODO: eventually remove *)
 
 (** An lvalue denotes the contents of a range of memory addresses. This range
@@ -2877,6 +2878,7 @@ let d_binop () b =
 
 let d_castkind () k =
   match k with
+  | Explicit -> text "Explicit"
   | Unknown -> text "Unknown"
 
 let invalidStmt = mkStmt (Instr [])

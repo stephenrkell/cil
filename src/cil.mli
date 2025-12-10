@@ -725,6 +725,7 @@ and binop =
                                            set {!useLogicalOperators}. *)
 
 and castkind =
+  | Explicit (** Explicit conversion *)
   | Unknown (* TODO: eventually remove *)
 
 (** {b Lvalues.} Lvalues are the sublanguage of expressions that can appear at the left of an assignment or as operand to the address-of operator.

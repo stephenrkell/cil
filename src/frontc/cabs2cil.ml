@@ -1478,7 +1478,7 @@ let rec castTo ?(fromsource=false)
   else begin
     let nt' = if fromsource then nt else !typeForInsertedCast nt in
     let result = (nt',
-                  if !insertImplicitCasts || fromsource then Cil.mkCastT ~kind:Unknown ~e:e ~oldt:ot ~newt:nt' else e) in (* TODO: change fromsource argument to castkind *)
+                  if !insertImplicitCasts || fromsource then Cil.mkCastT ~kind:(if fromsource then Explicit else Unknown) ~e:e ~oldt:ot ~newt:nt' else e) in (* TODO: change fromsource argument to castkind *)
 
     if debugCast then
       ignore (E.log "castTo: ot=%a nt=%a\n  result is %a\n"
