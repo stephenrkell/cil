@@ -1470,6 +1470,7 @@ let rec castTo ~kind
     | IntegerPromotion
     | DefaultArgumentPromotion
     | ArithmeticConversion
+    | ConditionalConversion
     | Unknown -> false
   in
   let debugCast = false in
@@ -4841,23 +4842,23 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         let tresult = conditionalConversion t2 t3 e_of_t2 e3' in
         match ce1 with
           CEExp (se1, e1') when isConstFalse e1' && canDrop se2 && (!Cil.removeBranchingOnConstants || asconst) ->
-             finishExp (se1 @@ se3) (snd (castTo ~kind:Unknown t3 tresult e3')) tresult
+             finishExp (se1 @@ se3) (snd (castTo ~kind:ConditionalConversion t3 tresult e3')) tresult
         | CEExp (se1, e1') when isConstTrue e1' && canDrop se3 && (!Cil.removeBranchingOnConstants || asconst) ->
            begin
              match e2'o with
                None -> (* use e1' *)
-                 finishExp (se1 @@ se2) (snd (castTo ~kind:Unknown t2 tresult e1')) tresult
+                 finishExp (se1 @@ se2) (snd (castTo ~kind:ConditionalConversion t2 tresult e1')) tresult
              | Some e2' ->
-                 finishExp (se1 @@ se2) (snd (castTo ~kind:Unknown t2 tresult e2')) tresult
+                 finishExp (se1 @@ se2) (snd (castTo ~kind:ConditionalConversion t2 tresult e2')) tresult
            end
         | CEExp (se1, e1') when !useLogicalOperators && isEmpty se2 && isEmpty se3 ->
            let e2' = match e2'o with
                None -> (* use e1' *)
-                 snd (castTo ~kind:Unknown t2 tresult e1')
+                 snd (castTo ~kind:ConditionalConversion t2 tresult e1')
              | Some e2' ->
-                 snd (castTo ~kind:Unknown t2 tresult e2')
+                 snd (castTo ~kind:ConditionalConversion t2 tresult e2')
            in
-           let e3' = snd (castTo ~kind:Unknown t3 tresult e3') in
+           let e3' = snd (castTo ~kind:ConditionalConversion t3 tresult e3') in
            finishExp se1 (Question (e1', e2', e3', tresult)) tresult
         | _ -> (* Use a conditional *) begin
             match e2'o with
@@ -4878,6 +4879,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                       let tmp = newTempVar nil true tresult in
                       var tmp, tresult
                 in
+                (* TODO: ConditionalConversion casts aren't inserted *)
                 (* Now add the stmts lv:=e2 and lv:=e3 to se2 and se3 *)
                 let (se2, _, _) = finishExp ~newWhat:(ASet(lv,lvt))
                                     se2 e2' t2 in

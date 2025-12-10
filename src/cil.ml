@@ -620,6 +620,7 @@ and castkind =
   | IntegerPromotion
   | DefaultArgumentPromotion
   | ArithmeticConversion
+  | ConditionalConversion (* non-standard terminology *)
   | Unknown (* TODO: eventually remove *)
 
 (** An lvalue denotes the contents of a range of memory addresses. This range
@@ -2885,6 +2886,7 @@ let d_castkind () k =
   | IntegerPromotion -> text "IntegerPromotion"
   | DefaultArgumentPromotion -> text "DefaultArgumentPromotion"
   | ArithmeticConversion -> text "ArithmeticConversion"
+  | ConditionalConversion -> text "ConditionalConversion"
   | Unknown -> text "Unknown"
 
 let invalidStmt = mkStmt (Instr [])
