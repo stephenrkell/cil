@@ -728,6 +728,7 @@ and castkind =
   | Explicit (** Explicit conversion *)
   | IntegerPromotion
   | DefaultArgumentPromotion
+  | ArithmeticConversion
   | Unknown (* TODO: eventually remove *)
 
 (** {b Lvalues.} Lvalues are the sublanguage of expressions that can appear at the left of an assignment or as operand to the address-of operator.

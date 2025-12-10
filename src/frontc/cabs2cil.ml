@@ -1469,6 +1469,7 @@ let rec castTo ~kind
     | Explicit -> true
     | IntegerPromotion
     | DefaultArgumentPromotion
+    | ArithmeticConversion
     | Unknown -> false
   in
   let debugCast = false in
@@ -5047,14 +5048,14 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
     let tres = arithmeticConversion t1 t2 in
     (* Keep the operator since it is arithmetic *)
     tres,
-    optConstFoldBinOp false bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:tres) tres
+    optConstFoldBinOp false bop (makeCastT ~kind:ArithmeticConversion ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~kind:ArithmeticConversion ~e:e2 ~oldt:t2 ~newt:tres) tres
   in
   let doArithmeticComp () =
     let tres = arithmeticConversion t1 t2 in
     (* Keep the operator since it is arithmetic *)
     intType,
     optConstFoldBinOp false bop
-      (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:tres) intType
+      (makeCastT ~kind:ArithmeticConversion ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~kind:ArithmeticConversion ~e:e2 ~oldt:t2 ~newt:tres) intType
   in
   let doIntegralArithmetic () =
     let tres = unrollType (arithmeticConversion t1 t2) in
@@ -5062,7 +5063,7 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
       TInt _ ->
         tres,
         optConstFoldBinOp false bop
-          (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:tres) tres
+          (makeCastT ~kind:ArithmeticConversion ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~kind:ArithmeticConversion ~e:e2 ~oldt:t2 ~newt:tres) tres
     | _ -> E.s (error "%a operator on a non-integer type" d_binop bop)
   in
   let pointerComparison e1 t1 e2 t2 =
