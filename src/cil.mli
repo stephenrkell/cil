@@ -731,6 +731,8 @@ and castkind =
   | ArithmeticConversion
   | ConditionalConversion (* non-standard terminology *)
   | PointerConversion (* non-standard terminology *)
+  | Implicit (** Implicit conversion *)
+  | Internal (** Internal conversion not required by standard *)
   | Unknown (* TODO: eventually remove *)
 
 (** {b Lvalues.} Lvalues are the sublanguage of expressions that can appear at the left of an assignment or as operand to the address-of operator.

@@ -622,6 +622,8 @@ and castkind =
   | ArithmeticConversion
   | ConditionalConversion (* non-standard terminology *)
   | PointerConversion (* non-standard terminology *)
+  | Implicit (* Implicit conversion *)
+  | Internal (** Internal conversion not required by standard *)
   | Unknown (* TODO: eventually remove *)
 
 (** An lvalue denotes the contents of a range of memory addresses. This range
@@ -2889,6 +2891,8 @@ let d_castkind () k =
   | ArithmeticConversion -> text "ArithmeticConversion"
   | ConditionalConversion -> text "ConditionalConversion"
   | PointerConversion -> text "PointerConversion"
+  | Implicit -> text "Implicit"
+  | Internal -> text "Internal"
   | Unknown -> text "Unknown"
 
 let invalidStmt = mkStmt (Instr [])
@@ -6246,7 +6250,7 @@ let rec makeZeroInit (t: typ) : init =
       CompoundInit (t', [])
 
   | TPtr _ as t ->
-      SingleInit(if !insertImplicitCasts then mkCast ~kind:Unknown ~e:zero ~newt:t else zero)
+      SingleInit(if !insertImplicitCasts then mkCast ~kind:Internal ~e:zero ~newt:t else zero)
   | x -> E.s (unimp "Cannot initialize type: %a" d_type x)
 
 
