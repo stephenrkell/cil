@@ -2630,14 +2630,14 @@ and constFold (machdep: bool) (e: exp) : exp =
       | _ -> constFold machdep (AlignOf (typeOf e))
   end
 
-  | CastE(_, it,
+  | CastE (k, it,
           AddrOf (Mem (CastE(_, TPtr(bt, _), z)), off))
     when machdep && isZero z -> begin
       try
         let start, width = bitsOffset bt off in
         if start mod 8 <> 0 then
           E.s (error "Using offset of bitfield");
-        constFold machdep (CastE(Unknown, it, (kinteger !kindOfSizeOf (start / 8))))
+        constFold machdep (CastE(k, it, (kinteger !kindOfSizeOf (start / 8))))
       with SizeOfError _ -> e
   end
 

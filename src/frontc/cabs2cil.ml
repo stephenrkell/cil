@@ -4758,7 +4758,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                 (* Make an exception here for __builtin_va_arg:
                   hide calldest as a third parameter.  *)
                 match calldest with
-                | Some destlv -> None, !pargs @ [CastE(Unknown, voidPtrType, AddrOf destlv)]
+                | Some destlv -> None, !pargs @ [CastE(Internal, voidPtrType, AddrOf destlv)]
                 | None -> E.s (E.bug "__builtin_va_arg should have calldest always set")
               else
                 calldest, !pargs
