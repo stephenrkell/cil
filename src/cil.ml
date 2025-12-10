@@ -621,6 +621,7 @@ and castkind =
   | DefaultArgumentPromotion
   | ArithmeticConversion
   | ConditionalConversion (* non-standard terminology *)
+  | PointerConversion (* non-standard terminology *)
   | Unknown (* TODO: eventually remove *)
 
 (** An lvalue denotes the contents of a range of memory addresses. This range
@@ -2887,6 +2888,7 @@ let d_castkind () k =
   | DefaultArgumentPromotion -> text "DefaultArgumentPromotion"
   | ArithmeticConversion -> text "ArithmeticConversion"
   | ConditionalConversion -> text "ConditionalConversion"
+  | PointerConversion -> text "PointerConversion"
   | Unknown -> text "Unknown"
 
 let invalidStmt = mkStmt (Instr [])

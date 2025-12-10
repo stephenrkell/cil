@@ -1471,6 +1471,7 @@ let rec castTo ~kind
     | DefaultArgumentPromotion
     | ArithmeticConversion
     | ConditionalConversion
+    | PointerConversion
     | Unknown -> false
   in
   let debugCast = false in
@@ -5072,8 +5073,8 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
     (* Cast both sides to an integer *)
     let commontype = !upointType in
     intType,
-    optConstFoldBinOp false bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:commontype)
-      (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:commontype) intType
+    optConstFoldBinOp false bop (makeCastT ~kind:PointerConversion ~e:e1 ~oldt:t1 ~newt:commontype)
+      (makeCastT ~kind:PointerConversion ~e:e2 ~oldt:t2 ~newt:commontype) intType
   in
 
   match bop with
@@ -5106,32 +5107,32 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
   | MinusA when isPointerType t1 && isPointerType t2 ->
       let commontype = t1 in
       !ptrdiffType,
-      optConstFoldBinOp false MinusPP (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:commontype)
-                                      (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:commontype) !ptrdiffType
+      optConstFoldBinOp false MinusPP (makeCastT ~kind:PointerConversion ~e:e1 ~oldt:t1 ~newt:commontype)
+                                      (makeCastT ~kind:PointerConversion ~e:e2 ~oldt:t2 ~newt:commontype) !ptrdiffType
   | (Le|Lt|Ge|Gt|Eq|Ne) when isPointerType t1 && isPointerType t2 ->
       pointerComparison e1 t1 e2 t2
   | (Eq|Ne) when isPointerType t1 && isZero e2 ->
-      pointerComparison e1 t1 (makeCastT ~kind:Unknown ~e:zero ~oldt:!upointType ~newt:t1) t1
+      pointerComparison e1 t1 (makeCastT ~kind:PointerConversion ~e:zero ~oldt:!upointType ~newt:t1) t1
   | (Eq|Ne) when isPointerType t2 && isZero e1 ->
-      pointerComparison (makeCastT ~kind:Unknown ~e:zero ~oldt:!upointType ~newt:t2) t2 e2 t2
+      pointerComparison (makeCastT ~kind:PointerConversion ~e:zero ~oldt:!upointType ~newt:t2) t2 e2 t2
 
   | (Eq|Ne) when isVariadicListType t1 && isZero e2 ->
       ignore (warnOpt "Comparison of va_list and zero");
-      pointerComparison e1 t1 (makeCastT ~kind:Unknown ~e:zero ~oldt:!upointType ~newt:t1) t1
+      pointerComparison e1 t1 (makeCastT ~kind:PointerConversion ~e:zero ~oldt:!upointType ~newt:t1) t1
   | (Eq|Ne) when isVariadicListType t2 && isZero e1 ->
       ignore (warnOpt "Comparison of zero and va_list");
-      pointerComparison (makeCastT ~kind:Unknown ~e:zero ~oldt:!upointType ~newt:t2) t2 e2 t2
+      pointerComparison (makeCastT ~kind:PointerConversion ~e:zero ~oldt:!upointType ~newt:t2) t2 e2 t2
 
   | (Eq|Ne|Le|Lt|Ge|Gt) when isPointerType t1 && isArithmeticType t2 ->
       ignore (warnOpt "Comparison of pointer and non-pointer");
       (* Cast both values to upointType *)
-      doBinOp bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:!upointType) !upointType
-                  (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:!upointType) !upointType
+      doBinOp bop (makeCastT ~kind:PointerConversion ~e:e1 ~oldt:t1 ~newt:!upointType) !upointType
+                  (makeCastT ~kind:PointerConversion ~e:e2 ~oldt:t2 ~newt:!upointType) !upointType
   | (Eq|Ne|Le|Lt|Ge|Gt) when isArithmeticType t1 && isPointerType t2 ->
       ignore (warnOpt "Comparison of pointer and non-pointer");
       (* Cast both values to upointType *)
-      doBinOp bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:!upointType) !upointType
-                  (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:!upointType) !upointType
+      doBinOp bop (makeCastT ~kind:PointerConversion ~e:e1 ~oldt:t1 ~newt:!upointType) !upointType
+                  (makeCastT ~kind:PointerConversion ~e:e2 ~oldt:t2 ~newt:!upointType) !upointType
 
   | _ -> E.s (error "Invalid operands to binary operator: %a" d_plainexp (BinOp(bop,e1,e2,intType)))
 
