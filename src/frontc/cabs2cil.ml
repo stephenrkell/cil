@@ -5005,7 +5005,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
             res
           end
         in
-        finishExp empty (makeCast ~kind:Unknown ~e:(integer addrval) ~newt:voidPtrType) voidPtrType
+        finishExp empty (makeCast ~kind:Internal ~e:(integer addrval) ~newt:voidPtrType) voidPtrType
     end
 
     | A.EXPR_PATTERN _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
@@ -6361,7 +6361,7 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
                   let default =
                     defaultChunk
                       l el
-                      (i2c (Set ((Mem (makeCast ~kind:Unknown ~e:(integer 0) ~newt:intPtrType),
+                      (i2c (Set ((Mem (makeCast ~kind:Internal ~e:(integer 0) ~newt:intPtrType),
                                   NoOffset),
                                  integer 0, l, el)))
                   in
@@ -6981,7 +6981,7 @@ and doStatement (s : A.statement) : chunk =
         match !gotoTargetData with
           Some (switchv, switch) -> (* We have already generated this one  *)
             se
-            @@ i2c(Set (var switchv, makeCast ~kind:Unknown ~e:e' ~newt:!upointType, loc', locUnknown)) (* TODO: eloc for COMPGOTO *)
+            @@ i2c(Set (var switchv, makeCast ~kind:Internal ~e:e' ~newt:!upointType, loc', locUnknown)) (* TODO: eloc for COMPGOTO *)
             @@ s2c(mkStmt(Goto (ref switch, loc')))
 
         | None -> begin
@@ -7004,7 +7004,7 @@ and doStatement (s : A.statement) : chunk =
             (* And make a label for it since we'll goto it *)
             switch.labels <- [Label ("__docompgoto", loc', false)];
             gotoTargetData := Some (switchv, switch);
-            se @@ i2c (Set(var switchv, makeCast ~kind:Unknown ~e:e' ~newt:!upointType, loc', locUnknown)) @@ (* TODO: eloc for COMPGOTO *)
+            se @@ i2c (Set(var switchv, makeCast ~kind:Internal ~e:e' ~newt:!upointType, loc', locUnknown)) @@ (* TODO: eloc for COMPGOTO *)
             s2c switch
         end
       end
