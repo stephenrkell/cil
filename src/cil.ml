@@ -618,6 +618,7 @@ and binop =
 and castkind =
   | Explicit (** Explicit conversion *)
   | IntegerPromotion
+  | DefaultArgumentPromotion
   | Unknown (* TODO: eventually remove *)
 
 (** An lvalue denotes the contents of a range of memory addresses. This range
@@ -2881,6 +2882,7 @@ let d_castkind () k =
   match k with
   | Explicit -> text "Explicit"
   | IntegerPromotion -> text "IntegerPromotion"
+  | DefaultArgumentPromotion -> text "DefaultArgumentPromotion"
   | Unknown -> text "Unknown"
 
 let invalidStmt = mkStmt (Instr [])

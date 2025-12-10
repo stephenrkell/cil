@@ -1468,6 +1468,7 @@ let rec castTo ~kind
     match kind with
     | Explicit -> true
     | IntegerPromotion
+    | DefaultArgumentPromotion
     | Unknown -> false
   in
   let debugCast = false in
@@ -4464,7 +4465,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                       (sa :: ss, a' :: args')
                     else
                       let promoted_type = defaultArgumentPromotion at in
-                      let _, a'' = castTo ~kind:Unknown at promoted_type a' in
+                      let _, a'' = castTo ~kind:DefaultArgumentPromotion at promoted_type a' in
                       (sa :: ss, a'' :: args')
               in
               loop args
