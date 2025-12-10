@@ -234,13 +234,13 @@ and sliceExp (i : int) (e : exp) : exp =
   | UnOp (op, e1, t) -> UnOp (op, sliceExp i e1, sliceType i t)
   | BinOp (op, e1, e2, t) -> BinOp (op, sliceExp i e1, sliceExp i e2,
                                     sliceType i t)
-  | CastE (t, e) -> sliceCast i t e
+  | CastE (k, t, e) -> sliceCast i k t e
   | AddrOf lv -> AddrOf (sliceLval i lv)
   | StartOf lv -> StartOf (sliceLval i lv)
   | SizeOf t -> SizeOf (sliceTypeAll t)
   | _ -> E.s (unimp "exp %a" d_exp e)
 
-and sliceCast (i : int) (t : typ) (e : exp) : exp =
+and sliceCast (i : int) (k : castkind) (t : typ) (e : exp) : exp =
   let te = typeOf e in
   match t, te with
   | TInt (k1, _), TInt (k2, attrs2) when k1 = k2 ->
@@ -250,9 +250,9 @@ and sliceCast (i : int) (t : typ) (e : exp) : exp =
       (* Note: We strip off integer cast operations. *)
       sliceExp i e
   | TPtr _, _ when isZero e ->
-      CastE (sliceType i t, sliceExp i e)
+      CastE (k, sliceType i t, sliceExp i e)
   | TPtr (bt1, _), TPtr (bt2, _) when (typeSig bt1) = (typeSig bt2) ->
-      CastE (sliceType i t, sliceExp i e)
+      CastE (k, sliceType i t, sliceExp i e)
   | _ ->
       E.s (unimp "sketchy cast (%a) -> (%a)\n" d_type te d_type t)
 

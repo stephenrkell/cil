@@ -494,7 +494,7 @@ let iosh_get_useful_def iosh vi =
       match ido with None -> true | Some(id) ->
 	match time "getDefRhs" getDefRhs id with
 	  Some(RD.RDExp(Lval(Var vi',NoOffset)),_,_)
-	| Some(RD.RDExp(CastE(_,Lval(Var vi',NoOffset))),_,_) ->
+	| Some(RD.RDExp(CastE(_,_,Lval(Var vi',NoOffset))),_,_) ->
 	    not(vi.vid = vi'.vid) (* false if they are the same *)
 	| _ -> true) ios
     in

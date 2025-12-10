@@ -1586,7 +1586,7 @@ let rec isConstTrue (e:exp): bool =
   | Const(CChr c) -> 0 <> Char.code c
   | Const(CStr _ | CWStr _) -> true
   | Const(CReal(f, _, _)) -> f <> 0.0;
-  | CastE(_, e) -> isConstTrue e
+  | CastE(_, _, e) -> isConstTrue e
   | _ -> false
 
 (* Given an expression that is being coerced to bool, is it zero?
@@ -1597,7 +1597,7 @@ let rec isConstFalse (e:exp): bool =
   | Const(CInt (n,_,_)) -> is_zero_cilint n
   | Const(CChr c) -> 0 = Char.code c
   | Const(CReal(f, _, _)) -> f = 0.0;
-  | CastE(_, e) -> isConstFalse e
+  | CastE(_, _, e) -> isConstFalse e
   | _ -> false
 
 
@@ -2399,7 +2399,7 @@ let afterConversion (c: chunk) : chunk =
      is important to have the cast at the same place as the call *)
   let collapseCallCast = function
       Call(Some(Var vi, NoOffset), f, args, l, el),
-      Set(destlv, CastE (newt, Lval(Var vi', NoOffset)), _, _)
+      Set(destlv, CastE (_, newt, Lval(Var vi', NoOffset)), _, _)
       when (not vi.vglob &&
             String.length vi.vname >= 3 &&
             (* Watch out for the possibility that we have an implied cast in
@@ -3461,9 +3461,9 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
      essentially doExp should never return things of type TFun or TArray *)
   let processArrayFun e t =
     match e, unrollType t with
-      (Lval(lv) | CastE(_, Lval lv)), TArray(tbase, _, a) ->
+      (Lval(lv) | CastE(_, _, Lval lv)), TArray(tbase, _, a) ->
         mkStartOfAndMark lv, TPtr(tbase, a)
-    | (Lval(lv) | CastE(_, Lval lv)), TFun _  ->
+    | (Lval(lv) | CastE(_, _, Lval lv)), TFun _  ->
         mkAddrOfAndMark lv, TPtr(t, [])
     | _, (TArray _ | TFun _) ->
         E.s (error "Array or function expression is not lval: %a@!"
@@ -3615,7 +3615,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         let lv =
           match e' with
             Lval x -> x
-          | CastE(_, Lval x) -> x
+          | CastE(_, _, Lval x) -> x
           | _ -> E.s (error "Expected an lval in MEMBEROF (field %s)" str)
         in
         let field_offset =
@@ -4060,7 +4060,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
             (* ignore (E.log "ADDROF on %a : %a\n" d_plainexp e'
                       d_plaintype t); *)
             match e' with
-             ( Lval x | CastE(_, Lval x)) ->
+             ( Lval x | CastE(_, _, Lval x)) ->
                finishExp se (mkAddrOfAndMark x) (TPtr(t, []))
 
             | StartOf (lv) ->
@@ -4105,7 +4105,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
              let lv =
                match e' with
                  Lval x -> x
-               | CastE (_, Lval x) -> x (* A GCC extension. The operation is
+               | CastE (_, _, Lval x) -> x (* A GCC extension. The operation is
                                            done at the cast type. The result
                                            is also of the cast type *)
                | _ -> E.s (error "Expected lval for ++ or --")
@@ -4142,7 +4142,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
              let lv =
                match e' with
                  Lval x -> x
-               | CastE (_, Lval x) -> x (* GCC extension. The addition must
+               | CastE (_, _, Lval x) -> x (* GCC extension. The addition must
                                            be be done at the cast type. The
                                            result of this is also of the cast
                                            type *)
@@ -4267,7 +4267,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
              let lv1 =
                match e1' with
                  Lval x -> x
-               | CastE (_, Lval x) -> x (* GCC extension. The operation and
+               | CastE (_, _, Lval x) -> x (* GCC extension. The operation and
                                            the result are at the cast type  *)
                | _ -> E.s (error "Expected lval for assignment with arith")
              in
@@ -4479,7 +4479,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         let pres: exp ref = ref zero in (* If we do not have a call, this is the result *)
         let prestype: typ ref = ref intType in
 
-        let rec dropCasts = function CastE (_, e) -> dropCasts e | e -> e in
+        let rec dropCasts = function CastE (_, _, e) -> dropCasts e | e -> e in
         (* Get the name of the last formal *)
         let getNameLastFormal () =
           match !currentFunctionFDEC.svar.vtype with
@@ -4746,7 +4746,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                 (* Make an exception here for __builtin_va_arg:
                   hide calldest as a third parameter.  *)
                 match calldest with
-                | Some destlv -> None, !pargs @ [CastE(voidPtrType, AddrOf destlv)]
+                | Some destlv -> None, !pargs @ [CastE(Unknown, voidPtrType, AddrOf destlv)]
                 | None -> E.s (E.bug "__builtin_va_arg should have calldest always set")
               else
                 calldest, !pargs

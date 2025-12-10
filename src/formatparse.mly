@@ -509,7 +509,7 @@ expression:
                             (fun e ->
                               let t', e' =
                                 match e with
-                                  CastE (t', e') -> t', e'
+                                  CastE (Unknown, t', e') -> t', e'
                                 | _ -> typeOf e, e
                               in
                               match (snd $2) t', (snd $4 e') with

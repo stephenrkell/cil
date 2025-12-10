@@ -617,7 +617,7 @@ and exp =
   | Question   of exp * exp * exp * typ
     (** (a ? b : c) operation. Includes the type of the result *)
 
-  | CastE      of typ * exp
+  | CastE      of castkind * typ * exp
     (** Use {!mkCast} to make casts.  *)
 
   | AddrOf     of lval
@@ -723,6 +723,9 @@ and binop =
                                            always evaluate both operands.  If
                                            you want to use these, you must
                                            set {!useLogicalOperators}. *)
+
+and castkind =
+  | Unknown (* TODO: eventually remove *)
 
 (** {b Lvalues.} Lvalues are the sublanguage of expressions that can appear at the left of an assignment or as operand to the address-of operator.
 In C the syntax for lvalues is not always a good indication of the meaning
