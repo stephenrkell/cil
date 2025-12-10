@@ -1720,10 +1720,10 @@ val mkString: string -> exp
 
 (** Construct a cast when having the old type of the expression. If the new
     type is the same as the old type, then no cast is added. *)
-val mkCastT: e:exp -> oldt:typ -> newt:typ -> exp
+val mkCastT: kind:castkind -> e:exp -> oldt:typ -> newt:typ -> exp
 
 (** Like {!mkCastT} but uses typeOf to get [oldt] *)
-val mkCast: e:exp -> newt:typ -> exp
+val mkCast: kind:castkind -> e:exp -> newt:typ -> exp
 
 (** Removes casts from this expression, but ignores casts within
   other expression constructs.  So we delete the (A) and (B) casts from

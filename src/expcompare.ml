@@ -238,7 +238,7 @@ let rec stripCastsDeepForPtrArith (e:exp): exp =
       let e2 = stripCastsDeepForPtrArith e2 in
       if not(compareTypesNoAttributes ~ignoreSign:false
 	       (typeOf e1) (typeOf e2))
-      then BinOp(MinusPP, mkCast ~e:e1 ~newt:(typeOf e2), e2, t)
+      then BinOp(MinusPP, mkCast ~kind:Unknown ~e:e1 ~newt:(typeOf e2), e2, t)
       else BinOp(MinusPP, e1, e2, t)
   | BinOp(op,e1,e2,t) ->
       let e1 = stripCastsDeepForPtrArith e1 in

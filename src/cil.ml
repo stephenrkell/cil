@@ -6101,7 +6101,7 @@ let getCompField (cinfo:compinfo) (fieldName:string) : fieldinfo =
   (List.find (fun fi -> fi.fname = fieldName) cinfo.cfields)
 
 
-let mkCastT ~(e: exp) ~(oldt: typ) ~(newt: typ) =
+let mkCastT ~(kind: castkind) ~(e: exp) ~(oldt: typ) ~(newt: typ) =
   (* Do not remove old casts because they are conversions !!! *)
   if Util.equals (typeSig oldt) (typeSig newt) then begin
     e
@@ -6113,11 +6113,11 @@ let mkCastT ~(e: exp) ~(oldt: typ) ~(newt: typ) =
         let v = if compare i zero_cilint = 0 then zero_cilint else one_cilint in
         Const (CInt(v, IBool,  None))
     | TInt(newik, []), Const(CInt(i, _, _)) -> kintegerCilint newik i
-    | _ -> CastE(Unknown,newt,e) (* TODO: add castkind argument *)
+    | _ -> CastE(kind,newt,e)
   end
 
-let mkCast ~(e: exp) ~(newt: typ) =
-  mkCastT ~e:e ~oldt:(typeOf e) ~newt:newt
+let mkCast ~kind ~(e: exp) ~(newt: typ) =
+  mkCastT ~kind ~e:e ~oldt:(typeOf e) ~newt:newt
 
 type existsAction =
     ExistsTrue                          (* We have found it *)
@@ -6234,7 +6234,7 @@ let rec makeZeroInit (t: typ) : init =
       CompoundInit (t', [])
 
   | TPtr _ as t ->
-      SingleInit(if !insertImplicitCasts then mkCast ~e:zero ~newt:t else zero)
+      SingleInit(if !insertImplicitCasts then mkCast ~kind:Unknown ~e:zero ~newt:t else zero)
   | x -> E.s (unimp "Cannot initialize type: %a" d_type x)
 
 

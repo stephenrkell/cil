@@ -504,7 +504,7 @@ expression:
 		         { ((fun args ->
                               let t = (fst $2) args in
                               let e = (fst $4) args in
-                              mkCast ~e:e ~newt:t),
+                              mkCast ~kind:Unknown ~e:e ~newt:t),
 
                             (fun e ->
                               let t', e' =
@@ -1354,7 +1354,7 @@ stmt:
                         let e = (fst $3) args in
                         let e =
                           if isPointerType(typeOf e) then
-                            mkCast ~e:e ~newt:!upointType
+                            mkCast ~kind:Unknown ~e:e ~newt:!upointType
                           else e
                         in
                         mkStmt

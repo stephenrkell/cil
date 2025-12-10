@@ -1174,7 +1174,7 @@ module BlockChunk =
       let t = typeOf e in
       (* If needed, convert e to type t, and check in case the label was too big *)
       let checkRange e =
-        let e' = makeCast ~e ~newt:t in
+        let e' = makeCast ~kind:Unknown ~e ~newt:t in
         let constFold = constFold false in
         let e'' = if !lowerConstants then constFold e' else e' in
         begin match (constFold e), (constFold e'') with
@@ -1478,7 +1478,7 @@ let rec castTo ?(fromsource=false)
   else begin
     let nt' = if fromsource then nt else !typeForInsertedCast nt in
     let result = (nt',
-                  if !insertImplicitCasts || fromsource then Cil.mkCastT ~e:e ~oldt:ot ~newt:nt' else e) in
+                  if !insertImplicitCasts || fromsource then Cil.mkCastT ~kind:Unknown ~e:e ~oldt:ot ~newt:nt' else e) in (* TODO: change fromsource argument to castkind *)
 
     if debugCast then
       ignore (E.log "castTo: ot=%a nt=%a\n  result is %a\n"
@@ -1830,7 +1830,7 @@ let rec combineTypes (what: combineWhat) (oldt: typ) (t: typ) : typ =
                (* cast both to the same type.  This prevents complaints such as
                   "((int)1) <> ((char)1)" *)
                if machdep then
-                 mkCast ~e:oldsz' ~newt:!typeOfSizeOf,  mkCast ~e:sz' ~newt:!typeOfSizeOf
+                 mkCast ~kind:Unknown ~e:oldsz' ~newt:!typeOfSizeOf,  mkCast ~kind:Unknown ~e:sz' ~newt:!typeOfSizeOf
                else
                  oldsz', sz'
              in
@@ -3998,7 +3998,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         let (se, e', t) = doExp asconst e (AExp None) in
         if isIntegralType t then
           let tres = integralPromotion t in
-          let fallback = UnOp(Neg, makeCastT ~e:e' ~oldt:t ~newt:tres, tres) in
+          let fallback = UnOp(Neg, makeCastT ~kind:Unknown ~e:e' ~oldt:t ~newt:tres, tres) in
           let e'' =
             match e', tres with
             | Const(CInt(i, _, _)), TInt(ik, _) -> const_if_not_overflow fallback ik (neg_cilint i)
@@ -4015,7 +4015,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         let (se, e', t) = doExp asconst e (AExp None) in
         if isIntegralType t then
           let tres = integralPromotion t in
-          let e'' = UnOp(BNot, makeCastT ~e:e' ~oldt:t ~newt:tres, tres) in
+          let e'' = UnOp(BNot, makeCastT ~kind:Unknown ~e:e' ~oldt:t ~newt:tres, tres) in
           finishExp se e'' tres
         else
           E.s (error "Unary ~ on a non-integral type")
@@ -4111,7 +4111,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                | _ -> E.s (error "Expected lval for ++ or --")
              in
              let tresult, result = doBinOp uop' e' t one intType in
-             finishExp (se +++ (Set(lv, makeCastT ~e:result ~oldt:tresult ~newt:t,
+             finishExp (se +++ (Set(lv, makeCastT ~kind:Unknown ~e:result ~oldt:tresult ~newt:t,
                                     !currentLoc, !currentExpLoc)))
                e'
                t
@@ -4159,7 +4159,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                  se, e'
              in
              finishExp
-               (se' +++ (Set(lv, makeCastT ~e:opresult ~oldt:tresult ~newt:(typeOfLval lv),
+               (se' +++ (Set(lv, makeCastT ~kind:Unknown ~e:opresult ~oldt:tresult ~newt:(typeOfLval lv),
                              !currentLoc, !currentExpLoc)))
                result
                t
@@ -4406,7 +4406,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         if isBuiltinNan && asconst then
           (* Replace call to builtin nan with computation yielding NaN *)
           let onef = Const(CReal(0.0,FDouble,None)) in
-          let zerodivzero = mkCast ~e:(BinOp(Div,onef,onef,doubleType)) ~newt:resType in
+          let zerodivzero = mkCast ~kind:Unknown ~e:(BinOp(Div,onef,onef,doubleType)) ~newt:resType in
           (empty,zerodivzero,resType)
         else (
         (* If the "--forceRLArgEval" flag was used, make sure
@@ -4992,7 +4992,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
             res
           end
         in
-        finishExp empty (makeCast ~e:(integer addrval) ~newt:voidPtrType) voidPtrType
+        finishExp empty (makeCast ~kind:Unknown ~e:(integer addrval) ~newt:voidPtrType) voidPtrType
     end
 
     | A.EXPR_PATTERN _ -> E.s (E.bug "EXPR_PATTERN in cabs2cil input")
@@ -5040,14 +5040,14 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
     let tres = arithmeticConversion t1 t2 in
     (* Keep the operator since it is arithmetic *)
     tres,
-    optConstFoldBinOp false bop (makeCastT ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~e:e2 ~oldt:t2 ~newt:tres) tres
+    optConstFoldBinOp false bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:tres) tres
   in
   let doArithmeticComp () =
     let tres = arithmeticConversion t1 t2 in
     (* Keep the operator since it is arithmetic *)
     intType,
     optConstFoldBinOp false bop
-      (makeCastT ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~e:e2 ~oldt:t2 ~newt:tres) intType
+      (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:tres) intType
   in
   let doIntegralArithmetic () =
     let tres = unrollType (arithmeticConversion t1 t2) in
@@ -5055,15 +5055,15 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
       TInt _ ->
         tres,
         optConstFoldBinOp false bop
-          (makeCastT ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~e:e2 ~oldt:t2 ~newt:tres) tres
+          (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:tres) (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:tres) tres
     | _ -> E.s (error "%a operator on a non-integer type" d_binop bop)
   in
   let pointerComparison e1 t1 e2 t2 =
     (* Cast both sides to an integer *)
     let commontype = !upointType in
     intType,
-    optConstFoldBinOp false bop (makeCastT ~e:e1 ~oldt:t1 ~newt:commontype)
-      (makeCastT ~e:e2 ~oldt:t2 ~newt:commontype) intType
+    optConstFoldBinOp false bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:commontype)
+      (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:commontype) intType
   in
 
   match bop with
@@ -5074,7 +5074,7 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
       let t1' = integralPromotion t1 in
       let t2' = integralPromotion t2 in
       t1',
-      optConstFoldBinOp false bop (makeCastT ~e:e1 ~oldt:t1 ~newt:t1') (makeCastT ~e:e2 ~oldt:t2 ~newt:t2') t1'
+      optConstFoldBinOp false bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:t1') (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:t2') t1'
 
   | (PlusA|MinusA)
       when isArithmeticType t1 && isArithmeticType t2 -> doArithmetic ()
@@ -5084,44 +5084,44 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
   | PlusA when isPointerType t1 && isIntegralType t2 ->
       t1,
       optConstFoldBinOp false PlusPI e1
-        (makeCastT ~e:e2 ~oldt:t2 ~newt:(integralPromotion t2)) t1
+        (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:(integralPromotion t2)) t1
   | PlusA when isIntegralType t1 && isPointerType t2 ->
       t2,
       optConstFoldBinOp false PlusPI e2
-        (makeCastT ~e:e1 ~oldt:t1 ~newt:(integralPromotion t1)) t2
+        (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:(integralPromotion t1)) t2
   | MinusA when isPointerType t1 && isIntegralType t2 ->
       t1,
       optConstFoldBinOp false MinusPI e1
-        (makeCastT ~e:e2 ~oldt:t2 ~newt:(integralPromotion t2)) t1
+        (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:(integralPromotion t2)) t1
   | MinusA when isPointerType t1 && isPointerType t2 ->
       let commontype = t1 in
       !ptrdiffType,
-      optConstFoldBinOp false MinusPP (makeCastT ~e:e1 ~oldt:t1 ~newt:commontype)
-                                      (makeCastT ~e:e2 ~oldt:t2 ~newt:commontype) !ptrdiffType
+      optConstFoldBinOp false MinusPP (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:commontype)
+                                      (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:commontype) !ptrdiffType
   | (Le|Lt|Ge|Gt|Eq|Ne) when isPointerType t1 && isPointerType t2 ->
       pointerComparison e1 t1 e2 t2
   | (Eq|Ne) when isPointerType t1 && isZero e2 ->
-      pointerComparison e1 t1 (makeCastT ~e:zero ~oldt:!upointType ~newt:t1) t1
+      pointerComparison e1 t1 (makeCastT ~kind:Unknown ~e:zero ~oldt:!upointType ~newt:t1) t1
   | (Eq|Ne) when isPointerType t2 && isZero e1 ->
-      pointerComparison (makeCastT ~e:zero ~oldt:!upointType ~newt:t2) t2 e2 t2
+      pointerComparison (makeCastT ~kind:Unknown ~e:zero ~oldt:!upointType ~newt:t2) t2 e2 t2
 
   | (Eq|Ne) when isVariadicListType t1 && isZero e2 ->
       ignore (warnOpt "Comparison of va_list and zero");
-      pointerComparison e1 t1 (makeCastT ~e:zero ~oldt:!upointType ~newt:t1) t1
+      pointerComparison e1 t1 (makeCastT ~kind:Unknown ~e:zero ~oldt:!upointType ~newt:t1) t1
   | (Eq|Ne) when isVariadicListType t2 && isZero e1 ->
       ignore (warnOpt "Comparison of zero and va_list");
-      pointerComparison (makeCastT ~e:zero ~oldt:!upointType ~newt:t2) t2 e2 t2
+      pointerComparison (makeCastT ~kind:Unknown ~e:zero ~oldt:!upointType ~newt:t2) t2 e2 t2
 
   | (Eq|Ne|Le|Lt|Ge|Gt) when isPointerType t1 && isArithmeticType t2 ->
       ignore (warnOpt "Comparison of pointer and non-pointer");
       (* Cast both values to upointType *)
-      doBinOp bop (makeCastT ~e:e1 ~oldt:t1 ~newt:!upointType) !upointType
-                  (makeCastT ~e:e2 ~oldt:t2 ~newt:!upointType) !upointType
+      doBinOp bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:!upointType) !upointType
+                  (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:!upointType) !upointType
   | (Eq|Ne|Le|Lt|Ge|Gt) when isArithmeticType t1 && isPointerType t2 ->
       ignore (warnOpt "Comparison of pointer and non-pointer");
       (* Cast both values to upointType *)
-      doBinOp bop (makeCastT ~e:e1 ~oldt:t1 ~newt:!upointType) !upointType
-                  (makeCastT ~e:e2 ~oldt:t2 ~newt:!upointType) !upointType
+      doBinOp bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:!upointType) !upointType
+                  (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:!upointType) !upointType
 
   | _ -> E.s (error "Invalid operands to binary operator: %a" d_plainexp (BinOp(bop,e1,e2,intType)))
 
@@ -5508,7 +5508,7 @@ and doInit
            d_exp oneinit' d_type t' d_type so.soTyp);
 *)
       setone so.soOff (if !insertImplicitCasts then
-                          makeCastT ~e:oneinit' ~oldt:t' ~newt:so.soTyp
+                          makeCastT ~kind:Unknown ~e:oneinit' ~oldt:t' ~newt:so.soTyp
                        else oneinit');
       (* Move on *)
       advanceSubobj so;
@@ -5592,7 +5592,7 @@ and doInit
   | _, (A.NEXT_INIT, A.COMPOUND_INIT [(A.NEXT_INIT,
                                        A.SINGLE_INIT oneinit)]) :: restil ->
       let se, oneinit', t' = doExp isconst oneinit (AExp(Some so.soTyp)) in
-      setone so.soOff (makeCastT ~e:oneinit' ~oldt:t' ~newt:so.soTyp);
+      setone so.soOff (makeCastT ~kind:Unknown ~e:oneinit' ~oldt:t' ~newt:so.soTyp);
       (* Move on *)
       advanceSubobj so;
       doInit isconst setone so (acc @@ se) restil
@@ -6348,7 +6348,7 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
                   let default =
                     defaultChunk
                       l el
-                      (i2c (Set ((Mem (makeCast ~e:(integer 0) ~newt:intPtrType),
+                      (i2c (Set ((Mem (makeCast ~kind:Unknown ~e:(integer 0) ~newt:intPtrType),
                                   NoOffset),
                                  integer 0, l, el)))
                   in
@@ -6546,7 +6546,7 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
                   TVoid _ -> None
                 | (TInt _ | TEnum _ | TFloat _ | TPtr _) as rt ->
                     ignore (warnOpt "Body of function %s falls-through. Adding a return statement"  !currentFunctionFDEC.svar.vname);
-                    Some (makeCastT ~e:zero ~oldt:intType ~newt:rt)
+                    Some (makeCastT ~kind:Unknown ~e:zero ~oldt:intType ~newt:rt)
                 | _ ->
                     ignore (warn "Body of function %s falls-through and cannot find an appropriate return value" !currentFunctionFDEC.svar.vname);
                     None
@@ -6900,7 +6900,7 @@ and doStatement (s : A.statement) : chunk =
         if not (Cil.isIntegralType et) then
           E.s (error "Switch on a non-integer expression.");
         let et' = integralPromotion et in
-        let e' = makeCastT ~e:e' ~oldt:et ~newt:et' in
+        let e' = makeCastT ~kind:Unknown ~e:e' ~oldt:et ~newt:et' in
         enter_break_env ();
         let s' = doStatement s in
         exit_break_env ();
@@ -6968,7 +6968,7 @@ and doStatement (s : A.statement) : chunk =
         match !gotoTargetData with
           Some (switchv, switch) -> (* We have already generated this one  *)
             se
-            @@ i2c(Set (var switchv, makeCast ~e:e' ~newt:!upointType, loc', locUnknown)) (* TODO: eloc for COMPGOTO *)
+            @@ i2c(Set (var switchv, makeCast ~kind:Unknown ~e:e' ~newt:!upointType, loc', locUnknown)) (* TODO: eloc for COMPGOTO *)
             @@ s2c(mkStmt(Goto (ref switch, loc')))
 
         | None -> begin
@@ -6991,7 +6991,7 @@ and doStatement (s : A.statement) : chunk =
             (* And make a label for it since we'll goto it *)
             switch.labels <- [Label ("__docompgoto", loc', false)];
             gotoTargetData := Some (switchv, switch);
-            se @@ i2c (Set(var switchv, makeCast ~e:e' ~newt:!upointType, loc', locUnknown)) @@ (* TODO: eloc for COMPGOTO *)
+            se @@ i2c (Set(var switchv, makeCast ~kind:Unknown ~e:e' ~newt:!upointType, loc', locUnknown)) @@ (* TODO: eloc for COMPGOTO *)
             s2c switch
         end
       end
