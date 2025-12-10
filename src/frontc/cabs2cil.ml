@@ -1467,6 +1467,7 @@ let rec castTo ~kind
   let fromsource =
     match kind with
     | Explicit -> true
+    | IntegerPromotion
     | Unknown -> false
   in
   let debugCast = false in
@@ -4003,7 +4004,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         let (se, e', t) = doExp asconst e (AExp None) in
         if isIntegralType t then
           let tres = integralPromotion t in
-          let fallback = UnOp(Neg, makeCastT ~kind:Unknown ~e:e' ~oldt:t ~newt:tres, tres) in
+          let fallback = UnOp(Neg, makeCastT ~kind:IntegerPromotion ~e:e' ~oldt:t ~newt:tres, tres) in
           let e'' =
             match e', tres with
             | Const(CInt(i, _, _)), TInt(ik, _) -> const_if_not_overflow fallback ik (neg_cilint i)
@@ -4020,7 +4021,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         let (se, e', t) = doExp asconst e (AExp None) in
         if isIntegralType t then
           let tres = integralPromotion t in
-          let e'' = UnOp(BNot, makeCastT ~kind:Unknown ~e:e' ~oldt:t ~newt:tres, tres) in
+          let e'' = UnOp(BNot, makeCastT ~kind:IntegerPromotion ~e:e' ~oldt:t ~newt:tres, tres) in
           finishExp se e'' tres
         else
           E.s (error "Unary ~ on a non-integral type")
@@ -5079,7 +5080,7 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
       let t1' = integralPromotion t1 in
       let t2' = integralPromotion t2 in
       t1',
-      optConstFoldBinOp false bop (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:t1') (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:t2') t1'
+      optConstFoldBinOp false bop (makeCastT ~kind:IntegerPromotion ~e:e1 ~oldt:t1 ~newt:t1') (makeCastT ~kind:IntegerPromotion ~e:e2 ~oldt:t2 ~newt:t2') t1'
 
   | (PlusA|MinusA)
       when isArithmeticType t1 && isArithmeticType t2 -> doArithmetic ()
@@ -5089,15 +5090,15 @@ and doBinOp (bop: binop) (e1: exp) (t1: typ) (e2: exp) (t2: typ) : typ * exp =
   | PlusA when isPointerType t1 && isIntegralType t2 ->
       t1,
       optConstFoldBinOp false PlusPI e1
-        (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:(integralPromotion t2)) t1
+        (makeCastT ~kind:IntegerPromotion ~e:e2 ~oldt:t2 ~newt:(integralPromotion t2)) t1
   | PlusA when isIntegralType t1 && isPointerType t2 ->
       t2,
       optConstFoldBinOp false PlusPI e2
-        (makeCastT ~kind:Unknown ~e:e1 ~oldt:t1 ~newt:(integralPromotion t1)) t2
+        (makeCastT ~kind:IntegerPromotion ~e:e1 ~oldt:t1 ~newt:(integralPromotion t1)) t2
   | MinusA when isPointerType t1 && isIntegralType t2 ->
       t1,
       optConstFoldBinOp false MinusPI e1
-        (makeCastT ~kind:Unknown ~e:e2 ~oldt:t2 ~newt:(integralPromotion t2)) t1
+        (makeCastT ~kind:IntegerPromotion ~e:e2 ~oldt:t2 ~newt:(integralPromotion t2)) t1
   | MinusA when isPointerType t1 && isPointerType t2 ->
       let commontype = t1 in
       !ptrdiffType,
@@ -6905,7 +6906,7 @@ and doStatement (s : A.statement) : chunk =
         if not (Cil.isIntegralType et) then
           E.s (error "Switch on a non-integer expression.");
         let et' = integralPromotion et in
-        let e' = makeCastT ~kind:Unknown ~e:e' ~oldt:et ~newt:et' in
+        let e' = makeCastT ~kind:IntegerPromotion ~e:e' ~oldt:et ~newt:et' in
         enter_break_env ();
         let s' = doStatement s in
         exit_break_env ();
