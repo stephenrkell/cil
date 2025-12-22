@@ -4867,9 +4867,12 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
             match e2'o with
               None -> (* has form "e1 ? : e3"  *)
                 let tmp = var (newTempVar nil true tresult) in
-                let (se1, _, _) = doExp asconst e1 (ASet(tmp, tresult)) in
+                let (se1, e1', t1) = doExp asconst e1 (AExp None) in
+                let (se1, _, _) = finishExp ~newWhat:(ASet(tmp, tresult))
+                                    se1 (snd (castTo ~kind:ConditionalConversion t1 tresult e1')) tresult in
                 let (se3, _, _) = finishExp ~newWhat:(ASet(tmp, tresult))
-                                    se3 e3' t3 in
+                                    se3 (snd (castTo ~kind:ConditionalConversion t3 tresult e3')) tresult in
+                (* TODO: technically, it might be more accurate to branch on the value of e1' before ConditionalConversion *)
                 finishExp (se1 @@ ifChunk (Lval(tmp)) !currentLoc !currentExpLoc
                                     skipChunk se3)
                   (Lval(tmp))
@@ -4882,12 +4885,11 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                       let tmp = newTempVar nil true tresult in
                       var tmp, tresult
                 in
-                (* TODO: ConditionalConversion casts aren't inserted *)
                 (* Now add the stmts lv:=e2 and lv:=e3 to se2 and se3 *)
                 let (se2, _, _) = finishExp ~newWhat:(ASet(lv,lvt))
-                                    se2 e2' t2 in
+                                    se2 (snd (castTo ~kind:ConditionalConversion t2 tresult e2')) tresult in
                 let (se3, _, _) = finishExp ~newWhat:(ASet(lv,lvt))
-                                    se3 e3' t3 in
+                                    se3 (snd (castTo ~kind:ConditionalConversion t3 tresult e3')) tresult in
                 finishExp (doCondition asconst e1 se2 se3) (Lval(lv)) tresult
         end
 
