@@ -725,15 +725,15 @@ and binop =
                                            set {!useLogicalOperators}. *)
 
 and castkind =
-  | Explicit (** Explicit conversion *)
-  | IntegerPromotion
-  | DefaultArgumentPromotion
-  | ArithmeticConversion
-  | ConditionalConversion (* non-standard terminology *)
-  | PointerConversion (* non-standard terminology *)
-  | Implicit (** Implicit conversion *)
-  | Internal (** Internal conversion not required by standard *)
-  | Unknown (* TODO: eventually remove *)
+  | Explicit (** Explicit conversion. @see C11 6.3.1. *)
+  | IntegerPromotion (** Integer promotion. @see C11 6.3.1.1.2. *)
+  | DefaultArgumentPromotion (** Default argument promotion. @see C11 6.5.2.2.6. *)
+  | ArithmeticConversion (** Usual arithmetic conversion. @see C11 6.3.1.8. *)
+  | ConditionalConversion (** Conditional conversion (non-standard terminology). @see C11 6.5.15.5 and 6.5.15.6. *)
+  | PointerConversion (** Pointer conversion (non-standard). @see C11 6.5.6.8, 6.5.8.5 and 6.5.9.5. *)
+  | Implicit (** Implicit conversion. @see C11 6.3.1, 6.5.2.2.7, 6.5.2.4.2, 6.5.16.1.2, 6.5.16.2.3, 6.8.4.2.5 and 6.8.6.4.3. *)
+  | Internal (** CIL-internal conversion (non-standard). *)
+  | Unknown (** Unknown conversion. *)
 
 (** {b Lvalues.} Lvalues are the sublanguage of expressions that can appear at the left of an assignment or as operand to the address-of operator.
 In C the syntax for lvalues is not always a good indication of the meaning

@@ -504,7 +504,7 @@ expression:
 		         { ((fun args ->
                               let t = (fst $2) args in
                               let e = (fst $4) args in
-                              mkCast ~kind:Explicit ~e:e ~newt:t),
+                              mkCast ~kind:Explicit ~e:e ~newt:t), (* C11 6.3.1 *)
 
                             (fun e ->
                               let t', e' =

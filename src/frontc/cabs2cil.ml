@@ -1174,7 +1174,7 @@ module BlockChunk =
       let t = typeOf e in
       (* If needed, convert e to type t, and check in case the label was too big *)
       let checkRange e =
-        let e' = makeCast ~kind:Implicit ~e ~newt:t in
+        let e' = makeCast ~kind:Implicit ~e ~newt:t in (* C11 6.8.4.2.5 *)
         let constFold = constFold false in
         let e'' = if !lowerConstants then constFold e' else e' in
         begin match (constFold e), (constFold e'') with
@@ -3507,7 +3507,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
             (SynthetizeLoc.doChunkTail se, e, t)
         | _ ->
             let (e', t') = processArrayFun e t in
-            let (t'', e'') = castTo ~kind:Implicit t' lvt e' in
+            let (t'', e'') = castTo ~kind:Implicit t' lvt e' in (* C11 6.5.16.1.2 *)
 (*
             ignore (E.log "finishExp: e = %a\n  e'' = %a\n" d_plainexp e d_plainexp e'');
 *)
@@ -3998,7 +3998,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                  need the check. *)
               let newtyp, newexp =
                 if needcast then
-                  castTo ~kind:Explicit t' typ e'
+                  castTo ~kind:Explicit t' typ e' (* C11 6.3.1 *)
                 else
                   t', e'
               in
@@ -4123,7 +4123,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                | _ -> E.s (error "Expected lval for ++ or --")
              in
              let tresult, result = doBinOp uop' e' t one intType in
-             finishExp (se +++ (Set(lv, makeCastT ~kind:Implicit ~e:result ~oldt:tresult ~newt:t,
+             finishExp (se +++ (Set(lv, makeCastT ~kind:Implicit ~e:result ~oldt:tresult ~newt:t, (* C11 6.5.2.4.2 *)
                                     !currentLoc, !currentExpLoc)))
                e'
                t
@@ -4171,7 +4171,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                  se, e'
              in
              finishExp
-               (se' +++ (Set(lv, makeCastT ~kind:Implicit ~e:opresult ~oldt:tresult ~newt:(typeOfLval lv),
+               (se' +++ (Set(lv, makeCastT ~kind:Implicit ~e:opresult ~oldt:tresult ~newt:(typeOfLval lv), (* C11 6.5.2.4.2 *)
                              !currentLoc, !currentExpLoc)))
                result
                t
@@ -4287,7 +4287,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
              let tresult, result = doBinOp bop' e1' t1 e2' t2 in
              (* We must cast the result to the type of the lv1, which may be
                 different than t1 if lv1 was a Cast *)
-             let tresult', result' = castTo ~kind:Implicit tresult (typeOfLval lv1) result in
+             let tresult', result' = castTo ~kind:Implicit tresult (typeOfLval lv1) result in (* C11 6.5.16.2.3 *)
              (* Catch the case of an lval that might depend on itself,
                 e.g. p[p[0]] when p[0] == 0.  We need to use a temporary
                 here if the result of the expression will be used:
@@ -4452,7 +4452,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                   test/small1/union5, in which a transparent union is passed
                   as an argument *)
               let (sa, a', att) = force_right_to_left_evaluation (doExp false a (AExp None)) in
-              let (_, a'') = castTo ~kind:Implicit att at a' in
+              let (_, a'') = castTo ~kind:Implicit att at a' in (* C11 6.5.2.2.7 *)
               (sa :: ss, a'' :: args')
             | ([], args) -> (* No more types *)
               (* Do not give a warning for functions without a prototype*)
@@ -6559,7 +6559,7 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
                   TVoid _ -> None
                 | (TInt _ | TEnum _ | TFloat _ | TPtr _) as rt ->
                     ignore (warnOpt "Body of function %s falls-through. Adding a return statement"  !currentFunctionFDEC.svar.vname);
-                    Some (makeCastT ~kind:Implicit ~e:zero ~oldt:intType ~newt:rt)
+                    Some (makeCastT ~kind:Implicit ~e:zero ~oldt:intType ~newt:rt) (* C11 6.8.6.4.3 *)
                 | _ ->
                     ignore (warn "Body of function %s falls-through and cannot find an appropriate return value" !currentFunctionFDEC.svar.vname);
                     None
@@ -6683,7 +6683,7 @@ and assignInit (lv: lval)
                (acc: chunk) : chunk =
   match ie with
     SingleInit e ->
-      let (_, e'') = castTo ~kind:Implicit iet (typeOfLval lv) e in
+      let (_, e'') = castTo ~kind:Implicit iet (typeOfLval lv) e in (* 6.5.16.1.2 *)
       acc +++ (Set(lv, e'', !currentLoc, !currentExpLoc))
   | CompoundInit (t, initl) -> begin
     match unrollType t with
@@ -6900,7 +6900,7 @@ and doStatement (s : A.statement) : chunk =
 	    typeRemoveAttributes ["warn_unused_result"] !currentReturnType
 	  in
           let (se, e', et) = doExp false e (AExp (Some rt)) in
-          let (et'', e'') = castTo ~kind:Implicit et rt e' in
+          let (et'', e'') = castTo ~kind:Implicit et rt e' in (* C11 6.8.6.4.3 *)
           se @@ (returnChunk (Some e'') loc' eloc')
         end
 
