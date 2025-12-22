@@ -731,7 +731,7 @@ and castkind =
   | ArithmeticConversion (** Usual arithmetic conversion. @see C11 6.3.1.8. *)
   | ConditionalConversion (** Conditional conversion (non-standard terminology). @see C11 6.5.15.5 and 6.5.15.6. *)
   | PointerConversion (** Pointer conversion (non-standard). @see C11 6.5.6.8, 6.5.8.5 and 6.5.9.5. *)
-  | Implicit (** Implicit conversion. @see C11 6.3.1, 6.5.2.2.7, 6.5.2.4.2, 6.5.16.1.2, 6.5.16.2.3, 6.8.4.2.5 and 6.8.6.4.3. *)
+  | Implicit (** Implicit conversion. @see C11 6.3.1, 6.5.2.2.7, 6.5.2.4.2, 6.5.16.1.2, 6.5.16.2.3, 6.7.9.11, 6.8.4.2.5 and 6.8.6.4.3. *)
   | Internal (** CIL-internal conversion (non-standard). *)
   | Unknown (** Unknown conversion. *)
 

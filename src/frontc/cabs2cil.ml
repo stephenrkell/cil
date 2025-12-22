@@ -5521,7 +5521,7 @@ and doInit
            d_exp oneinit' d_type t' d_type so.soTyp);
 *)
       setone so.soOff (if !insertImplicitCasts then
-                          makeCastT ~kind:Unknown ~e:oneinit' ~oldt:t' ~newt:so.soTyp
+                          makeCastT ~kind:Implicit ~e:oneinit' ~oldt:t' ~newt:so.soTyp (* C11 6.7.9.11 *)
                        else oneinit');
       (* Move on *)
       advanceSubobj so;
@@ -5605,7 +5605,7 @@ and doInit
   | _, (A.NEXT_INIT, A.COMPOUND_INIT [(A.NEXT_INIT,
                                        A.SINGLE_INIT oneinit)]) :: restil ->
       let se, oneinit', t' = doExp isconst oneinit (AExp(Some so.soTyp)) in
-      setone so.soOff (makeCastT ~kind:Unknown ~e:oneinit' ~oldt:t' ~newt:so.soTyp);
+      setone so.soOff (makeCastT ~kind:Implicit ~e:oneinit' ~oldt:t' ~newt:so.soTyp); (* C11 6.7.9.11 *)
       (* Move on *)
       advanceSubobj so;
       doInit isconst setone so (acc @@ se) restil
