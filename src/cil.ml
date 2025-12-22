@@ -3425,9 +3425,12 @@ class defaultCilPrinterClass : cilPrinter = object (self)
           ++ text " : "
           ++ (self#pExpPrec level () e3)
 
-    | CastE(_,t,e) ->
+    | CastE(k,t,e) ->
         text "("
           ++ self#pType None () t (* TODO: option to not print implicit casts? *)
+          (* ++ text "/*"
+          ++ d_castkind () k (* convenient for debugging castkinds *)
+          ++ text "*/" *)
           ++ text ")"
           ++ self#pExpPrec level () e
 
