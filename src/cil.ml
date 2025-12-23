@@ -1963,6 +1963,20 @@ let isFunctionType t =
     TFun _ -> true
   | _ -> false
 
+let dropVectorAttributes (attrs: attributes) : attributes = 
+  dropAttributes ["__vector_size__"; "vector_size"] attrs
+
+let baseTypeOfVector (t: typ): typ =
+  match unrollType t with
+    | TInt(ik, attrs) -> TInt(ik, dropVectorAttributes attrs)
+    | TFloat(fk, attrs) -> TFloat(fk, dropVectorAttributes attrs)
+    | _ -> E.s (E.bug "baseTypeOfVector: not a vector type")
+
+let isVectorType (t: typ) : bool =
+  match unrollType t with
+    TInt(_, attrs) | TFloat(_, attrs) -> hasAttribute "__vector_size__" attrs || hasAttribute "vector_size" attrs
+    | _ -> false
+
 (**** Compute the type of an expression ****)
 let rec typeOf (e: exp) : typ =
   match e with
@@ -2021,6 +2035,7 @@ and typeOffset basetyp =
         TArray (t, _, baseAttrs) ->
 	  let elementType = typeOffset t o in
 	  blendAttributes baseAttrs elementType
+      | t when isVectorType t -> baseTypeOfVector t 
       | t -> E.s (E.bug "typeOffset: Index on a non-array")
   end
   | Field (fi, o) ->
@@ -2350,8 +2365,12 @@ and intOfAttrparam (a:attrparam) : int option =
   let rec doit a : int =
     match a with
       AInt(n) -> n
+    | ABinOp(PlusA, a1, a2) -> (doit a1) + (doit a2)
+    | ABinOp(MinusA, a1, a2) -> (doit a1) - (doit a2)
+    | ABinOp(Mult, a1, a2) -> (doit a1) * (doit a2)
     | ABinOp(Shiftlt, a1, a2) -> (doit a1) lsl (doit a2)
     | ABinOp(Div, a1, a2) -> (doit a1) / (doit a2)
+    | ABinOp(Mod, a1, a2) -> (doit a1) mod (doit a2)
     | ASizeOf(t) ->
         let bs = bitsSizeOf t in
         bs / 8
@@ -2428,11 +2447,24 @@ and offsetOfFieldAcc ~(fi: fieldinfo)
                      ~(sofar: offsetAcc) : offsetAcc =
   offsetOfFieldAcc_GCC fi sofar
 
+and getVectorSizeFromAttributes (a: attributes) : int option =
+    match List.find_opt (fun (Attr(an', _)) -> an' = "__vector_size__" || an' = "vector_size") a with
+    | Some(Attr(_, [x])) -> intOfAttrparam x
+    | _ -> None
+
+and vectorSizeOfType (t: typ) : int option =
+  match unrollType t with
+  | TInt(_, a) | TFloat(_, a) -> getVectorSizeFromAttributes a
+  | _ -> None
+
 (* The size of a type, in bits. If a struct or array, then trailing padding is
    added *)
 and bitsSizeOf t =
   if not !initCIL_called then
     E.s (E.error "You did not call Cil.initCIL before using the CIL library");
+  match vectorSizeOfType t with
+  | Some vsize -> vsize * 8
+  | None ->
   match t with
   | TInt (ik,_) -> 8 * (bytesSizeOfInt ik)
   | TFloat(FDouble, _) -> 8 * !M.theMachine.M.sizeof_double
@@ -2760,6 +2792,12 @@ let isArrayType t =
   match unrollType t with
     TArray _ -> true
   | _ -> false
+
+let vectorInfo (v: typ): (typ * int * int) option =
+  match unrollType v with
+  | TInt(ik, attrs) -> getVectorSizeFromAttributes attrs |> Option.map (fun sz -> let bt = TInt(ik, dropVectorAttributes attrs) in (bt, sz, 8 * sz / (bitsSizeOf bt)))
+  | TFloat(ik, attrs) -> getVectorSizeFromAttributes attrs |> Option.map (fun sz -> let bt = TFloat(ik, dropVectorAttributes attrs) in (bt, sz, 8 * sz / (bitsSizeOf bt)))  
+  | _ -> None
 
 (** 6.3.2.3 subsection 3
     An integer constant expr with value 0, or such an expr cast to void *, is called a null pointer constant. *)
@@ -6295,7 +6333,7 @@ let foldLeftCompound
 
       | _ -> E.s (unimp "foldLeftCompound: TArray with initializer and no length")
     end
-
+  
   | TComp (comp, _) ->
       let getTypeOffset = function
           Field(f, NoOffset) -> f.ftype
@@ -6303,8 +6341,30 @@ let foldLeftCompound
       in
       List.fold_left
         (fun acc (o, i) -> doinit o i (getTypeOffset o) acc) acc initl
-
-  | _ -> E.s (E.unimp "Type of Compound is not array or struct or union")
+  | t -> begin
+    match vectorInfo t with
+    | Some (bt, _, len_vec) -> 
+      (* Scan the existing initializer *)
+      let part =
+        List.fold_left (fun acc (o, i) -> doinit o i bt acc) acc initl in
+      (* See how many more we have to do *)
+      if not implicit then
+        part
+      else
+        let len_init = List.length initl in
+        if len_vec > len_init then
+          let zi = makeZeroInit bt in
+          let rec loop acc i =
+            if i >= len_vec then acc
+            else
+              loop (doinit (Index(integer i, NoOffset)) zi bt acc)
+                    (i + 1)
+          in
+          loop part (len_init + 1)
+        else
+          part
+    | None -> E.s (E.unimp "Type of Compound is not array or struct or union or vector")
+  end
 
 
 
