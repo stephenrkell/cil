@@ -442,7 +442,8 @@ and checkOffset basetyp : offset -> typ = function
       checkIntegralType (checkExp false ei);
       begin
         match unrollType basetyp with
-          TArray (t, _, _) -> checkOffset t o
+        | t when isVectorType t -> baseTypeOfVector t
+        |  TArray (t, _, _) -> checkOffset t o
         | t -> E.s (bug "typeOffset: Index on a non-array: %a" d_plaintype t)
       end
 

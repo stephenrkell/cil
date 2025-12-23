@@ -1481,6 +1481,16 @@ exception LenOfArray
     as when there is no length or the length is not a constant. *)
 val lenOfArray: exp option -> int
 
+(** If the type is a vector type, return the base type, size of the vector 
+    (in bytes) and length of vector (in number of elements) *)
+val vectorInfo: typ -> (typ * int * int) option
+
+(** True if the argument is a vector type *)
+val isVectorType: typ -> bool
+
+(** Given a vector type, return its base type *)
+val baseTypeOfVector: typ -> typ
+
 (** Return a named fieldinfo in compinfo, or raise Not_found *)
 val getCompField: compinfo -> string -> fieldinfo
 

@@ -2156,9 +2156,10 @@ let rec collectInitializer
     (thistype: typ) : (init * typ) =
   if this = NoInitPre then (makeZeroInit (patchArraySizeZero thistype)), patchArraySizeZero thistype
   else
-    match unrollType thistype, this with
-    | _ , SinglePre e -> SingleInit e, thistype
-    | TArray (bt, leno, at), CompoundPre (pMaxIdx, pArray) ->
+    let t = unrollType thistype in
+    match t, this, vectorInfo t with
+    | _ , SinglePre e, _ -> SingleInit e, thistype
+    | TArray (bt, leno, at), CompoundPre (pMaxIdx, pArray), _ ->
         let (len: int), newtype =
           (* normal case: use array's declared length, newtype=thistype *)
           match leno with
@@ -2194,7 +2195,7 @@ let rec collectInitializer
 
         CompoundInit (newtype, collect [] !pMaxIdx), newtype
 
-    | TComp (comp, _), CompoundPre (pMaxIdx, pArray) when comp.cstruct ->
+    | TComp (comp, _), CompoundPre (pMaxIdx, pArray), _ when comp.cstruct ->
         let rec collect (idx: int) = function
             [] -> []
           | f :: restf ->
@@ -2211,7 +2212,7 @@ let rec collectInitializer
         in
         CompoundInit (thistype, collect 0 comp.cfields), thistype
 
-    | TComp (comp, _), CompoundPre (pMaxIdx, pArray) when not comp.cstruct ->
+    | TComp (comp, _), CompoundPre (pMaxIdx, pArray), _ when not comp.cstruct ->
         (* Find the field to initialize *)
         let rec findField (idx: int) = function
             [] -> E.s (bug "collectInitializer: union")
@@ -2223,6 +2224,22 @@ let rec collectInitializer
           | _ -> E.s (error "Can initialize only one field for union")
         in
         CompoundInit (thistype, [ findField 0 comp.cfields ]), thistype
+
+    | _, CompoundPre (pMaxIdx, pArray), Some(bt, _, len) ->
+        if !pMaxIdx >= len then
+          E.s (E.bug "collectInitializer: too many initializers(%d >= %d)\n"
+                 !pMaxIdx len);
+        (* Missing initializers must be set to zero but this is not done here.
+           See assignInit. *)
+        let rec collect (acc: (offset * init) list) (idx: int) =
+          if idx = -1 then acc
+          else
+            let thisi = fst (collectInitializer isfield isconst !pArray.(idx) bt)
+            in
+            collect ((Index(integer idx, NoOffset), thisi) :: acc) (idx - 1)
+        in
+
+        CompoundInit (t, collect [] !pMaxIdx), t
 
     | _ -> E.s (unimp "collectInitializer")
 
@@ -2242,6 +2259,9 @@ type stackElem =
                                                use Int.max_int  *)
   | InComp  of offset * compinfo * fieldinfo list (* offset of parent,
                                                    base comp, current fields *)
+  | InVector of offset * typ * int * int ref (* offset of parent,
+                                                 base type, length,
+                                                 current index *)
 
 
 (* A subobject is given by its address. The address is read from the end of
@@ -2304,6 +2324,16 @@ and normalSubobj (so: subobj) : unit =
         so.soTyp <- fst.ftype;
         so.soOff <- addOffset (Field(fst, NoOffset)) parOff
       end
+            (* The vector is over *)
+  | InVector (parOff, bt, leno, current) :: rest ->
+      if leno = !current then begin (* The vector is over *)
+        if debugInit then ignore (E.log "Past the end of vector\n");
+        so.stack <- rest;
+        advanceSubobj so
+      end else begin
+        so.soTyp <- bt;
+        so.soOff <- addOffset (Index(integer !current, NoOffset)) parOff
+      end
 
   (* Advance to the next subobject. Always apply to a normalized object *)
 and advanceSubobj (so: subobj) : unit =
@@ -2323,6 +2353,12 @@ and advanceSubobj (so: subobj) : unit =
         ignore (E.log "Advancing past .%s\n" (List.hd nextflds).fname);
       let flds' = try List.tl nextflds with _ -> E.s (bug "advanceSubobj") in
       so.stack <- InComp(parOff, comp, flds') :: rest;
+      normalSubobj so
+    
+  | InVector (parOff, bt, leno, current) :: rest ->
+      if debugInit then ignore (E.log "  Advancing to [%d]\n" (!current + 1));
+      (* so.stack <- InVector (parOff, bt, leno, current + 1) :: rest; *)
+      incr current;
       normalSubobj so
 
 
@@ -4534,19 +4570,10 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                   match !pargs with
                     | [ e; SizeOf t] -> begin
                       resType' := t;
-                      let vecSize (v: typ) =
-                        match unrollType v with
-                        | TInt(_, attrs) | TFloat(_, attrs) -> begin
-                          match List.find_opt (fun (Attr(an', _)) -> an' = "__vector_size__" || an' = "vector_size") attrs with
-                          | Some(Attr(_, [AInt sz])) -> Some sz
-                          | _ -> None
-                        end
-                        | _ -> None
-                      in
-                        match vecSize (typeOf e), vecSize t with
-                        | Some sz1, Some sz2 -> if sz1 <> sz2 then
-                            ignore (warn "Incompatible vector sizes in call to builtin_convertvector")
-                        | _ -> ignore (warn "Invalid types in call to builtin_convertvector")
+                      match vectorInfo (typeOf e), vectorInfo t with
+                      | Some (_, sz1, _), Some (_, sz2, _) -> if sz1 <> sz2 then
+                          ignore (warn "Incompatible vector sizes in call to builtin_convertvector")
+                      | _ -> ignore (warn "Invalid types in call to builtin_convertvector")
                     end
                     | _ -> ignore (warn "Invalid call to builtin_convertvector");
                 end
@@ -5418,11 +5445,12 @@ and doInit
           Cprint.print_init_expression (A.COMPOUND_INIT [(what, ie)]));
     ignore (E.log "\n");
   end;
-  match unrollType so.soTyp, allinitl with
-    _, [] -> acc, [] (* No more initializers return *)
+  let t = unrollType so.soTyp in
+  match t, allinitl, vectorInfo t with
+    _, [], _ -> acc, [] (* No more initializers return *)
 
         (* No more subobjects *)
-  | _, (A.NEXT_INIT, _) :: _ when so.eof -> acc, allinitl
+  | _, (A.NEXT_INIT, _) :: _, _ when so.eof -> acc, allinitl
 
 
         (* If we are at an array of characters and the initializer is a
@@ -5434,7 +5462,7 @@ and doInit
        A.COMPOUND_INIT
          [(A.NEXT_INIT,
            A.SINGLE_INIT(A.CONSTANT
-                           (A.CONST_STRING (s,enc))))])) :: restil
+                           (A.CONST_STRING (s,enc))))])) :: restil, _
     when (match unrollType bt with
             TInt((IChar|IUChar|ISChar), _) -> true
           | TInt _ ->
@@ -5486,7 +5514,7 @@ and doInit
        A.COMPOUND_INIT
          [(A.NEXT_INIT,
            A.SINGLE_INIT(A.CONSTANT
-                           (A.CONST_WSTRING (s,enc))))])) :: restil
+                           (A.CONST_WSTRING (s,enc))))])) :: restil, _
     when(let bt' = unrollType bt in
          match bt' with
            (* compare bt to wchar_t, ignoring signed vs. unsigned *)
@@ -5545,7 +5573,7 @@ and doInit
 
       (* If we are at an array and we see a single initializer then it must
          be one for the first element *)
-  | TArray(bt, leno, al), (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil  ->
+  | TArray(bt, leno, al), (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil, _  ->
       (* Grab the length if there is one *)
       let leno = integerArrayLength leno in
       so.stack <- InArray(so.soOff, bt, leno, ref 0) :: so.stack;
@@ -5556,7 +5584,7 @@ and doInit
     (* If we are at a composite and we see a single initializer of the same
        type as the composite then grab it all. If the type is not the same
        then we must go on and try to initialize the fields *)
-  | TComp (comp, _), (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil ->
+  | TComp (comp, _), (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil, _ ->
       let se, oneinit', t' = doExp isconst oneinit (AExp None) in
       if (match unrollType t' with
              TComp (comp', _) when comp'.ckey = comp.ckey -> true
@@ -5575,7 +5603,7 @@ and doInit
       end
 
      (* A scalar with a single initializer *)
-  | _, (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil ->
+  | _, (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil, _ ->
       let se, oneinit', t' = doExp isconst oneinit (AExp(Some so.soTyp)) in
 (*
       ignore (E.log "oneinit'=%a, t'=%a, so.soTyp=%a\n"
@@ -5591,7 +5619,7 @@ and doInit
 
      (* An array with a compound initializer. The initializer is for the
         array elements *)
-  | TArray (bt, leno, _), (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil ->
+  | TArray (bt, leno, _), (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil, _ ->
       (* Create a separate object for the array *)
       let so' = makeSubobj so.host so.soTyp so.soOff in
       (* Go inside the array *)
@@ -5606,13 +5634,29 @@ and doInit
       (* Continue *)
       let res = doInit isconst setone so acc' restil in
       res
+     (* An vector with a compound initializer. The initializer is for the
+        vector elements *)
+  | t, (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil, Some(bt, _ , leno) ->
+      (* Create a separate object for the vector *)
+      let so' = makeSubobj so.host so.soTyp so.soOff in
+      (* Go inside the vector *)
+      so'.stack <- [InVector(so'.curOff, bt, leno, ref 0)];
+      normalSubobj so';
+      let acc', initl' = doInit isconst setone so' acc initl in
+      if initl' <> [] then
+        ignore (warn "Too many initializers for vector %t" whoami);
+      (* Advance past the vector *)
+      advanceSubobj so;
+      (* Continue *)
+      let res = doInit isconst setone so acc' restil in
+      res
 
    (* We have a designator that tells us to select the matching union field.
       This is to support a GCC extension *)
   | TComp(ci, _) as targ, [(A.NEXT_INIT,
                     A.COMPOUND_INIT [(A.INFIELD_INIT ("___matching_field",
                                                      A.NEXT_INIT),
-                                      A.SINGLE_INIT oneinit)])]
+                                      A.SINGLE_INIT oneinit)])], _
                       when not ci.cstruct ->
       (* Do the expression to find its type *)
       let _, _, t' = doExp isconst oneinit (AExp None) in
@@ -5638,7 +5682,7 @@ and doInit
 
 
         (* A structure with a composite initializer. We initialize the fields*)
-  | TComp (comp, _), (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil ->
+  | TComp (comp, _), (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil, _ ->
       let initl' =
         (* Handle empty initializers (nested inside arrays):
             { {3}, {}, {5}, {}, {} }
@@ -5664,18 +5708,18 @@ and doInit
 
         (* A scalar with a initializer surrounded by braces *)
   | _, (A.NEXT_INIT, A.COMPOUND_INIT [(A.NEXT_INIT,
-                                       A.SINGLE_INIT oneinit)]) :: restil ->
+                                       A.SINGLE_INIT oneinit)]) :: restil, _ ->
       let se, oneinit', t' = doExp isconst oneinit (AExp(Some so.soTyp)) in
       setone so.soOff (makeCastT ~kind:Implicit ~e:oneinit' ~oldt:t' ~newt:so.soTyp); (* C11 6.7.9.11 *)
       (* Move on *)
       advanceSubobj so;
       doInit isconst setone so (acc @@ se) restil
 
-  | t, (A.NEXT_INIT, _) :: _ ->
+  | t, (A.NEXT_INIT, _) :: _, _ ->
       E.s (unimp "doInit: unexpected NEXT_INIT for %a\n" d_type t);
 
    (* We have a designator *)
-  | _, (what, ie) :: restil when what != A.NEXT_INIT ->
+  | _, (what, ie) :: restil, _ when what != A.NEXT_INIT ->
       let rec unrollDesignatorForNestedAnonymous (comp: compinfo) (designator: string) (whatnext: initwhat) =
         if List.exists (fun fld -> fld.fname = designator) comp.cfields then
           (true, Some(A.INFIELD_INIT (designator, whatnext)))
@@ -5794,7 +5838,7 @@ and doInit
       in
       expandRange (fun x -> x) what
 
-  | t, (what, ie) :: _ ->
+  | t, (what, ie) :: _, _ ->
       E.s (bug "doInit: cases for t=%a" d_type t)
 
 
