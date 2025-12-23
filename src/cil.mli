@@ -297,6 +297,7 @@ and fkind =
   | FLongDouble         (** [long double] *)
   | FFloat128           (** [float128] *)
   | FFloat16            (** [_Float16] *)
+  | FBf16               (** [__bf16] *)
   | FComplexFloat       (** [float _Complex] *)
   | FComplexDouble      (** [double _Complex] *)
   | FComplexLongDouble  (** [long double _Complex]*)

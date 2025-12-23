@@ -17,6 +17,7 @@ type mach = {
   sizeof_longdouble: int; (* Size of "long double" *)
   sizeof_float128: int;   (* Size of "_Float128" *)
   sizeof_float16: int;   (* Size of "_Float16" *)
+  sizeof_bf16: int;      (* Size of "__bf16" *)
   sizeof_floatcomplex: int;      (* Size of "float _Complex" *)
   sizeof_doublecomplex: int;     (* Size of "double _Complex" *)
   sizeof_longdoublecomplex: int; (* Size of "long double _Complex" *)
@@ -42,6 +43,7 @@ type mach = {
   alignof_longdouble: int;  (* Alignment of "long double" *)
   alignof_float128: int;  (* Alignment of "_Float128" *)
   alignof_float16: int;  (* Alignment of "_Float16" *)
+  alignof_bf16: int;     (* Alignment of "__bf16" *)
   alignof_floatcomplex: int;     (* Alignment of "float _Complex" *)
   alignof_doublecomplex: int;    (* Alignment of "double _Complex" *)
   alignof_longdoublecomplex: int;  (* Alignment of "long double _Complex" *)
@@ -56,6 +58,7 @@ type mach = {
   __builtin_va_list: bool; (* whether __builtin_va_list is builtin (gccism) *)
   have_float128: bool; (* Whether _Float128 is supported. *)
   have_float16: bool; (* Whether _Float16 is supported. *)
+  have_bf16: bool;    (* Whether __bf16 is supported. *)
 }
 
 let gcc = {
