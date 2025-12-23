@@ -87,6 +87,8 @@ let modelParse (s:string) : mach =
     alignof_float128 = getAlignof entries "float128";
     sizeof_float16 = getSizeof entries "float16";
     alignof_float16 = getAlignof entries "float16";
+    sizeof_bf16 = getSizeof entries "bf16";
+    alignof_bf16 = getAlignof entries "bf16";
     sizeof_longdoublecomplex = getSizeof entries "long_double_complex";
     alignof_longdoublecomplex = getAlignof entries "long_double_complex";
     sizeof_float128complex = getSizeof entries "float128_complex";
@@ -108,4 +110,5 @@ let modelParse (s:string) : mach =
     __builtin_va_list = getBool entries "__builtin_va_list";
     have_float128 = getBool entries "have_float128";
     have_float16 = getBool entries "have_float16";
+    have_bf16 = getBool entries "have_bf16";
   }

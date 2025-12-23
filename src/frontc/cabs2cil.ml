@@ -1402,6 +1402,9 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
     | FComplexFloat16, other -> t1
     | other, FComplexFloat16 -> t2
     | FFloat16, FFloat16 -> t1
+    | FBf16, FBf16 -> t1
+    | FBf16, FFloat16
+    | FFloat16, FBf16 -> E.s (E.bug "arithmeticConversion: invalid combination of _Float16 and __bf16")
   in
   match unrollType t1, unrollType t2 with
   | TFloat(fkind1, _), TFloat(fkind2, _) -> resultingFType fkind1 t1 fkind2 t2
@@ -2669,6 +2672,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     | [A.Tlong; A.Tdouble] -> TFloat(FLongDouble, [])
     | [A.Tfloat128] -> TFloat(FFloat128, [])
     | [A.Tfloat16] -> TFloat(FFloat16, [])
+    | [A.Tbf16] -> TFloat(FBf16, [])
      (* Now the other type specifiers *)
     | [A.Tdefault] -> E.s (error "Default outside generic associations")
     | [A.Tnamed n] -> begin
@@ -3914,7 +3918,8 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
           | FDouble
           | FLongDouble
           | FFloat128
-          | FFloat16 -> 8
+          | FFloat16
+          | FBf16 -> 8
           | FComplexFloat
           | FComplexDouble
           | FComplexLongDouble

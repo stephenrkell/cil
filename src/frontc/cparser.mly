@@ -266,6 +266,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> FLOAT32 FLOAT64 /* FloatN */
 %token<Cabs.cabsloc> FLOAT32X FLOAT64X /* FloatNx */
 %token<Cabs.cabsloc> FLOAT16
+%token<Cabs.cabsloc> BF16 /* Clang __bf16 */
 %token<Cabs.cabsloc> GENERIC NORETURN /* C11 */
 %token<Cabs.cabsloc> AUTOTYPE /* GCC */
 %token<Cabs.cabsloc> ENUM STRUCT TYPEDEF UNION
@@ -1103,6 +1104,7 @@ type_spec:   /* ISO 6.7.2 */
 |   FLOAT32X        { Tfloat32x, $1 }
 |   FLOAT64X        { Tfloat64x, $1 }
 |   FLOAT16         { Tfloat16, $1 }
+|   BF16            { Tbf16, $1 }
 |   DOUBLE          { Tdouble, $1 }
 |   AUTOTYPE        { Tauto, $1 }
 /* |   COMPLEX FLOAT   { Tfloat, $2 } */

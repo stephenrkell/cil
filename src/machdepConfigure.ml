@@ -50,6 +50,11 @@ _Float16 x;
 int main() { return 0; }
 |}
 
+let have_bf16_code = {|
+__bf16 x;
+int main() { return 0; }
+|}
+
 let cil_check_integer_type_type_code t1 t2 =
   Format.sprintf {|
 #include <stddef.h>
@@ -112,6 +117,7 @@ let () =
         let underscore_name = c_test c !cc ~c_flags:!c_flags underscore_name_code in
         let have_float128 = c_test c !cc ~c_flags:!c_flags have_float128_code in
         let have_float16 = c_test c !cc ~c_flags:!c_flags have_float16_code in
+        let have_bf16 = c_test c !cc ~c_flags:!c_flags have_bf16_code in
 
         C.C_define.gen_header_file c ~fname:!fname [
           ("HAVE_STDLIB_H", Switch (has_header c !cc "stdlib.h"));
@@ -125,6 +131,7 @@ let () =
           ("UNDERSCORE_NAME_DEF", Switch underscore_name);
           ("HAVE_FLOAT128_DEF", Switch have_float128);
           ("HAVE_FLOAT16_DEF", Switch have_float16);
+          ("HAVE_BF16_DEF", Switch have_bf16);
 
           ("TYPE_SIZE_T", String (cil_check_integer_type c !cc "size_t"));
           ("TYPE_WCHAR_T", String (cil_check_integer_type c !cc "wchar_t"));
