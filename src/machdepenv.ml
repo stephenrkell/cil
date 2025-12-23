@@ -106,5 +106,6 @@ let modelParse (s:string) : mach =
     little_endian = not (getBool entries "big_endian");
     __thread_is_keyword = getBool entries "__thread_is_keyword";
     __builtin_va_list = getBool entries "__builtin_va_list";
+    have_float128 = getBool entries "have_float128";
     have_float16 = getBool entries "have_float16";
   }
