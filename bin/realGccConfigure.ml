@@ -27,9 +27,12 @@ let gccs = [
 
 let () =
   C.main ~name:"real-gcc" (fun c ->
-      match List.find_opt (is_real_gcc c) gccs with
-      | Some gcc ->
-        C.Flags.write_lines "real-gcc" [gcc]
+      match Sys.getenv_opt "CIL_CC" with
+      | Some gcc -> C.Flags.write_lines "real-gcc" [gcc]
       | None ->
-        failwith "couldn't find real gcc"
+        match List.find_opt (is_real_gcc c) gccs with
+        | Some gcc ->
+          C.Flags.write_lines "real-gcc" [gcc]
+        | None ->
+          failwith "couldn't find real gcc"
     )
