@@ -1473,8 +1473,7 @@ let rec castTo ~kind
     | ConditionalConversion
     | PointerConversion
     | Implicit
-    | Internal
-    | Unknown -> false
+    | Internal -> false
   in
   let debugCast = false in
   if debugCast then
@@ -4329,7 +4328,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         | CEExp (se, e) ->
           let e' =
             let te = typeOf e in
-            let _, zte = castTo ~kind:Unknown intType te zero in
+            let _, zte = castTo ~kind:Internal intType te zero in (* TODO: is this even reachable? *)
             BinOp(Ne, e, zte, intType)
           in
           finishExp se e' intType

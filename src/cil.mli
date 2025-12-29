@@ -733,7 +733,6 @@ and castkind =
   | PointerConversion (** Pointer conversion (non-standard). @see C11 6.5.6.8, 6.5.8.5 and 6.5.9.5. *)
   | Implicit (** Implicit conversion. @see C11 6.3.1, 6.5.2.2.7, 6.5.2.4.2, 6.5.16.1.2, 6.5.16.2.3, 6.7.9.11, 6.8.4.2.5 and 6.8.6.4.3. *)
   | Internal (** CIL-internal conversion (non-standard). *)
-  | Unknown (** Unknown conversion. *)
 
 (** {b Lvalues.} Lvalues are the sublanguage of expressions that can appear at the left of an assignment or as operand to the address-of operator.
 In C the syntax for lvalues is not always a good indication of the meaning

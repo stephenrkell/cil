@@ -1354,7 +1354,7 @@ stmt:
                         let e = (fst $3) args in
                         let e =
                           if isPointerType(typeOf e) then
-                            mkCast ~kind:Unknown ~e:e ~newt:!upointType
+                            mkCast ~kind:Internal ~e:e ~newt:!upointType (* TODO: why this cast here? not done for other ifs/loops *)
                           else e
                         in
                         mkStmt
