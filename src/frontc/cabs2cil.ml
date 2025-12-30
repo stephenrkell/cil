@@ -4020,8 +4020,17 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         else
           E.s (error "Unary ~ on a non-integral type")
 
-    | A.UNARY(A.PLUS, e) -> doExp asconst e what
-
+    | A.UNARY(A.PLUS, e) ->
+        let (se, e', t) = doExp asconst e (AExp None) in
+        if isIntegralType t then
+          let tres = integralPromotion t in
+          let e'' = makeCastT ~e:e' ~oldt:t ~newt:tres in
+          finishExp se e'' tres
+        else
+          if isArithmeticType t then
+            finishExp se e' t
+          else
+            E.s (error "Unary + on a non-arithmetic type")
 
     | A.UNARY(A.ADDROF, e) -> begin
         match e with
