@@ -3267,6 +3267,21 @@ let initGccBuiltins () : unit =
   H.add h "__atomic_is_lock_free" (boolType, [sizeType; voidPtrType], false);
   H.add h "__atomic_feraiseexcept" (voidType, [intType], false);
 
+  (* Clang atomics *)
+  H.add h "__c11_atomic_thread_fence" (voidType, [intType], false);
+  H.add h "__c11_atomic_signal_fence" (voidType, [intType], false);
+  H.add h "__c11_atomic_is_lock_free" (boolType, [sizeType], false);
+  H.add h "__c11_atomic_compare_exchange_strong" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_compare_exchange_weak" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_exchange" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_add" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_and" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_or" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_sub" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_xor" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_load" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_store" (TVoid[Attr("overloaded",[])], [ ], true);
+
   if hasbva then begin
     H.add h "__builtin_va_end" (voidType, [ TBuiltin_va_list [] ], false);
     H.add h "__builtin_varargs_start"
