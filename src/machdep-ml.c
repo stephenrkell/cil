@@ -93,6 +93,30 @@ typedef int bool;
 #define HAVE_FLOAT128 "false"
 #endif
 
+#ifdef HAVE_FLOAT64_DEF
+#define HAVE_FLOAT64 "true"
+#else
+#define HAVE_FLOAT64 "false"
+#endif
+
+#ifdef HAVE_FLOAT64X_DEF
+#define HAVE_FLOAT64X "true"
+#else
+#define HAVE_FLOAT64X "false"
+#endif
+
+#ifdef HAVE_FLOAT32_DEF
+#define HAVE_FLOAT32 "true"
+#else
+#define HAVE_FLOAT32 "false"
+#endif
+
+#ifdef HAVE_FLOAT32X_DEF
+#define HAVE_FLOAT32X "true"
+#else
+#define HAVE_FLOAT32X "false"
+#endif
+
 #ifdef HAVE_FLOAT16_DEF
 #define HAVE_FLOAT16 "true"
 #else
@@ -203,6 +227,7 @@ int main(int argc, char **argv)
     alignof_float = (intptr_t)(&((struct floatstruct*)0)->f);
   }
 
+#ifdef HAVE_FLOAT32X_DEF
   // The alignment of a _Float32x
   {
     struct floatstruct {
@@ -211,8 +236,9 @@ int main(int argc, char **argv)
     };
     alignof_float32x = (intptr_t)(&((struct floatstruct*)0)->f);
   }
+#endif
 
-#if __HAVE_FLOAT64X
+#ifdef HAVE_FLOAT64X_DEF
   // The alignment of a _Float64x
   {
     struct floatstruct {
@@ -374,13 +400,17 @@ int main(int argc, char **argv)
 	     "bool=%d,%d fun=%d,%d alignof_string=%d max_alignment=%d size_t=%s "
 	     "wchar_t=%s char16_t=%s char32_t=%s char_signed=%s "
 	     "big_endian=%s __thread_is_keyword=%s __builtin_va_list=%s "
-	     "underscore_name=%s have_float16=%s\n",
+	     "underscore_name=%s have_bf16=%s have_float16=%s have_float32=%s have_float32x=%s have_float64=%s have_float64x=%s have_float128=%s\n",
 	     (int)sizeof(short), alignof_short, (int)sizeof(int), alignof_int,
 	     (int)sizeof(long), alignof_long, (int)sizeof(long long), alignof_longlong,
 	     (int)sizeof(int *), alignof_ptr,
 	     alignof_enum,
+#ifdef HAVE_FLOAT32X_DEF
 	     (int)sizeof(_Float32x), alignof_float32x,
-#if __HAVE_FLOAT64X
+#else
+             0, 0,
+#endif
+#ifdef HAVE_FLOAT64X_DEF
 	     (int)sizeof(_Float64x), alignof_float64x,
 #else
              0, 0,
@@ -420,7 +450,7 @@ int main(int argc, char **argv)
 	     underscore(TYPE_SIZE_T), underscore(TYPE_WCHAR_T), underscore(TYPE_CHAR16_T), underscore(TYPE_CHAR32_T),
 	     char_is_unsigned ? "false" : "true",
 	     little_endian ? "false" : "true",
-	     THREAD_IS_KEYWORD, HAVE_BUILTIN_VA_LIST, UNDERSCORE_NAME, HAVE_FLOAT16);
+	     THREAD_IS_KEYWORD, HAVE_BUILTIN_VA_LIST, UNDERSCORE_NAME, HAVE_BF16, HAVE_FLOAT16, HAVE_FLOAT32, HAVE_FLOAT32X, HAVE_FLOAT64, HAVE_FLOAT64X, HAVE_FLOAT128);
     }
   else
     {
@@ -525,9 +555,13 @@ int main(int argc, char **argv)
       printf("\t __builtin_va_list          = %s;\n", HAVE_BUILTIN_VA_LIST);
       printf("\t __thread_is_keyword        = %s;\n", THREAD_IS_KEYWORD);
       printf("\t little_endian              = %s;\n", little_endian ? "true" : "false");
-      printf("\t have_float128              = %s;\n", HAVE_FLOAT128);
-      printf("\t have_float16               = %s;\n", HAVE_FLOAT16);
       printf("\t have_bf16                  = %s;\n", HAVE_BF16);
+      printf("\t have_float16               = %s;\n", HAVE_FLOAT16);
+      printf("\t have_float32               = %s;\n", HAVE_FLOAT32);
+      printf("\t have_float32x              = %s;\n", HAVE_FLOAT32X);
+      printf("\t have_float64               = %s;\n", HAVE_FLOAT64);
+      printf("\t have_float64x              = %s;\n", HAVE_FLOAT64X);
+      printf("\t have_float128              = %s;\n", HAVE_FLOAT128);
     }
   return 0;
 }

@@ -56,9 +56,13 @@ type mach = {
   little_endian: bool; (* whether the machine is little endian *)
   __thread_is_keyword: bool; (* whether __thread is a keyword *)
   __builtin_va_list: bool; (* whether __builtin_va_list is builtin (gccism) *)
-  have_float128: bool; (* Whether _Float128 is supported. *)
-  have_float16: bool; (* Whether _Float16 is supported. *)
   have_bf16: bool;    (* Whether __bf16 is supported. *)
+  have_float16: bool; (* Whether _Float16 is supported. *)
+  have_float32: bool; (* Whether _Float32 is supported. *)
+  have_float32x: bool; (* Whether _Float32x is supported. *)
+  have_float64: bool; (* Whether _Float64 is supported. *)
+  have_float64x: bool; (* Whether _Float64x is supported. *)
+  have_float128: bool; (* Whether _Float128 is supported. *)
 }
 
 let gcc = {
