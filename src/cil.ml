@@ -1425,7 +1425,7 @@ let hasAttribute s al =
 
 
 type attributeClass =
-    AttrName  (* Attribute of a name. *)
+    AttrName of bool  (* Attribute of a name. *)
   | AttrFunType  (* Attribute of a function type. *)
   | AttrType  (* Attribute of a type *)
 
@@ -1435,7 +1435,7 @@ type attributeClass =
    conversion *)
 let attributeHash: (string, attributeClass) H.t =
   let table = H.create 13 in
-  List.iter (fun a -> H.add table a AttrName)
+  List.iter (fun a -> H.add table a (AttrName false))
     [ "section"; "constructor"; "destructor"; "unused"; "used"; "weak";
       "no_instrument_function"; "alias"; "no_check_memory_usage";
       "exception"; "model"; (* "restrict"; *)
@@ -1443,7 +1443,7 @@ let attributeHash: (string, attributeClass) H.t =
                              assembly for a global  *)];
 
   (* MSVC declspec attributes that are also supported by GCC *)
-  List.iter (fun a -> H.add table a AttrName)
+  List.iter (fun a -> H.add table a (AttrName true))
     [ "thread"; "naked"; "dllimport"; "dllexport";
       "selectany"; "nothrow"; "property";  "noreturn"; "align" ];
 
@@ -1470,7 +1470,7 @@ let partitionAttributes
       [] -> n, f, t
     | (Attr(an, _) as a) :: rest ->
         match (try H.find attributeHash an with Not_found -> default) with
-          AttrName -> loop (addAttribute a n, f, t) rest
+          AttrName _ -> loop (addAttribute a n, f, t) rest
         | AttrFunType ->
             loop (n, addAttribute a f, t) rest
         | AttrType -> loop (n, f, addAttribute a t) rest
@@ -1944,6 +1944,17 @@ let getParenthLevelAttrParam (a: attrparam) =
   | AAssign _ -> assignLevel
 
 
+(* Separate out the storage-modifier name attributes *)
+let separateStorageModifiers (al: attribute list) =
+  let isstoragemod (Attr(an, _): attribute) : bool =
+    try
+      match H.find attributeHash an with
+        AttrName issm -> issm
+      | _ -> false
+    with Not_found -> false
+  in List.partition isstoragemod al
+
+
 let isIntegralType t =
   match unrollType t with
     (TInt _ | TEnum _) -> true
@@ -2030,7 +2041,7 @@ and typeOfLval = function
 and typeOffset basetyp =
   let blendAttributes baseAttrs =
     let (_, _, contageous) =
-      partitionAttributes ~default:AttrName baseAttrs in
+      partitionAttributes ~default:(AttrName false) baseAttrs in
     typeAddAttributes contageous
   in
   function
@@ -3393,12 +3404,14 @@ class defaultCilPrinterClass : cilPrinter = object (self)
 
   (* variable declaration *)
   method pVDecl () (v:varinfo) =
+    let stom, rest = separateStorageModifiers v.vattr in
     (* First the storage modifiers *)
     text (if v.vinline then "__inline " else "")
       ++ d_storage () v.vstorage
+      ++ (self#pAttrs () stom)
       ++ (self#pType (Some (text v.vname)) () v.vtype)
       ++ text " "
-      ++ self#pAttrs () v.vattr
+      ++ self#pAttrs () rest
 
   (*** L-VALUES ***)
   method pLval () (lv:lval) =  (* lval (base is 1st field)  *)
