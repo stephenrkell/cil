@@ -2906,7 +2906,7 @@ and makeVarInfoCabs
                 (n,ndt,a)
       : varinfo =
   let vtype, nattr =
-    doType AttrName
+    doType (AttrName false)
       bt (A.PARENTYPE(attrs, ndt, a)) in
   if inline && not (isFunctionType vtype) then
     ignore (error "inline for a non-function: %s" n);
@@ -3074,7 +3074,7 @@ and cabsPartitionAttributes
               (try H.find attributeHash an with Not_found -> default)
         in
         match kind with
-          AttrName -> loop (a::n, f, t) rest
+          AttrName _ -> loop (a::n, f, t) rest
         | AttrFunType ->
             loop (n, a::f, t) rest
         | AttrType -> loop (n, f, a::t) rest
@@ -3385,7 +3385,7 @@ and makeCompType (isstruct: bool)
       if sto <> NoStorage || inl then
         E.s (error "Storage or inline not allowed for fields");
       let ftype, nattr =
-        doType AttrName bt (A.PARENTYPE(attrs, ndt, a)) in
+        doType (AttrName false) bt (A.PARENTYPE(attrs, ndt, a)) in
       (* check for fields whose type is an undefined struct.  This rules
          out circularity:
              struct C1 { struct C2 c2; };          //This line is now an error.
@@ -6165,7 +6165,7 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
         if isglobal then begin
           let spec_res = match spec_res with Some s -> s | _ -> failwith "Option.get" in
           let bt,_,_,attrs = spec_res in
-          let vtype, nattr = doType AttrName bt (A.PARENTYPE(attrs, ndt, a)) in
+          let vtype, nattr = doType (AttrName false) bt (A.PARENTYPE(attrs, ndt, a)) in
           (match filterAttributes "alias" nattr with
              [] -> (* ordinary prototype. *)
                ignore (createGlobal spec_res name)
@@ -6302,7 +6302,7 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
               !currentFunctionFDEC.svar.vinline <- inl;
 
               let ftyp, funattr =
-                doType AttrName bt (A.PARENTYPE(attrs, dt, a)) in
+                doType (AttrName false) bt (A.PARENTYPE(attrs, dt, a)) in
               !currentFunctionFDEC.svar.vtype <- ftyp;
               !currentFunctionFDEC.svar.vattr <- funattr;
 

@@ -1804,7 +1804,7 @@ val mkFor: start:stmt list -> guard:exp -> next: stmt list ->
 
 (** Various classes of attributes *)
 type attributeClass =
-    AttrName (** Attribute of a name. *)
+    AttrName of bool (** Attribute of a name. *)
   | AttrFunType  (** Attribute of a function type. *)
   | AttrType  (** Attribute of a type *)
 
