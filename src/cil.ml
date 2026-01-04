@@ -1298,6 +1298,8 @@ let intType = TInt(IInt,[])
 let uintType = TInt(IUInt,[])
 let longType = TInt(ILong,[])
 let ulongType = TInt(IULong,[])
+let longLongType = TInt(ILongLong,[])
+let ulongLongType = TInt(IULongLong,[])
 let charType = TInt(IChar, [])
 let boolType = TInt(IBool, [])
 
@@ -1308,6 +1310,10 @@ let stringLiteralType = charPtrType
 let voidPtrType = TPtr(voidType, [])
 let intPtrType = TPtr(intType, [])
 let uintPtrType = TPtr(uintType, [])
+let longPtrType = TPtr(longType, [])
+let ulongPtrType = TPtr(ulongType, [])
+let longLongPtrType = TPtr(longLongType, [])
+let ulongLongPtrType = TPtr(ulongLongType, [])
 let boolPtrType = TPtr(boolType, [])
 
 let doubleType = TFloat(FDouble, [])
@@ -3281,6 +3287,29 @@ let initGccBuiltins () : unit =
   H.add h "__c11_atomic_fetch_xor" (TVoid[Attr("overloaded",[])], [ ], true);
   H.add h "__c11_atomic_load" (TVoid[Attr("overloaded",[])], [ ], true);
   H.add h "__c11_atomic_store" (TVoid[Attr("overloaded",[])], [ ], true);
+
+  (* Clang checked arithmetic (https://clang.llvm.org/docs/LanguageExtensions.html#checked-arithmetic-builtins) *)
+  H.add h "__builtin_add_overflow" (boolType, [ ], true);
+  H.add h "__builtin_sub_overflow" (boolType, [ ], true);
+  H.add h "__builtin_mul_overflow" (boolType, [ ], true);
+  H.add h "__builtin_uadd_overflow" (boolType, [ uintType; uintType; uintPtrType ], false);
+  H.add h "__builtin_uaddl_overflow" (boolType, [ ulongType; ulongType; ulongPtrType ], false);
+  H.add h "__builtin_uaddll_overflow" (boolType, [ ulongLongType; ulongLongType; ulongLongPtrType ], false);
+  H.add h "__builtin_usub_overflow" (boolType, [ uintType; uintType; uintPtrType ], false);
+  H.add h "__builtin_usubl_overflow" (boolType, [ ulongType; ulongType; ulongPtrType ], false);
+  H.add h "__builtin_usubll_overflow" (boolType, [ ulongLongType; ulongLongType; ulongLongPtrType ], false);
+  H.add h "__builtin_umul_overflow" (boolType, [ uintType; uintType; uintPtrType ], false);
+  H.add h "__builtin_umull_overflow" (boolType, [ ulongType; ulongType; ulongPtrType ], false);
+  H.add h "__builtin_umulll_overflow" (boolType, [ ulongLongType; ulongLongType; ulongLongPtrType ], false);
+  H.add h "__builtin_sadd_overflow" (boolType, [ intType; intType; intPtrType ], false);
+  H.add h "__builtin_saddl_overflow" (boolType, [ longType; longType; longPtrType ], false);
+  H.add h "__builtin_saddll_overflow" (boolType, [ longLongType; longLongType; longLongPtrType ], false);
+  H.add h "__builtin_ssub_overflow" (boolType, [ intType; intType; intPtrType ], false);
+  H.add h "__builtin_ssubl_overflow" (boolType, [ longType; longType; longPtrType ], false);
+  H.add h "__builtin_ssubll_overflow" (boolType, [ longLongType; longLongType; longLongPtrType ], false);
+  H.add h "__builtin_smul_overflow" (boolType, [ intType; intType; intPtrType ], false);
+  H.add h "__builtin_smull_overflow" (boolType, [ longType; longType; longPtrType ], false);
+  H.add h "__builtin_smulll_overflow" (boolType, [ longLongType; longLongType; longLongPtrType ], false);
 
   if hasbva then begin
     H.add h "__builtin_va_end" (voidType, [ TBuiltin_va_list [] ], false);
