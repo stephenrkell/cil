@@ -108,7 +108,11 @@ let modelParse (s:string) : mach =
     little_endian = not (getBool entries "big_endian");
     __thread_is_keyword = getBool entries "__thread_is_keyword";
     __builtin_va_list = getBool entries "__builtin_va_list";
-    have_float128 = getBool entries "have_float128";
-    have_float16 = getBool entries "have_float16";
     have_bf16 = getBool entries "have_bf16";
+    have_float16 = getBool entries "have_float16";
+    have_float32 = getBool entries "have_float32";
+    have_float32x = getBool entries "have_float32x";
+    have_float64 = getBool entries "have_float64";
+    have_float64x = getBool entries "have_float64x";
+    have_float128 = getBool entries "have_float128";
   }

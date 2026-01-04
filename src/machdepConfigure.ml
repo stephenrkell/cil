@@ -40,20 +40,12 @@ let underscore_name_code = {|
 int main() { __asm__("jmp _main"); }
 |}
 
-let have_float128_code = {|
-_Float128 x;
-int main() { return 0; }
-|}
-
-let have_float16_code = {|
-_Float16 x;
-int main() { return 0; }
-|}
-
-let have_bf16_code = {|
-__bf16 x;
-int main() { return 0; }
-|}
+let have_type (type_name: string) = Printf.sprintf {|
+int main() {
+  %s x;
+  return 0;
+}
+|} type_name
 
 let cil_check_integer_type_type_code t1 t2 =
   Format.sprintf {|
@@ -115,9 +107,13 @@ let () =
         let have_builtin_va_list = c_test c !cc ~c_flags:!c_flags builtin_va_list_code in
         let thread_is_keyword = not @@ c_test c !cc ~c_flags:!c_flags thread_is_keyword_code in
         let underscore_name = c_test c !cc ~c_flags:!c_flags underscore_name_code in
-        let have_float128 = c_test c !cc ~c_flags:!c_flags have_float128_code in
-        let have_float16 = c_test c !cc ~c_flags:!c_flags have_float16_code in
-        let have_bf16 = c_test c !cc ~c_flags:!c_flags have_bf16_code in
+        let have_float128 = c_test c !cc ~c_flags:!c_flags (have_type "_Float128") in
+        let have_float64 = c_test c !cc ~c_flags:!c_flags (have_type "_Float64") in
+        let have_float64x = c_test c !cc ~c_flags:!c_flags (have_type "_Float64x") in
+        let have_float32 = c_test c !cc ~c_flags:!c_flags (have_type "_Float32") in
+        let have_float32x = c_test c !cc ~c_flags:!c_flags (have_type "_Float32x") in
+        let have_float16 = c_test c !cc ~c_flags:!c_flags (have_type "_Float16") in
+        let have_bf16 = c_test c !cc ~c_flags:!c_flags (have_type "__bf16") in
 
         C.C_define.gen_header_file c ~fname:!fname [
           ("HAVE_STDLIB_H", Switch (has_header c !cc "stdlib.h"));
@@ -130,6 +126,10 @@ let () =
           ("THREAD_IS_KEYWORD_DEF", Switch thread_is_keyword);
           ("UNDERSCORE_NAME_DEF", Switch underscore_name);
           ("HAVE_FLOAT128_DEF", Switch have_float128);
+          ("HAVE_FLOAT64_DEF", Switch have_float64);
+          ("HAVE_FLOAT64X_DEF", Switch have_float64x);
+          ("HAVE_FLOAT32_DEF", Switch have_float32);
+          ("HAVE_FLOAT32X_DEF", Switch have_float32x);
           ("HAVE_FLOAT16_DEF", Switch have_float16);
           ("HAVE_BF16_DEF", Switch have_bf16);
 
