@@ -4652,7 +4652,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                     | ptr :: _ ->
                       begin
                         match typeOf ptr with
-                        | TPtr (vtype, _) -> resType' := vtype
+                        | TPtr (vtype, _) -> resType' := typeRemoveAttributes ["atomic"] (unrollType vtype)
                         | _ -> ignore (warn "Invalid call to %s" fv.vname)
                       end
                     | _ -> ignore (warn "Invalid call to %s" fv.vname)
