@@ -5561,8 +5561,20 @@ and doInit
       ignore (E.log "oneinit'=%a, t'=%a, so.soTyp=%a\n"
            d_exp oneinit' d_type t' d_type so.soTyp);
 *)
+      (* drop the atomic attribute if the lhs type is atomic, otherwise Clang might not 
+          be happy about the initializer element not being a compile-time constant:
+            error: initializer element is not a compile-time constant
+            1 | unsigned int _Atomic a = (unsigned int _Atomic )1;
+              |                          ^~~~~~~~~~~~~~~~~~~~~~~~
+      *)
+      let newt = if hasAttribute "atomic" (typeAttrsOuter (unrollType so.soTyp)) then 
+        typeRemoveAttributes ["atomic"] so.soTyp
+      else
+        so.soTyp
+      in
+
       setone so.soOff (if !insertImplicitCasts then
-                          makeCastT ~e:oneinit' ~oldt:t' ~newt:so.soTyp
+                          makeCastT ~e:oneinit' ~oldt:t' ~newt:newt
                        else oneinit');
       (* Move on *)
       advanceSubobj so;

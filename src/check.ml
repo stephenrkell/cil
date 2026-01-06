@@ -312,6 +312,11 @@ and typeMatch (t1: typ) (t2: typ) =
          flexible array members *)
       | TArray (t, None, _), TArray (t', _, _)
       | TArray (t, _, _), TArray (t', None, _) -> typeMatch t t'
+      (* Ignore atomic attributes *)
+      | t1', t2' when hasAttribute "atomic" (typeAttrsOuter t1') || 
+                      hasAttribute "atomic" (typeAttrsOuter t2') ->
+          typeMatch (typeRemoveAttributes ["atomic"] t1')
+                    (typeRemoveAttributes ["atomic"] t2')
       | _, _ -> ignore (warn "Type mismatch:@!    %a@!and %a@!"
                            d_type t1 d_type t2)
   end else begin
