@@ -3081,6 +3081,9 @@ let initGccBuiltins () : unit =
   H.add h "__builtin_inf" (doubleType, [], false);
   H.add h "__builtin_inff" (floatType, [], false);
   H.add h "__builtin_infl" (longDoubleType, [], false);
+  H.add h "__builtin_isfinite" (boolType, [], true);
+  H.add h "__builtin_isinf_sign" (boolType, [], true);
+  H.add h "__builtin_isnan" (boolType, [], true);
   H.add h "__builtin_memcpy" (voidPtrType, [ voidPtrType; voidConstPtrType; sizeType ], false);
   H.add h "__builtin_memchr" (voidPtrType, [voidConstPtrType; intType; ulongType], false);
   H.add h "__builtin_mempcpy" (voidPtrType, [ voidPtrType; voidConstPtrType; sizeType ], false);
