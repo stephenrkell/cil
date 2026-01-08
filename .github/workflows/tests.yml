@@ -11,21 +11,39 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - macos-13
-          - ubuntu-latest
-          # - windows-latest
-        ocaml-version:
-          - 4.12.0
-          - 4.13.1
-          - 4.14.x
-          - 5.0.0
-          - 5.1.0
-          - 5.2.0
-
+        # We don't want a full matrix because it is too slow, so we only have linear axes overriding these below.
         include:
-          - os: macos-latest
-            ocaml-version: 4.14.x
+          # Common configuration
+          - os: ubuntu-24.04
+            ocaml-compiler: 4.14.x
+
+          # OCaml versions
+          - os: ubuntu-24.04
+            ocaml-compiler: 5.4.x
+          - os: ubuntu-24.04
+            ocaml-compiler: 5.3.x
+          - os: ubuntu-24.04
+            ocaml-compiler: 5.2.x
+          - os: ubuntu-24.04
+            ocaml-compiler: 5.1.x
+          - os: ubuntu-24.04
+            ocaml-compiler: 5.0.x
+          - os: ubuntu-24.04
+            ocaml-compiler: 4.13.x
+          - os: ubuntu-24.04
+            ocaml-compiler: 4.12.x
+
+          # OS-s
+          - os: ubuntu-22.04
+            ocaml-compiler: 4.14.x
+          - os: macos-26
+            ocaml-compiler: 4.14.x
+          - os: macos-15-intel
+            ocaml-compiler: 4.14.x
+          - os: macos-15
+            ocaml-compiler: 4.14.x
+          - os: macos-14
+            ocaml-compiler: 4.14.x
 
     runs-on: ${{ matrix.os }}
 
@@ -33,10 +51,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Setup OCaml ${{ matrix.ocaml-version }}
+      - name: Setup OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: ${{ matrix.ocaml-version }}
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
       - run: opam pin add goblint-cil.dev . --no-action
       - run: opam depext goblint-cil --yes
@@ -49,5 +67,5 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: ${{ matrix.os }}-${{ matrix.ocaml-version }}
+          name: ${{ matrix.os }}-${{ matrix.ocaml-compiler }}
           path: _build/default/test/cil.log
