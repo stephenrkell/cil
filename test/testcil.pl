@@ -323,6 +323,7 @@ addTest("test/li");
 addTest("test_i/lineno");
 addTest("test/list");
 addTest("testrun/localinit ");
+addTest("testrun/unary-plus-promotion");
 
 addTest('testrun/longBlock', '');
 addTest("testrun/perror");
