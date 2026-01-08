@@ -617,7 +617,7 @@ and exp =
   | Question   of exp * exp * exp * typ
     (** (a ? b : c) operation. Includes the type of the result *)
 
-  | CastE      of typ * exp
+  | CastE      of castkind * typ * exp
     (** Use {!mkCast} to make casts.  *)
 
   | AddrOf     of lval
@@ -723,6 +723,16 @@ and binop =
                                            always evaluate both operands.  If
                                            you want to use these, you must
                                            set {!useLogicalOperators}. *)
+
+and castkind =
+  | Explicit (** Explicit conversion. @see C11 6.3.1. *)
+  | IntegerPromotion (** Integer promotion. @see C11 6.3.1.1.2. *)
+  | DefaultArgumentPromotion (** Default argument promotion. @see C11 6.5.2.2.6. *)
+  | ArithmeticConversion (** Usual arithmetic conversion. @see C11 6.3.1.8. *)
+  | ConditionalConversion (** Conditional conversion (non-standard terminology). @see C11 6.5.15.5 and 6.5.15.6. *)
+  | PointerConversion (** Pointer conversion (non-standard). @see C11 6.5.6.8, 6.5.8.5 and 6.5.9.5. *)
+  | Implicit (** Implicit conversion. @see C11 6.3.1, 6.5.2.2.7, 6.5.2.4.2, 6.5.16.1.2, 6.5.16.2.3, 6.7.9.11, 6.8.4.2.5 and 6.8.6.4.3. *)
+  | Internal (** CIL-internal conversion (non-standard). *)
 
 (** {b Lvalues.} Lvalues are the sublanguage of expressions that can appear at the left of an assignment or as operand to the address-of operator.
 In C the syntax for lvalues is not always a good indication of the meaning
@@ -1717,10 +1727,10 @@ val mkString: string -> exp
 
 (** Construct a cast when having the old type of the expression. If the new
     type is the same as the old type, then no cast is added. *)
-val mkCastT: e:exp -> oldt:typ -> newt:typ -> exp
+val mkCastT: kind:castkind -> e:exp -> oldt:typ -> newt:typ -> exp
 
 (** Like {!mkCastT} but uses typeOf to get [oldt] *)
-val mkCast: e:exp -> newt:typ -> exp
+val mkCast: kind:castkind -> e:exp -> newt:typ -> exp
 
 (** Removes casts from this expression, but ignores casts within
   other expression constructs.  So we delete the (A) and (B) casts from
@@ -2385,6 +2395,9 @@ val d_binop: unit -> binop -> Pretty.doc
 
 (** Pretty-print a unary operator *)
 val d_unop: unit -> unop -> Pretty.doc
+
+(** Pretty-print a cast kind *)
+val d_castkind: unit -> castkind -> Pretty.doc
 
 (** Pretty-print an attribute using {!defaultCilPrinter}  *)
 val d_attr: unit -> attribute -> Pretty.doc

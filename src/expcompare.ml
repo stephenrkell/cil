@@ -57,8 +57,8 @@ let rec compareExp (e1: exp) (e2: exp) : bool =
   | AddrOf lv1, AddrOf lv2 -> compareLval lv1 lv2
   | BinOp(bop1, l1, r1, _), BinOp(bop2, l2, r2, _) ->
       bop1 = bop2 && compareExp l1 l2 && compareExp r1 r2
-  | CastE(t1, e1), CastE(t2, e2) ->
-      t1 == t2 && compareExp e1 e2
+  | CastE(k1, t1, e1), CastE(k2, t2, e2) ->
+      k1 = k2 && t1 == t2 && compareExp e1 e2
   | _ -> begin
       match getInteger (constFold true e1), getInteger (constFold true e2) with
         Some i1, Some i2 -> compare_cilint i1 i2 = 0
@@ -95,7 +95,7 @@ and compareLval (lv1: lval) (lv2: lval) : bool =
    since they actually change the value of the expression. *)
 let rec stripNopCasts (e:exp): exp =
   match e with
-    CastE(t, e') -> begin
+    CastE(_, t, e') -> begin
       match unrollType (typeOf e'), unrollType t  with
         TPtr (bt1, a1), TPtr (bt2, a2)
           when isConstType bt1 = isConstType bt2 ->
@@ -127,7 +127,7 @@ let compareExpStripCasts (e1: exp) (e2: exp) : bool =
    of pointer arithmetic shouldn't change the resulting value. *)
 let rec stripCastsForPtrArith (e:exp): exp =
   match e with
-  | CastE(t, e') -> begin
+  | CastE(_, t, e') -> begin
       match unrollType (typeOf e'), unrollType t with
       (* Keep casts from void to something else.  Among other things,
          we keep casts from void* to char* that would otherwise be
@@ -209,7 +209,7 @@ let isTypeVolatile t =
 (* strip every cast between equal pointer types *)
 let rec stripCastsDeepForPtrArith (e:exp): exp =
   match e with
-  | CastE(t, e') when not(isTypeVolatile t) -> begin
+  | CastE(k, t, e') when not(isTypeVolatile t) -> begin
       let e' = stripCastsDeepForPtrArith e' in
       match unrollType (typeOf e'), unrollType t with
       (* Keep casts from void to something else.  Among other things,
@@ -224,11 +224,11 @@ let rec stripCastsDeepForPtrArith (e:exp): exp =
                isConstType bt1 = isConstType bt2 then
               e'
             else
-              CastE(t,e')
+              CastE(k,t,e')
           with SizeOfError _ -> (* bt1 or bt2 is abstract; don't strip. *)
-            CastE(t,e')
+            CastE(k,t,e')
         end
-      | _, _ -> CastE(t,e')
+      | _, _ -> CastE(k,t,e')
     end
   | UnOp(op,e,t) ->
       let e = stripCastsDeepForPtrArith e in
@@ -238,7 +238,7 @@ let rec stripCastsDeepForPtrArith (e:exp): exp =
       let e2 = stripCastsDeepForPtrArith e2 in
       if not(compareTypesNoAttributes ~ignoreSign:false
 	       (typeOf e1) (typeOf e2))
-      then BinOp(MinusPP, mkCast ~e:e1 ~newt:(typeOf e2), e2, t)
+      then BinOp(MinusPP, mkCast ~kind:PointerConversion ~e:e1 ~newt:(typeOf e2), e2, t)
       else BinOp(MinusPP, e1, e2, t)
   | BinOp(op,e1,e2,t) ->
       let e1 = stripCastsDeepForPtrArith e1 in

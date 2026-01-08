@@ -504,12 +504,12 @@ expression:
 		         { ((fun args ->
                               let t = (fst $2) args in
                               let e = (fst $4) args in
-                              mkCast ~e:e ~newt:t),
+                              mkCast ~kind:Explicit ~e:e ~newt:t), (* C11 6.3.1 *)
 
                             (fun e ->
                               let t', e' =
                                 match e with
-                                  CastE (t', e') -> t', e'
+                                  CastE (_, t', e') -> t', e'
                                 | _ -> typeOf e, e
                               in
                               match (snd $2) t', (snd $4 e') with
@@ -1354,7 +1354,7 @@ stmt:
                         let e = (fst $3) args in
                         let e =
                           if isPointerType(typeOf e) then
-                            mkCast ~e:e ~newt:!upointType
+                            mkCast ~kind:Internal ~e:e ~newt:!upointType (* TODO: why this cast here? not done for other ifs/loops *)
                           else e
                         in
                         mkStmt

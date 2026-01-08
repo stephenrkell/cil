@@ -1246,15 +1246,15 @@
    | BinOp (xop, xe1, xe2, xt), BinOp (yop, ye1, ye2, yt) ->
        xop = yop && equalExps xe1 ye1 && equalExps xe2 ye2 && true
        (*INC: xt == yt*)
-   | CastE (xt, xe), CastE (yt, ye) ->
+   | CastE (_, xt, xe), CastE (_, yt, ye) ->
        (*INC: xt == yt &&*)
        equalExps xe ye
    | AddrOf xl, AddrOf yl -> equalLvals xl yl
    | StartOf xl, StartOf yl -> equalLvals xl yl
    (* initializers that go through CIL multiple times sometimes lose casts they
       had the first time; so allow a different of a cast *)
-   | CastE (xt, xe), ye -> equalExps xe ye
-   | xe, CastE (yt, ye) -> equalExps xe ye
+   | CastE (_, xt, xe), ye -> equalExps xe ye
+   | xe, CastE (_, yt, ye) -> equalExps xe ye
    | _, _ -> false
 
  and equalLvals (x : lval) (y : lval) : bool =

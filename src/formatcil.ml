@@ -157,7 +157,7 @@ let test () =
   (* Construct an instruction *)
   let makeInstr () =
     Call(Some (var res),
-         Lval (Mem (CastE(TPtr(TFun(TPtr(intType, []),
+         Lval (Mem (CastE(Explicit, TPtr(TFun(TPtr(intType, []),
                                     Some [ ("", intType, []);
                                            ("a2", TPtr(intType, []), []);
                                            ("a3", TPtr(TPtr(intType, []),
