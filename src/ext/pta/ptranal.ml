@@ -244,7 +244,7 @@ and analyze_expr (e : exp ) : A.tau =
       | UnOp (op, e, t) -> analyze_expr e
       | BinOp (op, e, e', t) -> A.join (analyze_expr e) (analyze_expr e')
       | Question (_, e, e', _) -> A.join (analyze_expr e) (analyze_expr e')
-      | CastE (t, e) -> analyze_expr e
+      | CastE (_, t, e) -> analyze_expr e
       | AddrOf l ->
           if !fun_ptrs_as_funs && isFunctionType (typeOfLval l) then
             A.rvalue (analyze_lval l)

@@ -429,7 +429,7 @@ let varXformClass action data sid fd nofrm = object(self)
 	None -> DoChildren
       | Some e' ->
           (* Cast e' to the correct type. *)
-          let e'' = mkCast ~e:e' ~newt:vi.vtype in
+          let e'' = mkCast ~kind:Internal ~e:e' ~newt:vi.vtype in
           ChangeTo e'')
   | Lval(Mem e', off) ->
       (* don't substitute constants in memory lvals *)
@@ -468,7 +468,7 @@ let lvalXformClass action data sid fd nofrm = object(self)
 	    in
 	    ChangeDoChildrenPost(Lval(Mem e', off), post)
 	| Some e' ->
-	    let e'' = mkCast ~e:e' ~newt:(typeOf(Lval lv)) in
+	    let e'' = mkCast ~kind:Internal ~e:e' ~newt:(typeOf(Lval lv)) in
 	    ChangeDoChildrenPost(e'', castrm)
     end
     | Lval lv -> begin
@@ -476,7 +476,7 @@ let lvalXformClass action data sid fd nofrm = object(self)
 	| None -> DoChildren
 	| Some e' -> begin
             (* Cast e' to the correct type. *)
-            let e'' = mkCast ~e:e' ~newt:(typeOf(Lval lv)) in
+            let e'' = mkCast ~kind:Internal ~e:e' ~newt:(typeOf(Lval lv)) in
             ChangeDoChildrenPost(e'', castrm)
 	end
     end
@@ -494,7 +494,7 @@ let iosh_get_useful_def iosh vi =
       match ido with None -> true | Some(id) ->
 	match time "getDefRhs" getDefRhs id with
 	  Some(RD.RDExp(Lval(Var vi',NoOffset)),_,_)
-	| Some(RD.RDExp(CastE(_,Lval(Var vi',NoOffset))),_,_) ->
+	| Some(RD.RDExp(CastE(_,_,Lval(Var vi',NoOffset))),_,_) ->
 	    not(vi.vid = vi'.vid) (* false if they are the same *)
 	| _ -> true) ios
     in

@@ -601,7 +601,8 @@ and checkExp (isconst: bool) (e: exp) : typ =
           | _ -> E.s (bug "StartOf on a non-array")
       end
 
-      | CastE (tres, e) -> begin
+      | CastE (_, tres, e) -> begin
+        (* TODO: check castkind w.r.t. tres? *)
           let et = checkExp isconst e in
           checkType tres CTExp;
           (* Not all types can be cast *)

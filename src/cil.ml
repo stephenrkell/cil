@@ -535,7 +535,7 @@ and exp =
   | Question   of exp * exp * exp * typ
                                         (** (a ? b : c) operation. Includes
                                             the type of the result *)
-  | CastE      of typ * exp            (** Use {!mkCast} to make casts *)
+  | CastE      of castkind * typ * exp (** Use {!mkCast} to make casts *)
 
   | AddrOf     of lval                 (** Always use {!mkAddrOf} to
                                           construct one of these. Apply to an
@@ -615,8 +615,15 @@ and binop =
   | LAnd                                (** logical and *)
   | LOr                                 (** logical or *)
 
-
-
+and castkind =
+  | Explicit (** Explicit conversion. @see C11 6.3.1. *)
+  | IntegerPromotion (** Integer promotion. @see C11 6.3.1.1.2. *)
+  | DefaultArgumentPromotion (** Default argument promotion. @see C11 6.5.2.2.6. *)
+  | ArithmeticConversion (** Usual arithmetic conversion. @see C11 6.3.1.8. *)
+  | ConditionalConversion (** Conditional conversion (non-standard terminology). @see C11 6.5.15.5 and 6.5.15.6. *)
+  | PointerConversion (** Pointer conversion (non-standard). @see C11 6.5.6.8, 6.5.8.5 and 6.5.9.5. *)
+  | Implicit (** Implicit conversion. @see C11 6.3.1, 6.5.2.2.7, 6.5.2.4.2, 6.5.16.1.2, 6.5.16.2.3, 6.7.9.11, 6.8.4.2.5 and 6.8.6.4.3. *)
+  | Internal (** CIL-internal conversion (non-standard). *)
 
 (** An lvalue denotes the contents of a range of memory addresses. This range
    is denoted as a host object along with an offset within the object. The
@@ -1729,7 +1736,7 @@ let mkForIncr ~(iter : varinfo) ~(first: exp) ~stopat:(past: exp) ~(incr: exp)
 
 
 let rec stripCasts (e: exp) =
-  match e with CastE(_, e') -> stripCasts e' | _ -> e
+  match e with CastE(_, _, e') -> stripCasts e' | _ -> e
 
 
 
@@ -1909,7 +1916,7 @@ let getParenthLevel (e: exp) =
                                         (* Unary *)
   | Real _ -> 30
   | Imag _ -> 30
-  | CastE(_,_) -> 30
+  | CastE(_,_,_) -> 30
   | AddrOf(_) -> 30
   | AddrOfLabel(_) -> 30
   | StartOf(_) -> 30
@@ -1991,7 +1998,7 @@ let rec typeOf (e: exp) : typ =
   | UnOp (_, _, t)
   | BinOp (_, _, _, t)
   | Question (_, _, _, t)
-  | CastE (t, _) -> t
+  | CastE (_, t, _) -> t
   | AddrOf (lv) -> TPtr(typeOfLval lv, [])
   | AddrOfLabel (lv) -> voidPtrType
   | StartOf (lv) -> begin
@@ -2215,7 +2222,7 @@ let rec getInteger (e:exp) : cilint option =
   | Const(CInt (n, ik, _)) -> Some (mkCilintIk ik n)
   | Const(CChr c) -> getInteger (Const (charConstToInt c))
   | Const(CEnum(v, _, _)) -> getInteger v
-  | CastE(t, e) -> begin
+  | CastE(_, t, e) -> begin
       (* Handle any truncation due to cast. We optimistically ignore
 	 loss-of-precision due to floating-point casts. *)
       let mkInt ik n = Some (fst (truncateCilint ik n)) in
@@ -2622,19 +2629,19 @@ and constFold (machdep: bool) (e: exp) : exp =
       | _ -> constFold machdep (AlignOf (typeOf e))
   end
 
-  | CastE(it,
-          AddrOf (Mem (CastE(TPtr(bt, _), z)), off))
+  | CastE (k, it,
+          AddrOf (Mem (CastE(_, TPtr(bt, _), z)), off))
     when machdep && isZero z -> begin
       try
         let start, width = bitsOffset bt off in
         if start mod 8 <> 0 then
           E.s (error "Using offset of bitfield");
-        constFold machdep (CastE(it, (kinteger !kindOfSizeOf (start / 8))))
+        constFold machdep (CastE(k, it, (kinteger !kindOfSizeOf (start / 8))))
       with SizeOfError _ -> e
   end
 
 
-  | CastE (t, e) -> begin
+  | CastE (k, t, e) -> begin
       match constFold machdep e, unrollType t with
         (* Might truncate silently *)
       | Const(CInt(i,k,_)), TInt(nk,a)
@@ -2643,7 +2650,7 @@ and constFold (machdep: bool) (e: exp) : exp =
           when (dropAttributes ["const"; "pconst"] a) = [] ->
           let i', _ = truncateCilint nk (mkCilintIk k i) in
           Const(CInt(i', nk, None))
-      | e', _ -> CastE (t, e')
+      | e', _ -> CastE (k, t, e')
   end
   | Lval lv -> Lval (constFoldLval machdep lv)
   | AddrOf lv -> AddrOf (constFoldLval machdep lv)
@@ -2765,7 +2772,7 @@ let isArrayType t =
     An integer constant expr with value 0, or such an expr cast to void *, is called a null pointer constant. *)
 let isNullPtrConstant e =
   let rec isNullPtrConstant = function
-    | CastE (TPtr (TVoid [], []), e) -> isNullPtrConstant e (* no qualifiers allowed on void or ptr *)
+    | CastE (_, TPtr (TVoid [], []), e) -> isNullPtrConstant e (* no qualifiers allowed on void or ptr *)
     | e -> isZero e
   in
   isNullPtrConstant (constFold true e)
@@ -2781,7 +2788,7 @@ let rec isConstant = function
   | Real e -> isConstant e
   | Imag e -> isConstant e
   | SizeOf _ | SizeOfE _ | SizeOfStr _ | AlignOf _ | AlignOfE _ -> true
-  | CastE (_, e) -> isConstant e
+  | CastE (_, _, e) -> isConstant e
   | AddrOf (Var vi, off) | StartOf (Var vi, off)
         -> vi.vglob && isConstantOffset off
   | AddrOf (Mem e, off) | StartOf(Mem e, off)
@@ -2874,6 +2881,17 @@ let d_binop () b =
   | BOr -> text "|"
   | LAnd -> text "&&"
   | LOr -> text "||"
+
+let d_castkind () k =
+  match k with
+  | Explicit -> text "Explicit"
+  | IntegerPromotion -> text "IntegerPromotion"
+  | DefaultArgumentPromotion -> text "DefaultArgumentPromotion"
+  | ArithmeticConversion -> text "ArithmeticConversion"
+  | ConditionalConversion -> text "ConditionalConversion"
+  | PointerConversion -> text "PointerConversion"
+  | Implicit -> text "Implicit"
+  | Internal -> text "Internal"
 
 let invalidStmt = mkStmt (Instr [])
 
@@ -3405,9 +3423,12 @@ class defaultCilPrinterClass : cilPrinter = object (self)
           ++ text " : "
           ++ (self#pExpPrec level () e3)
 
-    | CastE(t,e) ->
+    | CastE(k,t,e) ->
         text "("
-          ++ self#pType None () t
+          ++ self#pType None () t (* TODO: option to not print implicit casts? *)
+          (* ++ text "/*"
+          ++ d_castkind () k (* convenient for debugging castkinds *)
+          ++ text "*/" *)
           ++ text ")"
           ++ self#pExpPrec level () e
 
@@ -3698,7 +3719,7 @@ class defaultCilPrinterClass : cilPrinter = object (self)
         in
         let patchArgNotUseVLACast exp =
           match exp with
-          | CastE(t, e) -> CastE(patchTypeNotVLA t, e)
+          | CastE(k, t, e) -> CastE(k, patchTypeNotVLA t, e)
           | e -> e
         in
         self#pLineDirective l
@@ -4698,7 +4719,7 @@ class plainCilPrinterClass =
               ++ unalign)
         ++ text ")"
 
-  | CastE(t,e) -> dprintf "CastE(@[%a,@?%a@])" self#pOnlyType t self#pExp e
+  | CastE(k,t,e) -> dprintf "CastE(@[%a,@?%a,@?%a@])" d_castkind k self#pOnlyType t self#pExp e
 
   | UnOp(u,e1,_) ->
       dprintf "UnOp(@[%a,@?%a@])"
@@ -5242,9 +5263,9 @@ and childrenExp (vis: cilVisitor) (e: exp) : exp =
   | Question (e1, e2, e3, t) ->
       let e1' = vExp e1 in let e2' = vExp e2 in let e3' = vExp e3 in let t' = vTyp t in
       if e1' != e1 || e2' != e2 || e3' != e3 || t' != t then Question(e1',e2',e3',t') else e
-  | CastE (t, e1) ->
+  | CastE (k, t, e1) ->
       let t' = vTyp t in let e1' = vExp e1 in
-      if t' != t || e1' != e1 then CastE(t', e1') else e
+      if t' != t || e1' != e1 then CastE(k, t', e1') else e
   | AddrOf lv ->
       let lv' = vLval lv in
       if lv' != lv then AddrOf lv' else e
@@ -6097,7 +6118,7 @@ let getCompField (cinfo:compinfo) (fieldName:string) : fieldinfo =
   (List.find (fun fi -> fi.fname = fieldName) cinfo.cfields)
 
 
-let mkCastT ~(e: exp) ~(oldt: typ) ~(newt: typ) =
+let mkCastT ~(kind: castkind) ~(e: exp) ~(oldt: typ) ~(newt: typ) =
   (* Do not remove old casts because they are conversions !!! *)
   if Util.equals (typeSig oldt) (typeSig newt) then begin
     e
@@ -6109,11 +6130,11 @@ let mkCastT ~(e: exp) ~(oldt: typ) ~(newt: typ) =
         let v = if compare i zero_cilint = 0 then zero_cilint else one_cilint in
         Const (CInt(v, IBool,  None))
     | TInt(newik, []), Const(CInt(i, _, _)) -> kintegerCilint newik i
-    | _ -> CastE(newt,e)
+    | _ -> CastE(kind,newt,e)
   end
 
-let mkCast ~(e: exp) ~(newt: typ) =
-  mkCastT ~e:e ~oldt:(typeOf e) ~newt:newt
+let mkCast ~kind ~(e: exp) ~(newt: typ) =
+  mkCastT ~kind ~e:e ~oldt:(typeOf e) ~newt:newt
 
 type existsAction =
     ExistsTrue                          (* We have found it *)
@@ -6230,7 +6251,7 @@ let rec makeZeroInit (t: typ) : init =
       CompoundInit (t', [])
 
   | TPtr _ as t ->
-      SingleInit(if !insertImplicitCasts then mkCast ~e:zero ~newt:t else zero)
+      SingleInit(if !insertImplicitCasts then mkCast ~kind:Internal ~e:zero ~newt:t else zero)
   | x -> E.s (unimp "Cannot initialize type: %a" d_type x)
 
 
