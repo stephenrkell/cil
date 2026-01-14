@@ -509,8 +509,6 @@ addTest("testrungcc/enum3 _GNUCC=1");
 addTest("testrungcc/enum3a _GNUCC=1");
 addTest("testrungcc/enum3b _GNUCC=1");
 addTest("testrungcc/enum3c _GNUCC=1");
-addBadComment("testrungcc/enum3c",
-                        "Limitation. CIL constant folder doesn't consider x << y constant if y is strange (negative or bigger than #bits in x's type)");
 addTest("testrungcc/enum3d _GNUCC=1");
 addTest("testrungcc/enum3e _GNUCC=1");
 addTest("testrungcc/enum3f _GNUCC=1");

@@ -2807,7 +2807,8 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
                   Some n ->
 		                let ik = updateEnum n in
 		                if !lowerConstants then kintegerCilint ik n else e'
-                | _ -> E.s (error "Constant initializer %a not an integer" d_exp e')
+                | _ -> e' (* let the compiler sort it out if we can't constant-eval
+                             (e.g. possibly due to shifting out of bounds) *)
               in
               processName kname attrs e'' (convLoc cloc) rest
         in
