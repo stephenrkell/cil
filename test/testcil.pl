@@ -536,6 +536,7 @@ addTest("testrun/min ");
 
 
 addTest("testrun/typeof1 ");
+addTest("test/auto_type1");
 addTest("testrun/semicolon _GNUCC=1");
 
 addTest("merge-ar ");
