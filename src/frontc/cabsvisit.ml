@@ -321,7 +321,9 @@ and childrenDefinition vis d =
       let dl' = mapNoCopyList (visitCabsDefinition vis) dl in
       if dl' != dl then LINKAGE (n, l, dl') else d
   
-  | STATIC_ASSERT _ -> d
+  | STATIC_ASSERT (e, str, l) ->
+    let e' = visitCabsExpression vis e in
+    if e' != e then STATIC_ASSERT (e', str, l) else d
   | TRANSFORMER _ -> d
   | EXPRTRANSFORMER _ -> d
 
