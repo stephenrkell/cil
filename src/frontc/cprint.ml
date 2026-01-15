@@ -909,8 +909,12 @@ and print_def def =
       setLoc(loc);
       print "_Static_assert(";
       print_expression e;
-      print ",";
-      print_string str;
+      begin match str with
+        | Some str ->
+          print ",";
+          print_string str;
+        | None -> ()
+      end;
       print ");";
 
 (* sm: print a comment if the printComments flag is set *)

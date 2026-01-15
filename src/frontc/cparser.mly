@@ -1005,11 +1005,11 @@ static_assert_declaration:
 
 |   STATIC_ASSERT LPAREN expression RPAREN /* C23 */
       {
-        (fst $3, "", $1)
+        (fst $3, None, $1)
       }
 |   STATIC_ASSERT LPAREN expression COMMA const_raw_string RPAREN
       {
-        (fst $3, fst $5, $1)
+        (fst $3, Some (fst $5), $1)
       }
 ;
 
