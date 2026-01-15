@@ -4752,6 +4752,22 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                           prestype := intType
                   | _ -> ignore (warn "Invalid call to builtin_types_compatible_p");
                 end
+                else if fv.vname = "__builtin_clzll" && asconst && isEmpty (!prechunk ()) then
+                  begin
+                  (* Constant-fold the argument and see if it is a constant *)
+                    let countLeadingZeros (arg: cilint) pos = pos - Z.numbits arg
+                    in
+                    match !pargs with
+                      [ arg ] -> begin
+                        match constFold true arg with
+                          (Const CInt (arg, kind, _)) ->
+                            piscall := false;
+                            pres := integer (countLeadingZeros arg 64);
+                            prestype := intType
+                        | _ -> ()
+                      end
+                    | _ -> ignore (warn "Invalid call to __builtin_clzll");
+                  end
             end
           | _ -> ()
         );
