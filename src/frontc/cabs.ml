@@ -83,8 +83,8 @@ type typeSpecifier = (* Merge all specifiers into one type *)
      a forward declaration or simple reference to the type); they
      also have a list of __attribute__s that appeared between the
      keyword and the type name (definitions only) *)
-  | Tstruct of string * field_group list option * attribute list
-  | Tunion of string * field_group list option * attribute list
+  | Tstruct of string * struct_decl list option * attribute list
+  | Tunion of string * struct_decl list option * attribute list
   | Tenum of string * enum_item list option * attribute list
   | TtypeofE of expression                      (* GCC __typeof__ *)
   | TtypeofT of specifier * decl_type       (* GCC __typeof__ *)
@@ -149,6 +149,10 @@ and name_group = specifier * name list
 
 (* The optional expression is the bitfield *)
 and field_group = specifier * (name * expression option) list
+
+and struct_decl =
+  | FIELD_GROUP of field_group
+  | FIELD_STATIC_ASSERT of expression * string option * cabsloc
 
 (* like name_group, except the declared variables are allowed to have initializers *)
 (* e.g.: int x=1, y=2; *)

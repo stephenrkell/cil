@@ -370,7 +370,7 @@ let transformOffsetOf (speclist, dtype) member =
 
 %type <spec_elem list * cabsloc> decl_spec_list
 %type <typeSpecifier * cabsloc> type_spec
-%type <Cabs.field_group list> struct_decl_list
+%type <Cabs.struct_decl list> struct_decl_list
 
 
 %type <Cabs.name> old_proto_decl
@@ -1148,13 +1148,13 @@ struct_decl_list: /* (* ISO 6.7.2. Except that we allow empty structs. We
                    */
    /* empty */                           { [] }
 |  decl_spec_list                 SEMICOLON struct_decl_list
-                                         { (fst $1,
+                                         { FIELD_GROUP (fst $1,
                                             [(missingFieldDecl, None)]) :: $3 }
 /*(* GCC allows extra semicolons *)*/
 |                                 SEMICOLON struct_decl_list
                                          { $2 }
 |  decl_spec_list field_decl_list SEMICOLON struct_decl_list
-                                          { (fst $1, $2)
+                                          { FIELD_GROUP (fst $1, $2)
                                             :: $4 }
 /*(* MSVC allows pragmas in strange places *)*/
 |  pragma struct_decl_list                { $2 }
@@ -1163,11 +1163,13 @@ struct_decl_list: /* (* ISO 6.7.2. Except that we allow empty structs. We
                                           { $3 }
 /*(* C11 allows static_assert-declaration *)*/
 |  static_assert_declaration             {
-       []
+       let (e, m, loc) = $1 in
+       [FIELD_STATIC_ASSERT (e, m, loc)]
    }
 
 |  static_assert_declaration      SEMICOLON struct_decl_list  {
-       $3
+       let (e, m, loc) = $1 in
+       FIELD_STATIC_ASSERT (e, m, loc) :: $3
    }
 
 ;

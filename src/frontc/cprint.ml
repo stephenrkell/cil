@@ -244,13 +244,25 @@ and print_decl (n: string) = function
       comprint ")"
 
 
-and print_fields (flds : field_group list) =
+and print_fields (flds : struct_decl list) =
   if flds = [] then print " { } "
   else begin
     print " {";
     indent ();
     List.iter
-      (fun fld -> print_field_group fld; print ";"; new_line ())
+      (function
+        | FIELD_GROUP fld -> print_field_group fld; print ";"; new_line ()
+        | FIELD_STATIC_ASSERT (e, str, loc) ->
+          print "_Static_assert(";
+          print_expression e;
+          begin match str with
+            | Some str ->
+              print ",";
+              print_string str;
+            | None -> ()
+          end;
+          print ");";
+      )
       flds;
     unindent ();
     print "} "

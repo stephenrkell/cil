@@ -189,13 +189,22 @@ and childrenTypeSpecifier vis ts =
     let nel' = mapNoCopy doOneField nel in
     if s' != s || nel' != nel then (s', nel') else input
   in
+  let childrenStructDecl input =
+    match input with
+    | FIELD_GROUP fg -> 
+      let fg' = childrenFieldGroup fg in
+      if fg' != fg then FIELD_GROUP fg' else input
+    | FIELD_STATIC_ASSERT (e, str, l) ->
+      let e' = visitCabsExpression vis e in
+      if e' != e then FIELD_STATIC_ASSERT (e', str, l) else input
+  in
   match ts with
     Tstruct (n, Some fg, extraAttrs) ->
       (*(trace "sm" (dprintf "visiting struct %s\n" n));*)
-      let fg' = mapNoCopy childrenFieldGroup fg in
+      let fg' = mapNoCopy childrenStructDecl fg in
       if fg' != fg then Tstruct( n, Some fg', extraAttrs) else ts
   | Tunion (n, Some fg, extraAttrs) ->
-      let fg' = mapNoCopy childrenFieldGroup fg in
+      let fg' = mapNoCopy childrenStructDecl fg in
       if fg' != fg then Tunion( n, Some fg', extraAttrs) else ts
   | Tenum (n, Some ei, extraAttrs) ->
       let doOneEnumItem ((s, attrs, e, loc) as ei) =
