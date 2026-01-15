@@ -6615,7 +6615,19 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
             E.s (bug "doDecl returns non-empty statement for global"))
         dl;
       empty
-  | STATIC_ASSERT _ -> empty
+  | STATIC_ASSERT (e, str, loc) ->
+    if isglobal || isstmt then
+      currentLoc := convLoc loc;
+    currentExpLoc := convLoc loc;
+    let d_message () = function
+      | None -> nil
+      | Some str -> dprintf ": %s" str
+    in
+    begin match isIntegerConstant e with
+      | Some 0 -> E.s (error "Static assert failed at %a%a" d_loc !currentLoc d_message str)
+      | Some _ -> empty
+      | None -> E.s (error "Static assert with a non-constant at %a%a" d_loc !currentLoc d_message str)
+    end
   | _ -> E.s (error "unexpected form of declaration")
 
 and doTypedef ((specs, nl): A.name_group) =
