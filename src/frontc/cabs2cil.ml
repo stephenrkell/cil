@@ -5876,9 +5876,8 @@ and createAutoLocal ((((n, ndt, a, cloc) : A.name), (inite: A.init_expression)) 
   else
     match inite with
     | SINGLE_INIT exp ->
-      (match doExp true exp (AExp None) with
-      | (_, exp, _) ->
-        let t = Cil.typeOf exp in
+      (match doExp false exp (AExp None) with (* doExp with AExp handles array and function types (AType would not!) *)
+      | (_, _, t) ->
         let specs = t,NoStorage,false,[] in
         createLocal specs name
       )
