@@ -4423,11 +4423,6 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
           | Lval (Var {vname= ("__builtin_nan" | "__builtin_nanf" | "__builtin_nanl" | "__builtin_nans" | "__builtin_nansf" | "__builtin_nansl"); _}, NoOffset) -> true
           | _ -> false
         in
-        let isBuiltinConstArg =
-          match f'' with
-          | Lval (Var {vname= "__builtin_choose_expr"; _ }, NoOffset) -> true
-          | _ -> false
-        in
         if isBuiltinNan && asconst then
           (* Replace call to builtin nan with computation yielding NaN *)
           let onef = Const(CReal(0.0,FDouble,None)) in
@@ -4464,7 +4459,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                   the castTo do this work. This was necessary for
                   test/small1/union5, in which a transparent union is passed
                   as an argument *)
-              let (sa, a', att) = force_right_to_left_evaluation (doExp isBuiltinConstArg a (AExp None)) in
+              let (sa, a', att) = force_right_to_left_evaluation (doExp asconst a (AExp None)) in
               let (_, a'') = castTo ~kind:Implicit att at a' in (* C11 6.5.2.2.7 *)
               (sa :: ss, a'' :: args')
             | ([], args) -> (* No more types *)
@@ -4474,7 +4469,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                 | [] -> ([], [])
                 | a :: args ->
                     let (ss, args') = loop args in
-                    let (sa, a', at) = force_right_to_left_evaluation (doExp isBuiltinConstArg a (AExp None)) in
+                    let (sa, a', at) = force_right_to_left_evaluation (doExp asconst a (AExp None)) in
                     if isBuiltinChooseExprOrTgmath then
                       (* This built-in function is analogous to the `? :'
                           operator in C, except that the expression returned
