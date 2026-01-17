@@ -263,7 +263,7 @@ type maybeInit =
 %token RPAREN LPAREN RBRACE LBRACE LBRACKET RBRACKET
 %token COLON SEMICOLON COMMA ELLIPSIS QUEST
 
-%token BREAK CONTINUE GOTO RETURN
+%token BREAK CONTINUE GOTO RETURN FALLTHROUGH
 %token SWITCH CASE DEFAULT
 %token WHILE DO FOR
 %token IF THEN ELSE
@@ -1331,6 +1331,10 @@ stmt:
 |   RETURN exp_opt SEMICOLON  
                   { (fun mkTemp loc args -> 
                          mkStmt (Return((fst $2) args, loc))) 
+                  }
+|   FALLTHROUGH SEMICOLON
+                  { (fun mkTemp loc args ->
+                         mkStmt (Fallthrough loc))
                   }
 |   BREAK SEMICOLON  
                   { (fun mkTemp loc args -> 

@@ -144,6 +144,9 @@ let init_lexicon _ =
       ("typedef", fun loc -> TYPEDEF loc);
       ("union", fun loc -> UNION loc);
       ("break", fun loc -> BREAK loc);
+      ("[[fallthrough]]", fun loc -> FALLTHROUGH loc);
+      ("[[__fallthrough__]]", fun loc -> FALLTHROUGH loc);
+      ("[[FALLTHROUGH]]", fun loc -> FALLTHROUGH loc); (* I suspect this one isn't needed *)
       ("continue", fun loc -> CONTINUE loc);
       ("goto", fun loc -> GOTO loc); 
       ("return", fun loc -> dbgToken (RETURN loc));
@@ -568,6 +571,9 @@ rule initial =
 |		octnum			{CST_INT (Lexing.lexeme lexbuf, currentLoc ())}
 |		intnum			{CST_INT (Lexing.lexeme lexbuf, currentLoc ())}
 |		"!quit!"		{EOF}
+|               "[[fallthrough]]"      {FALLTHROUGH (currentLoc ())}
+|               "[[__fallthrough__]]"  {FALLTHROUGH (currentLoc ())}
+|               "[[FALLTHROUGH]]"      {FALLTHROUGH (currentLoc ())}
 |		"..."			{ELLIPSIS}
 |		"+="			{PLUS_EQ}
 |		"-="			{MINUS_EQ}

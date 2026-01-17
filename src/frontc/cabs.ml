@@ -221,6 +221,7 @@ and statement =
  | DOWHILE of expression * statement * cabsloc
  | FOR of for_clause * expression * expression * statement * cabsloc
  | BREAK of cabsloc
+ | FALLTHROUGH of cabsloc
  | CONTINUE of cabsloc
  | RETURN of expression * cabsloc
  | SWITCH of expression * statement * cabsloc

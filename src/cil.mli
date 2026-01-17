@@ -997,6 +997,9 @@ and stmtkind =
   | Break of location                   
    (** A break to the end of the nearest enclosing Loop or Switch *)
 
+  | Fallthrough of location
+  (** Fallthrough statement indicates to the compiler that fallthrough really is expected *)
+
   | Continue of location                
    (** A continue to the start of the nearest enclosing [Loop] *)
   | If of exp * block * block * location 

@@ -823,6 +823,9 @@ and stmtkind =
 
   | Break of location                   (** A break to the end of the nearest 
                                              enclosing Loop or Switch *)
+  | Fallthrough of location             (** A fallthrough statement indicating
+                                            the compiler that fallthrough behaviour
+                                            is expected. *)
   | Continue of location                (** A continue to the start of the 
                                             nearest enclosing [Loop] *)
   | If of exp * block * block * location (** A conditional. 
@@ -1172,6 +1175,7 @@ let rec get_stmtLoc (statement : stmtkind) =
     | Goto(_, loc) -> loc
     | ComputedGoto(_, loc) -> loc
     | Break(loc) -> loc
+    | Fallthrough(loc) -> loc
     | Continue(loc) -> loc
     | If(_, _, _, loc) -> loc
     | Switch (_, _, _, loc) -> loc
@@ -4094,6 +4098,10 @@ class defaultCilPrinterClass : cilPrinter = object (self)
         self#pLineDirective l
           ++ text "break;"
 
+    | Fallthrough l ->
+        self#pLineDirective l
+          ++ text "[[fallthrough]];"
+
     | Continue l -> 
         self#pLineDirective l
           ++ text "continue;"
@@ -5670,7 +5678,7 @@ and childrenStmt (toPrepend: instr list ref) : cilVisitor -> stmt -> stmt =
   (* Just change the statement kind *)
   let skind' = 
     match s.skind with
-      Break _ | Continue _ | Goto _ | Return (None, _) -> s.skind
+      Break _ | Continue _ | Goto _ | Return (None, _) | Fallthrough _ -> s.skind
     | ComputedGoto (e, l) ->
          let e' = fExp e in
          if e' != e then ComputedGoto (e', l) else s.skind
@@ -6222,7 +6230,7 @@ let rec peepHole1 (* Process one instruction and possibly replace it *)
           peepHole1 doone b.bstmts; 
           peepHole1 doone h.bstmts;
           s.skind <- TryExcept(b, (doInstrList il, e), h, l);
-      | Return _ | Goto _ | ComputedGoto _ | Break _ | Continue _ -> ())
+      | Return _ | Goto _ | ComputedGoto _ | Break _ | Continue _ | Fallthrough _ -> ())
     ss
 
 let rec peepHole2  (* Process two instructions and possibly replace them both *)
@@ -6256,7 +6264,7 @@ let rec peepHole2  (* Process two instructions and possibly replace them both *)
           peepHole2 dotwo h.bstmts;
           s.skind <- TryExcept (b, (doInstrList il, e), h, l)
 
-      | Return _ | Goto _ | ComputedGoto _ | Break _ | Continue _ -> ())
+      | Return _ | Goto _ | ComputedGoto _ | Break _ | Continue _ | Fallthrough _ -> ())
     ss
 
 
@@ -6872,6 +6880,7 @@ and succpred_stmt s fallthrough rlabels =
   | Goto(dest,l) -> link s !dest
   | ComputedGoto(e,l) ->  List.iter (link s) rlabels
   | Break _  
+  | Fallthrough _  
   | Continue _ 
   | Switch _ ->
     failwith "computeCFGInfo: cannot be called on functions with break, continue or switch statements. Use prepareCFG first to remove them."
@@ -6962,6 +6971,12 @@ let rec xform_switch_stmt s break_dest cont_dest = begin
   ) s.labels ; 
   match s.skind with
   | Instr _ | Return _ | Goto _ | ComputedGoto _ -> ()
+  | Fallthrough _ -> begin try
+                           s.skind <- Instr [(Asm([], [""], [], [], [], lu))] (* I believe this is OK... *)
+                   with e ->
+                           ignore (error "prepareCFG: fallthrough: %a@!" d_stmt s);
+                           raise e
+                   end
   | Break(l) -> begin try 
                   s.skind <- Goto(break_dest (),l)
                 with e ->

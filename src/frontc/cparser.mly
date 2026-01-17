@@ -300,7 +300,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> SEMICOLON
 %token COMMA ELLIPSIS QUEST
 
-%token<Cabs.cabsloc> BREAK CONTINUE GOTO RETURN
+%token<Cabs.cabsloc> BREAK CONTINUE GOTO RETURN FALLTHROUGH
 %token<Cabs.cabsloc> SWITCH CASE DEFAULT
 %token<Cabs.cabsloc> WHILE DO FOR
 %token<Cabs.cabsloc> IF TRY EXCEPT FINALLY
@@ -917,6 +917,7 @@ statement:
 |   RETURN comma_expression SEMICOLON
 	                         {RETURN (smooth_expression (fst $2), (*handleLoc*) $1)}
 |   BREAK SEMICOLON     {BREAK ((*handleLoc*) $1)}
+|   FALLTHROUGH SEMICOLON {FALLTHROUGH ((*handleLoc*) $1)}
 |   CONTINUE SEMICOLON	 {CONTINUE ((*handleLoc*) $1)}
 |   GOTO IDENT SEMICOLON
 		                 {GOTO (fst $2, (*handleLoc*) $1)}

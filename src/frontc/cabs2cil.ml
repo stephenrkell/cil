@@ -1047,6 +1047,12 @@ module BlockChunk =
         postins = [];
         cases = body.cases;
       } 
+
+    let fallthroughChunk (l: location) : chunk = 
+      { stmts = [ mkStmt (Fallthrough l) ];
+        postins = [];
+        cases = [];
+      }
       
     let breakChunk (l: location) : chunk = 
       { stmts = [ mkStmt (Break l) ];
@@ -6381,6 +6387,7 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
                                       acc && instrFallsThrough elt) true il
               | Return _ | Break _ | Continue _ -> false
               | Goto _ | ComputedGoto _ -> false
+              | Fallthrough _ -> true (* I think this is correct? Only a valid statement in specific cases! *)
               | If (_, b1, b2, _) -> 
                   blockFallsThrough b1 || blockFallsThrough b2
               | Switch (e, b, targets, _) -> 
@@ -6443,6 +6450,7 @@ and doDecl (isglobal: bool) : A.definition -> chunk = function
             and stmtCanBreak (s: stmt) : bool = 
               match s.skind with
                 Instr _ | Return _ | Continue _ | Goto _ | ComputedGoto _ -> false
+              | Fallthrough _ -> false
               | Break _ -> true
               | If (_, b1, b2, _) -> 
                   blockCanBreak b1 || blockCanBreak b2
@@ -6749,6 +6757,11 @@ and doStatement (s : A.statement) : chunk =
         let loc' = convLoc loc in
         currentLoc := loc';
         breakChunk loc'
+
+    | A.FALLTHROUGH loc ->
+        let loc' = convLoc loc in
+        currentLoc := loc';
+        fallthroughChunk loc'
 
     | A.CONTINUE loc -> 
         let loc' = convLoc loc in

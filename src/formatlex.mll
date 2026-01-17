@@ -82,6 +82,7 @@ let init ~(prog: string) : Lexing.lexbuf =
       ("typedef", TYPEDEF);
       ("union", UNION);
       ("break", BREAK);
+      ("[[fallthrough]]", FALLTHROUGH);
       ("continue", CONTINUE);
       ("goto", GOTO); 
       ("return", RETURN);
