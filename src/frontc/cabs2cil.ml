@@ -6864,6 +6864,8 @@ and doStatement (s : A.statement) : chunk =
             FC_EXP e1 -> doExp false e1 ADrop
           | FC_DECL d1 -> (doDecl false false d1, zero, voidType)
         in
+        currentLoc := loc';
+        currentExpLoc := SynthetizeLoc.doLoc eloc';
         (* First instruction (assignment) in for loop initializer has non-synthetic statement location before for loop.
            Its expression location inside for loop parentheses is synthetic.
            All other instructions are fully synthetic. *)
