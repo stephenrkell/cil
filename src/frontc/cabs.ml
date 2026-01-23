@@ -221,7 +221,8 @@ and statement =
  | IF of expression * statement * statement * cabsloc * cabsloc (* second cabsloc is just for expression *)
  | WHILE of expression * statement * cabsloc * cabsloc (* second cabsloc is just for expression *)
  | DOWHILE of expression * statement * cabsloc * cabsloc (* second cabsloc is just for expression *)
- | FOR of for_clause * expression * expression * statement * cabsloc * cabsloc (* second cabsloc is just for expression *)
+ | FOR of for_clause * cabsloc * expression * cabsloc * expression * cabsloc * statement * cabsloc * cabsloc
+   (* for_clause, for_clause_loc, condition, condition_loc, increment, increment_loc, body, loop_loc, expr_loc *)
  | BREAK of cabsloc
  | CONTINUE of cabsloc
  | RETURN of expression * cabsloc * cabsloc (* second cabsloc is just for expression *)

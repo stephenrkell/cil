@@ -6853,24 +6853,31 @@ and doStatement (s : A.statement) : chunk =
         exitLoop ();
         loopChunk (s' @@ s'')
 
-    | A.FOR(fc1,e2,e3,s,loc,eloc) -> begin
+    | A.FOR(fc1,fc_loc,e2,e2_loc,e3,e3_loc,s,loc,eloc) -> begin
         let loc' = convLoc loc in
         let eloc' = convLoc eloc in
-        currentLoc := loc'; (* For loop statement location is not synthetic. *)
-        currentExpLoc := SynthetizeLoc.doLoc eloc';
+        let fc_loc' = convLoc fc_loc in
+        let e2_loc' = convLoc e2_loc in
+        let e3_loc' = convLoc e3_loc in
+        currentLoc := loc'; (* For loop statement location is not synthetic (see se1 comment below). *)
+        currentExpLoc := SynthetizeLoc.doLoc fc_loc';
         enterScope (); (* Just in case we have a declaration *)
         let (se1, _, _) =
           match fc1 with
             FC_EXP e1 -> doExp false e1 ADrop
-          | FC_DECL d1 -> (doDecl false false d1, zero, voidType)
+          | FC_DECL d1 -> (doDecl false false d1, zero, voidType) (* doDecl may modify currentLoc and currentExpLoc! *)
         in
         (* First instruction (assignment) in for loop initializer has non-synthetic statement location before for loop.
            Its expression location inside for loop parentheses is synthetic.
            All other instructions are fully synthetic. *)
         let se1 = SynthetizeLoc.eDoChunkHead (SynthetizeLoc.doChunkTail se1) in
-        let (se3, _, _) = doExp false e3 ADrop in
-        let se3 = SynthetizeLoc.doChunkHead se3 in
+        (* Reset both locations due to doDecl (see above). *)
+        currentLoc := loc'; (* TODO: Why is statement location not synthetic here? Not needed? *)
+        currentExpLoc := SynthetizeLoc.doLoc e3_loc';
+        let (se3, _, _) = doExp false e3 ADrop in (* doExp does doChunkTail *)
+        let se3 = SynthetizeLoc.doChunkHead se3 in (* So just doChunkHead is enough *)
         startLoop false;
+        (* TODO: Are these locations ever used in doStatement? Why not synthetic? *)
         currentLoc := loc';
         currentExpLoc := eloc';
         let s' = doStatement s in
@@ -6880,6 +6887,8 @@ and doStatement (s : A.statement) : chunk =
         let break_cond = breakChunk loc' in (* TODO: use eloc'? *)
         exitLoop ();
         let res =
+          currentLoc := SynthetizeLoc.doLoc loc';
+          currentExpLoc := SynthetizeLoc.doLoc e2_loc';
           match e2 with
             A.NOTHING -> (* This means true *)
               se1 @@ loopChunk (consLabLoopCondition s' @@ s'')

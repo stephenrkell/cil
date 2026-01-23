@@ -384,6 +384,7 @@ let transformOffsetOf (speclist, dtype) member =
 %type <Cabs.statement list> block_element_list
 %type <string list> local_labels local_label_names
 %type <string list> old_parameter_list_ne
+%type <Cabs.for_clause * cabsloc> for_clause
 
 %type <Cabs.init_name> init_declarator
 %type <Cabs.init_name list> init_declarator_list
@@ -952,9 +953,9 @@ statement_no_null:
 	        	{WHILE (smooth_expression (fst $2), $4, joinLoc $1 $5, joinLoc (snd $2) $3)}
 |   DO statement WHILE paren_comma_expression SEMICOLON
 	        	         {DOWHILE (smooth_expression (fst $4), $2, joinLoc $1 $5, joinLoc (snd $4) $5)}
-|   FOR LPAREN for_clause opt_expression
-	        SEMICOLON opt_expression RPAREN statement location
-	                         {FOR ($3, $4, $6, $8, joinLoc $1 $9, joinLoc $2 $7)}
+|   FOR LPAREN for_clause location opt_expression location
+	        SEMICOLON location opt_expression location RPAREN statement location
+	                         {let (fc, fc_loc) = $3 in FOR (fc, fc_loc, $5, joinLoc $4 $6, $9, joinLoc $8 $10, $12, joinLoc $1 $13, joinLoc $2 $11)}
 |   IDENT COLON attribute_nocv_list location statement_no_null
 		                 {(* The only attribute that should appear here
                                      is "unused". For now, we drop this on the
@@ -989,8 +990,8 @@ statement_no_null:
 
 
 for_clause:
-    opt_expression SEMICOLON     { FC_EXP $1 }
-|   declaration                  { FC_DECL $1 }
+    location opt_expression SEMICOLON     { (FC_EXP $2, joinLoc $1 $3) }
+|   location declaration location         { (FC_DECL $2, joinLoc $1 $3) }
 ;
 
 declaration:                                /* ISO 6.7.*/
