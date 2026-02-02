@@ -2715,7 +2715,12 @@ and constFoldBinOp (machdep: bool) bop e1 e2 tres =
 	      end
       | Div, _, Some o when compare_cilint o one_cilint = 0 -> collapse e1'
       | Mod, Some i1, Some i2 -> begin
-          try no_ov (rem_cilint i1 i2)
+          try
+            (* C11 6.5.5.6: if [i1/i2] is not representable (i.e. overflows), then [i1%i2] is undefined *)
+            if isSigned tk && snd (truncateCilint tk (div0_cilint i1 i2)) <> NoTruncation then
+              BinOp(bop, e1', e2', tres)
+            else
+              no_ov (rem_cilint i1 i2)
           with Division_by_zero -> BinOp(bop, e1', e2', tres)
 	      end
       | Mod, _, Some o when compare_cilint o one_cilint = 0 -> collapse0 ()
