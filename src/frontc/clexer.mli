@@ -60,3 +60,5 @@ val get_extra_lexeme: unit -> string
 val clear_white: unit -> unit
 val clear_lexeme: unit -> unit
 val currentLoc : unit -> Cabs.cabsloc
+
+val builtin_macro_defs : (string, string) Hashtbl.t

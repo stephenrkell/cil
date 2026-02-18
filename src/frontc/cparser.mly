@@ -314,7 +314,7 @@ let transformOffsetOf (speclist, dtype) member =
 %token<Cabs.cabsloc> DECLSPEC
 %token<string * Cabs.cabsloc> PRAGMA_LINE
 %token<Cabs.cabsloc> PRAGMA
-%token PRAGMA_EOL
+%token HASH_EOL
 
 /* sm: cabs tree transformation specification keywords */
 %token<Cabs.cabsloc> AT_TRANSFORM AT_TRANSFORMEXPR AT_SPECIFIER AT_EXPR
@@ -1483,8 +1483,8 @@ just_attributes:
 
 /** (* PRAGMAS and ATTRIBUTES *) ***/
 pragma:
-| PRAGMA attr PRAGMA_EOL		{ PRAGMA ($2, $1) }
-| PRAGMA attr SEMICOLON PRAGMA_EOL	{ PRAGMA ($2, $1) }
+| PRAGMA attr HASH_EOL		{ PRAGMA ($2, $1) }
+| PRAGMA attr SEMICOLON HASH_EOL	{ PRAGMA ($2, $1) }
 | PRAGMA_LINE                           { PRAGMA (VARIABLE (fst $1),
                                                   snd $1) }
 ;

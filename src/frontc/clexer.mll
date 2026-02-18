@@ -51,6 +51,8 @@ let matchingParsOpen = ref 0
 
 let currentLoc () = Cabshelper.currentLoc ()
 
+let builtin_macro_defs : (string, string) H.t = H.create 128
+
 (* string -> unit *)
 let addComment c =
   let l = currentLoc() in
@@ -433,9 +435,9 @@ let wstr_to_warray wstr =
   !res
 *)
 
-(* Pragmas get explicit end-of-line tokens.
+(* Pragmas and defines get explicit end-of-line tokens.
    Elsewhere they are silently discarded as whitespace. *)
-let pragmaLine = ref false
+let hashLine = ref false
 
 }
 let decdigit = ['0'-'9']
@@ -509,10 +511,10 @@ rule initial =
                                            }
 |		blank			{ addWhite lexbuf; initial lexbuf}
 |               '\n'                    { E.newline ();
-                                          if !pragmaLine then
+                                          if !hashLine then
                                             begin
-                                              pragmaLine := false;
-                                              PRAGMA_EOL
+                                              hashLine := false;
+                                              HASH_EOL
                                             end
                                           else begin
                                             addWhite lexbuf;
@@ -687,7 +689,12 @@ and hash = parse
                 { let here = currentLoc () in
                   PRAGMA_LINE (pragmaName ^ pragma lexbuf, here)
                 }
-| "pragma"      { pragmaLine := true; PRAGMA (currentLoc ()) }
+| "pragma"      { hashLine := true; PRAGMA (currentLoc ()) }
+| "define" blank (ident as macName) { let here = currentLoc () in
+                  let v = String.trim (macrodef lexbuf) in begin
+                  if here.filename = "<built-in>" then
+                    H.replace builtin_macro_defs macName v
+                  else (); initial lexbuf end }
 | _	        { addWhite lexbuf; endline lexbuf}
 
 and file lineno =  parse
@@ -709,7 +716,10 @@ and pragma = parse
    '\n'                 { E.newline (); "" }
 |   _                   { let cur = Lexing.lexeme lexbuf in
                           cur ^ (pragma lexbuf) }
-
+and macrodef = parse
+   '\n'                 { E.newline (); "" }
+|   _                   { let cur = Lexing.lexeme lexbuf in
+                          cur ^ (macrodef lexbuf) }
 and str = parse
         '"'             {[]} (* no nul terminiation in CST_STRING '"' *)
 |	hex_escape	{addLexeme lexbuf; lex_hex_escape str lexbuf}
