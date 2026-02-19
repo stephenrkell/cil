@@ -109,7 +109,6 @@ let insertImplicitCasts: bool ref = ref true
 
 let little_endian = ref true
 let char_is_unsigned = ref false
-let underscore_name = ref false
 
 type lineDirectiveStyle =
   | LineComment                (** Before every element, print the line
@@ -7069,7 +7068,6 @@ let initCIL () =
     wcharType := TInt(!wcharKind, []);
     char_is_unsigned := !M.theMachine.M.char_is_unsigned;
     little_endian := !M.theMachine.M.little_endian;
-    underscore_name := !M.theMachine.M.underscore_name;
 (*     nextGlobalVID := 1; *)
 (*     nextCompinfoKey := 1; *)
 

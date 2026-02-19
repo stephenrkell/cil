@@ -36,10 +36,6 @@ let thread_is_keyword_code = {|
 int main(int __thread) { return 0; }
 |}
 
-let underscore_name_code = {|
-int main() { __asm__("jmp _main"); }
-|}
-
 let have_type (type_name: string) = Printf.sprintf {|
 int main() {
   %s x;
@@ -106,7 +102,6 @@ let () =
       if c_test c !cc ~c_flags:!c_flags base_code then (
         let have_builtin_va_list = c_test c !cc ~c_flags:!c_flags builtin_va_list_code in
         let thread_is_keyword = not @@ c_test c !cc ~c_flags:!c_flags thread_is_keyword_code in
-        let underscore_name = c_test c !cc ~c_flags:!c_flags underscore_name_code in
         let have_float128 = c_test c !cc ~c_flags:!c_flags (have_type "_Float128") in
         let have_float64 = c_test c !cc ~c_flags:!c_flags (have_type "_Float64") in
         let have_float64x = c_test c !cc ~c_flags:!c_flags (have_type "_Float64x") in
@@ -124,7 +119,6 @@ let () =
 
           ("HAVE_BUILTIN_VA_LIST_DEF", Switch have_builtin_va_list);
           ("THREAD_IS_KEYWORD_DEF", Switch thread_is_keyword);
-          ("UNDERSCORE_NAME_DEF", Switch underscore_name);
           ("HAVE_FLOAT128_DEF", Switch have_float128);
           ("HAVE_FLOAT64_DEF", Switch have_float64);
           ("HAVE_FLOAT64X_DEF", Switch have_float64x);

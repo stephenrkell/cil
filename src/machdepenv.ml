@@ -55,7 +55,6 @@ let modelParse (s:string) : mach =
     version_major = 0;
     version_minor = 0;
     version = "machine model " ^ s;
-    underscore_name = getBool entries "underscore_name";
     sizeof_short = getSizeof entries "short";
     alignof_short = getAlignof entries "short";
     sizeof_bool = getSizeof entries "bool";

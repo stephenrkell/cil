@@ -3,7 +3,6 @@ type mach = {
   version_major: int;     (* Major version number *)
   version_minor: int;     (* Minor version number *)
   version: string;        (* gcc version string *)
-  underscore_name: bool;  (* If assembly names have leading underscore *)
   sizeof_short: int;      (* Size of "short" *)
   sizeof_int: int;        (* Size of "int" *)
   sizeof_bool: int;       (* Size of "_Bool" *)
