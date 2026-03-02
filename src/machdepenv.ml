@@ -1,4 +1,4 @@
-open Machdep
+open ModelCommon
 module R = Str
 module L = List
 module H = Hashtbl
@@ -44,74 +44,60 @@ let getAlignof = getNthInt 1
 
 let respace = Str.global_replace (Str.regexp "_") " "
 
-let modelParse (s:string) : mach =
+let modelParse (s:string) : model =
   let entries =
     try
       preparse s
     with Failure msg -> raise (Failure msg)
-    | _ -> raise (Failure "invalid machine specification")
+    | _ -> raise (Failure "invalid machine specification") in
+  let typeinfo = H.create 16 in
+  let addTypeInfo (t: basictyp) (spec: string) =
+    H.add typeinfo t {
+      sizeof = getSizeof entries spec;
+      alignof = getAlignof entries spec;
+    }
   in
-  {
-    version_major = 0;
-    version_minor = 0;
-    version = "machine model " ^ s;
-    sizeof_short = getSizeof entries "short";
-    alignof_short = getAlignof entries "short";
-    sizeof_bool = getSizeof entries "bool";
-    alignof_bool = getAlignof entries "bool";
-    sizeof_int = getSizeof entries "int";
-    alignof_int = getAlignof entries "int";
-    sizeof_long = getSizeof entries "long";
-    alignof_long = getAlignof entries "long";
-    sizeof_longlong = getSizeof entries "long_long";
-    alignof_longlong = getAlignof entries "long_long";
-    sizeof_ptr = getSizeof entries "pointer";
-    alignof_ptr = getAlignof entries "pointer";
-    alignof_enum = getInt entries "alignof_enum";
-    sizeof_float = getSizeof entries "float";
-    alignof_float = getAlignof entries "float";
-    sizeof_float32x = getSizeof entries "float32x";
-    alignof_float32x = getAlignof entries "float32x";
-    sizeof_float64x = getSizeof entries "float64x";
-    alignof_float64x = getAlignof entries "float64x";
-    sizeof_floatcomplex = getSizeof entries "float_complex";
-    alignof_floatcomplex = getAlignof entries "float_complex";
-    sizeof_double = getSizeof entries "double";
-    alignof_double = getAlignof entries "double";
-    sizeof_doublecomplex = getSizeof entries "double_complex";
-    alignof_doublecomplex = getAlignof entries "double_complex";
-    sizeof_longdouble = getSizeof entries "long_double";
-    alignof_longdouble = getAlignof entries "long_double";
-    sizeof_float128 = getSizeof entries "float128";
-    alignof_float128 = getAlignof entries "float128";
-    sizeof_float16 = getSizeof entries "float16";
-    alignof_float16 = getAlignof entries "float16";
-    sizeof_bf16 = getSizeof entries "bf16";
-    alignof_bf16 = getAlignof entries "bf16";
-    sizeof_longdoublecomplex = getSizeof entries "long_double_complex";
-    alignof_longdoublecomplex = getAlignof entries "long_double_complex";
-    sizeof_float128complex = getSizeof entries "float128_complex";
-    alignof_float128complex = getAlignof entries "float128_complex";
-    sizeof_float16complex = getSizeof entries "float16_complex";
-    alignof_float16complex = getAlignof entries "float16_complex";
-    sizeof_void = getSizeof entries "void";
-    sizeof_fun = getSizeof entries "fun";
-    alignof_fun = getAlignof entries "fun";
-    alignof_str = getInt entries "alignof_string";
-    alignof_aligned = getInt entries "max_alignment";
-    size_t = respace (getNthString 0 entries "size_t");
-    wchar_t = respace (getNthString 0 entries "wchar_t");
-    char16_t = respace (getNthString 0 entries "char16_t");
-    char32_t = respace (getNthString 0 entries "char32_t");
-    char_is_unsigned = not (getBool entries "char_signed");
-    little_endian = not (getBool entries "big_endian");
-    __thread_is_keyword = getBool entries "__thread_is_keyword";
-    __builtin_va_list = getBool entries "__builtin_va_list";
-    have_bf16 = getBool entries "have_bf16";
-    have_float16 = getBool entries "have_float16";
-    have_float32 = getBool entries "have_float32";
-    have_float32x = getBool entries "have_float32x";
-    have_float64 = getBool entries "have_float64";
-    have_float64x = getBool entries "have_float64x";
-    have_float128 = getBool entries "have_float128";
-  }
+    addTypeInfo Short "short";
+    addTypeInfo Int "int";
+    addTypeInfo Bool "bool";
+    addTypeInfo Long "long";
+    addTypeInfo LongLong "long_long";
+    addTypeInfo Ptr "pointer";
+    addTypeInfo Float "float";
+    addTypeInfo Double "double";
+    addTypeInfo LongDouble "long_double";
+    addTypeInfo Float16 "float16";
+    addTypeInfo Float32x "float32x";
+    addTypeInfo Float64x "float64x";
+    addTypeInfo Float128 "float128";
+    addTypeInfo Bf16 "__bf16";
+    addTypeInfo Void "void";
+    addTypeInfo Fun "fun";
+
+    H.add typeinfo Str {
+      sizeof = 0;
+      alignof = getInt entries "alignof_string";
+    };
+
+    if getBool entries "have_float16" then
+      addTypeInfo Float16 "float16";
+
+    {
+      typeinfo;
+      misc = {
+        char_is_unsigned = not (getBool entries "char_signed");
+        little_endian = not (getBool entries "big_endian");
+        thread_is_keyword = getBool entries "__thread_is_keyword";
+        builtin_va_list = getBool entries "__builtin_va_list";
+        alignof_aligned = getInt entries "max_alignment";
+        stdc_ver = 0; (* TODO *)
+        size_type = respace (getNthString 0 entries "size_t");
+        wchar_type = respace (getNthString 0 entries "wchar_t");
+      };
+      gcc_ver = {
+        major = 0;
+        minor = 0;
+        patch = 0;
+      }; (* TODO *)
+      clang_ver = None; (* TODO *)
+    }

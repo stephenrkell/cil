@@ -45,6 +45,7 @@ module E = Errormsg
 module H = Hashtbl
 module IH = Inthash
 module AL = Alpha
+module M = Model
 
 open Cabs
 open Cabshelper
@@ -1784,9 +1785,9 @@ let cabsTypeAddAttributes a0 t =
 			try
 			  let size = match stripUnderscores mode with
 			    "byte" -> 1
-			  | "word" -> !Machdep.theMachine.Machdep.sizeof_int
-			  | "pointer" -> !Machdep.theMachine.Machdep.sizeof_ptr
-			  | "unwind_word" -> !Machdep.theMachine.Machdep.sizeof_ptr (* FIXME: always ptrsized? *)
+			  | "word" -> M.sizeOf Int
+			  | "pointer" -> M.sizeOf Ptr
+			  | "unwind_word" ->  M.sizeOf Ptr (* FIXME: always ptrsized? *)
 			  | "QI" -> 1
 			  | "HI" -> 2
 			  | "SI" -> 4
@@ -2749,48 +2750,48 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
 
     | [A.Tfloat] -> TFloat(FFloat, [])
     | [A.Tfloat32] ->
-      if !Machdep.theMachine.Machdep.sizeof_float = 4 then
+      if M.sizeOf Float = 4 then
         TFloat(FFloat, [])
       else
         E.s (error "float32 only supported on machines where it is an alias for float")
     | [A.Tfloat32x] ->
-      if !Machdep.theMachine.Machdep.sizeof_float32x = !Machdep.theMachine.Machdep.sizeof_float &&
-         !Machdep.theMachine.Machdep.alignof_float32x = !Machdep.theMachine.Machdep.alignof_float
+      if M.sizeOf Float32x = M.sizeOf Float &&
+         M.alignOf Float32x = M.alignOf Float
       then
         TFloat(FFloat, [])
-      else if !Machdep.theMachine.Machdep.sizeof_float32x = !Machdep.theMachine.Machdep.sizeof_double &&
-        !Machdep.theMachine.Machdep.alignof_float32x = !Machdep.theMachine.Machdep.alignof_double
+      else if M.sizeOf Float32x = M.sizeOf Double &&
+        M.alignOf Float32x = M.alignOf Double
       then
         TFloat(FDouble, [])
       else
         E.s (error "float32x only supported on machines where it is an alias for a conventional type: size: %i align: %i "
-          !Machdep.theMachine.Machdep.sizeof_float32x
-          !Machdep.theMachine.Machdep.alignof_float32x
+          (M.sizeOf Float32x)
+          (M.alignOf Float32x)
           )
 
     | [A.Tdouble] -> TFloat(FDouble, [])
     | [A.Tfloat64] ->
-      if !Machdep.theMachine.Machdep.sizeof_double = 8 then
+      if M.sizeOf Double = 8 then
         TFloat(FDouble, [])
       else
         E.s (error "float64 only supported on machines where it is an alias for double")
     | [A.Tfloat64x] ->
-      if !Machdep.theMachine.Machdep.sizeof_float64x = !Machdep.theMachine.Machdep.sizeof_float &&
-          !Machdep.theMachine.Machdep.alignof_float64x = !Machdep.theMachine.Machdep.alignof_float
+      if M.sizeOf Float64x = M.sizeOf Float &&
+          M.alignOf Float64x = M.alignOf Float
       then
         TFloat(FFloat, [])
-      else if !Machdep.theMachine.Machdep.sizeof_float64x = !Machdep.theMachine.Machdep.sizeof_double &&
-        !Machdep.theMachine.Machdep.alignof_float64x = !Machdep.theMachine.Machdep.alignof_double
+      else if M.sizeOf Float64x = M.sizeOf Double &&
+        M.alignOf Float64x = M.alignOf Double
       then
         TFloat(FDouble, [])
-      else if !Machdep.theMachine.Machdep.sizeof_float64x = !Machdep.theMachine.Machdep.sizeof_longdouble &&
-        !Machdep.theMachine.Machdep.alignof_float64x = !Machdep.theMachine.Machdep.alignof_longdouble
+      else if M.sizeOf Float64x = M.sizeOf LongDouble &&
+        M.alignOf Float64x = M.alignOf LongDouble
       then
         TFloat(FLongDouble, [])
       else
         E.s (error "float64x only supported on machines where it is an alias for a conventional type: size: %i align: %i "
-          !Machdep.theMachine.Machdep.sizeof_float64x
-          !Machdep.theMachine.Machdep.alignof_float64x
+          (M.sizeOf Float64x)
+          (M.alignOf Float64x)
           )
 
     | [A.Tlong; A.Tdouble] -> TFloat(FLongDouble, [])
@@ -2801,7 +2802,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     | [A.Tdefault] -> E.s (error "Default outside generic associations")
     | [A.Tnamed n] -> begin
         if n = "__builtin_va_list" &&
-          !Machdep.theMachine.Machdep.__builtin_va_list then begin
+          !M.theModel.misc.builtin_va_list then begin
             TBuiltin_va_list []
         end else
           let t =
@@ -4299,7 +4300,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                                            is also of the cast type *)
                | _ -> E.s (error "Expected lval for ++ or --")
              in
-             let tresult, result = doBinOp uop' e' t one intType in
+             let tresult, result = doBinOp uop' e' t (one ()) intType in
              finishExp (se +++ (Set(lv, makeCastT ~kind:Implicit ~e:result ~oldt:tresult ~newt:t, (* C11 6.5.2.4.2 *)
                                     !currentLoc, !currentExpLoc)))
                e'
@@ -4337,7 +4338,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                                            type *)
                | _ -> E.s (error "Expected lval for ++ or --")
              in
-             let tresult, opresult = doBinOp uop' e' t one intType in
+             let tresult, opresult = doBinOp uop' e' t (one ()) intType in
              let se', result =
                if what <> ADrop && what <> AType then
                  let descr = (dd_exp () e')
@@ -4499,7 +4500,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         let ce = doCondExp asconst e in
         (* We must normalize the result to 0 or 1 *)
         match ce with
-        | CEExp (se, ((Const _) as c)) -> finishExp se (if isConstTrue c then one else zero) intType
+        | CEExp (se, ((Const _) as c)) -> finishExp se (if isConstTrue c then (one ()) else zero) intType
 	      | CEExp (se, ((UnOp(LNot, _, _)|BinOp((Lt|Gt|Le|Ge|Eq|Ne|LAnd|LOr), _, _, _)) as e)) ->
           (* already normalized to 0 or 1 *)
           finishExp se e intType
@@ -5405,7 +5406,7 @@ and doCondExp (asconst: bool)  (* Try to evaluate the conditional expression
       match doCondExp asconst e1 with
         CEExp (se1, (Const _ as ci1)) ->
           if isConstFalse ci1 then
-            CEExp (se1, one)
+            CEExp (se1, (one ()))
           else
             CEExp (se1, zero)
       | CEExp (se1, e) when isEmpty se1 ->
@@ -7305,8 +7306,7 @@ let stripParenFile file = V.visitCabsFile (new stripParenClass) file
 
 (* Translate a file *)
 let convFile (f : A.file) : Cil.file =
-  Cil.initCIL (); (* make sure we have initialized CIL *)
-
+  if not !Cil.cilInitialized then E.s (bug "Cil is not yet initialized.");
   (* remove parentheses from the Cabs *)
   let fname,dl = stripParenFile f in
 
@@ -7401,8 +7401,6 @@ let convFile (f : A.file) : Cil.file =
 
 
 let convStandaloneExp ~genv:genv' ~env:env' (e : A.expression) : Cil.exp option =
-  Cil.initCIL (); (* make sure we have initialized CIL *)
-
   (* remove parentheses from the Cabs *)
   let e = V.visitCabsExpression (new stripParenClass) e in
 

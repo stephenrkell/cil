@@ -17,6 +17,7 @@ module Expcompare = Expcompare
 module Feature = Feature
 module Formatcil = Formatcil
 module Machdep = Machdep
+module Model = Model
 module Machdepenv = Machdepenv
 module Mergecil = Mergecil
 module RmUnused = RmUnused

@@ -1,10 +1,17 @@
 (include_subdirs unqualified)
 
 (library
+  (name modelCommon)
+  (package goblint-cil)
+  (modules modelCommon)
+  (preprocess (pps ppx_enumerate))
+)
+
+(library
   (public_name goblint-cil)
   (name goblintCil)
-  (libraries zarith unix str stdlib-shims)
-  (modules (:standard \ main mainFeature ciloptions machdepConfigure machdepArchConfigure modelConfigure))
+  (libraries zarith unix str stdlib-shims modelCommon)
+  (modules (:standard \ main mainFeature ciloptions machdepConfigure machdepArchConfigure modelConfigure modelCommon))
 )
 
 (executable

@@ -1,4 +1,4 @@
-(lang dune 2.7)
+(lang dune 2.8)
 (name goblint-cil)
 (implicit_transitive_deps false)
 (generate_opam_files true)
@@ -31,6 +31,7 @@ This is a fork of the 'cil' package used for 'goblint'. Major changes include:
     (odoc :with-doc)
     stdlib-shims
     (ppx_deriving_yojson (>= 3.2))
+    ppx_enumerate
     yojson
     conf-perl
     cppo

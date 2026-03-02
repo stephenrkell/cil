@@ -38,6 +38,7 @@ depends: [
   "odoc" {with-doc}
   "stdlib-shims"
   "ppx_deriving_yojson" {>= "3.2"}
+  "ppx_enumerate"
   "yojson"
   "conf-perl"
   "cppo"

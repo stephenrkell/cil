@@ -197,6 +197,7 @@ and parse_to_cabs_inner (fname : string) =
     Hashtbl.iter  (fun k v ->
       E.log "Builtin macro: %s = %s\n" k v) Clexer.builtin_macro_defs
     else ();
+    Cil.initCILLate ();
     (fname, cabs)
   with (Sys_error msg) -> begin
     ignore (E.log "Cannot open %s : %s\n" fname msg);
