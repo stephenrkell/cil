@@ -262,6 +262,7 @@ and print_fields (flds : struct_decl list) =
             | None -> ()
           end;
           print ");";
+          new_line ()
       )
       flds;
     unindent ();
