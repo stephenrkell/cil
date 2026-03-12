@@ -998,7 +998,7 @@ declaration:                                /* ISO 6.7.*/
                                        { doDeclaration (joinLoc (snd $1) $3) (fst $1) $2 }
 |   decl_spec_list_no_attr_only SEMICOLON
                                        { doDeclaration (joinLoc (snd $1) $2) (fst $1) [] }
-|   static_assert_declaration          { let (e, m, loc) = $1 in STATIC_ASSERT (e, m, loc) }
+|   static_assert_declaration SEMICOLON { let (e, m, loc) = $1 in STATIC_ASSERT (e, m, loc) }
 ;
 
 static_assert_declaration:
