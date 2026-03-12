@@ -1162,11 +1162,6 @@ struct_decl_list: /* (* ISO 6.7.2. Except that we allow empty structs. We
 |  error                          SEMICOLON struct_decl_list
                                           { $3 }
 /*(* C11 allows static_assert-declaration *)*/
-|  static_assert_declaration             {
-       let (e, m, loc) = $1 in
-       [FIELD_STATIC_ASSERT (e, m, loc)]
-   }
-
 |  static_assert_declaration      SEMICOLON struct_decl_list  {
        let (e, m, loc) = $1 in
        FIELD_STATIC_ASSERT (e, m, loc) :: $3
