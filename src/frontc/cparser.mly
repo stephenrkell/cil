@@ -370,7 +370,7 @@ let transformOffsetOf (speclist, dtype) member =
 
 %type <spec_elem list * cabsloc> decl_spec_list
 %type <typeSpecifier * cabsloc> type_spec
-%type <Cabs.field_group list> struct_decl_list
+%type <Cabs.struct_decl list> struct_decl_list
 
 
 %type <Cabs.name> old_proto_decl
@@ -999,18 +999,18 @@ declaration:                                /* ISO 6.7.*/
                                        { doDeclaration (joinLoc (snd $1) $3) (fst $1) $2 }
 |   decl_spec_list_no_attr_only SEMICOLON
                                        { doDeclaration (joinLoc (snd $1) $2) (fst $1) [] }
-|   static_assert_declaration          { let (e, m, loc) = $1 in STATIC_ASSERT (e, m, loc) }
+|   static_assert_declaration SEMICOLON { let (e, m, loc) = $1 in STATIC_ASSERT (e, m, loc) }
 ;
 
 static_assert_declaration:
 
 |   STATIC_ASSERT LPAREN expression RPAREN /* C23 */
       {
-        (fst $3, "", $1)
+        (fst $3, None, $1)
       }
 |   STATIC_ASSERT LPAREN expression COMMA const_raw_string RPAREN
       {
-        (fst $3, fst $5, $1)
+        (fst $3, Some (fst $5), $1)
       }
 ;
 
@@ -1149,13 +1149,13 @@ struct_decl_list: /* (* ISO 6.7.2. Except that we allow empty structs. We
                    */
    /* empty */                           { [] }
 |  decl_spec_list                 SEMICOLON struct_decl_list
-                                         { (fst $1,
+                                         { FIELD_GROUP (fst $1,
                                             [(missingFieldDecl, None)]) :: $3 }
 /*(* GCC allows extra semicolons *)*/
 |                                 SEMICOLON struct_decl_list
                                          { $2 }
 |  decl_spec_list field_decl_list SEMICOLON struct_decl_list
-                                          { (fst $1, $2)
+                                          { FIELD_GROUP (fst $1, $2)
                                             :: $4 }
 /*(* MSVC allows pragmas in strange places *)*/
 |  pragma struct_decl_list                { $2 }
@@ -1163,12 +1163,9 @@ struct_decl_list: /* (* ISO 6.7.2. Except that we allow empty structs. We
 |  error                          SEMICOLON struct_decl_list
                                           { $3 }
 /*(* C11 allows static_assert-declaration *)*/
-|  static_assert_declaration             {
-       []
-   }
-
 |  static_assert_declaration      SEMICOLON struct_decl_list  {
-       $3
+       let (e, m, loc) = $1 in
+       FIELD_STATIC_ASSERT (e, m, loc) :: $3
    }
 
 ;

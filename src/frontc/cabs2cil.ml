@@ -2667,6 +2667,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
         if n = "" then E.s (error "Missing struct tag on incomplete struct");
         findCompType "struct" n []
     | [A.Tstruct (n, Some nglist, extraAttrs)] -> (* A definition of a struct *)
+      let nglist = doStructDecls nglist in
       let (specs, names) = List.split nglist in
       let n' =
         if n <> "" then n else anonStructName "struct" suggestedAnonName specs in
@@ -2678,6 +2679,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
         if n = "" then E.s (error "Missing union tag on incomplete union");
         findCompType "union" n []
     | [A.Tunion (n, Some nglist, extraAttrs)] -> (* A definition of a union *)
+        let nglist = doStructDecls nglist in
         let (specs, names) = List.split nglist in
         let n' =
           if n <> "" then n else anonStructName "union" suggestedAnonName specs in
@@ -2826,6 +2828,23 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
         E.s (error "Invalid combination of type specifiers")
   in
   bt,!storage,!isinline,List.rev (!attrs @ (convertCVtoAttr !cvattrs))
+
+
+and doStructDecls (struct_decls: struct_decl list): field_group list =
+  List.filter_map (function
+      | FIELD_GROUP fg -> Some fg
+      | FIELD_STATIC_ASSERT (e, str, loc) ->
+        let loc = convLoc loc in
+        let d_message () = function
+          | None -> nil
+          | Some str -> dprintf ": %s" str
+        in
+        begin match isIntegerConstant e with
+          | Some 0 -> E.s (error "Static assert failed at %a%a" d_loc loc d_message str)
+          | Some _ -> None
+          | None -> E.s (error "Static assert with a non-constant at %a%a" d_loc loc d_message str)
+        end
+    ) struct_decls
 
 (* given some cv attributes, convert them into named attributes for
    uniform processing *)
@@ -6624,7 +6643,19 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
             E.s (bug "doDecl returns non-empty statement for global"))
         dl;
       empty
-  | STATIC_ASSERT _ -> empty
+  | STATIC_ASSERT (e, str, loc) ->
+    if isglobal || isstmt then
+      currentLoc := convLoc loc;
+    currentExpLoc := convLoc loc;
+    let d_message () = function
+      | None -> nil
+      | Some str -> dprintf ": %s" str
+    in
+    begin match isIntegerConstant e with
+      | Some 0 -> E.s (error "Static assert failed at %a%a" d_loc !currentLoc d_message str)
+      | Some _ -> empty
+      | None -> E.s (error "Static assert with a non-constant at %a%a" d_loc !currentLoc d_message str)
+    end
   | _ -> E.s (error "unexpected form of declaration")
 
 and doTypedef ((specs, nl): A.name_group) =
