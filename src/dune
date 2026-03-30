@@ -69,6 +69,11 @@
  (target gcc64model)
  (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 64))))
 
+; for Cilly.pm
+(rule
+ (target defaultmodel)
+ (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc}))))
+
 (rule
  (deps machdep32 machdep64)
  (target machdep.ml)

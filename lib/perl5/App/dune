@@ -4,7 +4,8 @@
  (action (progn
   (copy %{dep:Cilly.pm.in} %{target})
   (bash "sed -i -e \"s|nogcc32model|`cat %{dep:../../../src/gcc32model}`|\" %{target}")
-  (bash "sed -i -e \"s|nogcc64model|`cat %{dep:../../../src/gcc64model}`|\" %{target}"))))
+  (bash "sed -i -e \"s|nogcc64model|`cat %{dep:../../../src/gcc64model}`|\" %{target}")
+  (bash "sed -i -e \"s|noDefaultModel|`cat %{dep:../../../src/defaultmodel}`|\" %{target}"))))
 
 (install
  (section lib_root)
