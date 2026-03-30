@@ -60,8 +60,8 @@ use App::Cilly::TempFile;
 
 $App::Cilly::savedSourceExt = "_saved.c";
 
-$App::Cilly::m32model = "nogcc32model";
-$App::Cilly::m64model = "nogcc64model";
+$App::Cilly::m32model = 'nogcc32model';
+$App::Cilly::m64model = 'nogcc64model';
 
 our $VERSION;
 

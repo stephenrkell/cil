@@ -18,7 +18,14 @@ type basictyp =
   | Void
   | Fun
   | Str
-[@@deriving enumerate]
+
+type basictypemeta = {
+  c_type: string option;
+  optional: bool;
+}
+
+val metaOfBasicType : basictyp -> basictypemeta
+val nameOfBasicType : basictyp -> string
 
 type basictypinfo = {
   sizeof: int;

@@ -30,6 +30,35 @@ let basictyp_to_string (t: basictyp): string =
   | `List [ `String s ] -> s
   | _ -> failwith "Unexpected yojson format for basictyp"
 
+type basictypemeta = {
+  c_type: string option;
+  optional: bool;
+}
+
+let metaOfBasicType (t: basictyp): basictypemeta =
+  match t with
+  | Short -> {c_type = Some "short"; optional = false}
+  | Int -> {c_type = Some "int"; optional = false}
+  | Bool -> {c_type = Some "_Bool"; optional = false}
+  | Long -> {c_type = Some "long"; optional = false}
+  | LongLong -> {c_type = Some "long long"; optional = false}
+  | Ptr -> {c_type = None; optional = false}
+  | Float -> {c_type = Some "float"; optional = false}
+  | Double -> {c_type = Some "double"; optional = false}
+  | LongDouble -> {c_type = Some "long double"; optional = false}
+  | Float16 -> {c_type = Some "_Float16"; optional = true}
+  | Float32 -> {c_type = Some "_Float32"; optional = true}
+  | Float64 -> {c_type = Some "_Float64"; optional = true}
+  | Float128 -> {c_type = Some "_Float128"; optional = true}
+  | Float32x -> {c_type = Some "_Float32x"; optional = true}
+  | Float64x -> {c_type = Some "_Float64x"; optional = true}
+  | Bf16 -> {c_type = Some "__bf16"; optional = true}
+  | Void -> {c_type = Some "void"; optional = false}
+  | Fun -> {c_type = None; optional = false}
+  | Str -> {c_type = None; optional = false}
+
+let nameOfBasicType (t: basictyp): string = 
+  show_basictyp t |> String.lowercase_ascii
 
 let allBasicTyps: basictyp list = all_of_basictyp
 

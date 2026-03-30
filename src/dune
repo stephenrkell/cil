@@ -56,17 +56,16 @@
 (executable
  (name modelConfigure)
  (modules modelConfigure)
- (libraries dune-configurator))
+ (libraries yojson dune-configurator modelCommon)
+)
 
 ; for Cilly.pm
 (rule
- (deps machdep32-config.h machdep-ml.c)
  (target gcc32model)
  (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 32))))
 
 ; for Cilly.pm
 (rule
- (deps machdep64-config.h machdep-ml.c)
  (target gcc64model)
  (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 64))))
 
