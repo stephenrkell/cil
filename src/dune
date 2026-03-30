@@ -4,13 +4,14 @@
   (name modelCommon)
   (package goblint-cil)
   (modules modelCommon)
-  (preprocess (pps ppx_enumerate))
+  (libraries yojson ppx_deriving_yojson.runtime)
+  (preprocess (pps ppx_enumerate ppx_deriving.show ppx_deriving_yojson))
 )
 
 (library
   (public_name goblint-cil)
   (name goblintCil)
-  (libraries zarith unix str stdlib-shims modelCommon)
+  (libraries yojson zarith unix str stdlib-shims modelCommon)
   (modules (:standard \ main mainFeature ciloptions machdepConfigure machdepArchConfigure modelConfigure modelCommon))
 )
 
@@ -83,7 +84,7 @@
  (name main)
  (modules main mainFeature ciloptions)
  (modes native)
- (libraries goblint-cil dynlink findlib)
+ (libraries goblint-cil dynlink findlib yojson ppx_deriving_yojson.runtime modelCommon)
  (flags :standard -linkall))
 
 (env

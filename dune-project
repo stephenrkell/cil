@@ -30,6 +30,7 @@ This is a fork of the 'cil' package used for 'goblint'. Major changes include:
     dune-configurator
     (odoc :with-doc)
     stdlib-shims
+    ppx_deriving
     (ppx_deriving_yojson (>= 3.2))
     ppx_enumerate
     yojson

@@ -20,7 +20,15 @@ type basictyp =
   | Void
   | Fun
   | Str
-[@@deriving enumerate]
+[@@deriving enumerate, show { with_path = false }, yojson]
+
+let basictyp_of_string (s: string): basictyp Ppx_deriving_yojson_runtime.error_or =
+  basictyp_of_yojson (`List [ `String s ])
+
+let basictyp_to_string (t: basictyp): string =
+  match basictyp_to_yojson t with
+  | `List [ `String s ] -> s
+  | _ -> failwith "Unexpected yojson format for basictyp"
 
 
 let allBasicTyps: basictyp list = all_of_basictyp
@@ -28,13 +36,13 @@ let allBasicTyps: basictyp list = all_of_basictyp
 type basictypinfo = {
   sizeof: int;
   alignof: int;
-}
+} [@@deriving show { with_path = false }, yojson]
 
 type compilerver = {
   major: int;
   minor: int;
   patch: int;
-}
+} [@@deriving show { with_path = false }, yojson]
 
 type modelmisc = {
   char_is_unsigned: bool; (* Whether "char" is unsigned *)
@@ -45,11 +53,38 @@ type modelmisc = {
   stdc_ver: int;
   size_type: string;
   wchar_type: string;
-}
+} [@@deriving show { with_path = false }, yojson]
+
+let hashtbl_to_yojson (k_to_string: 'a -> string) (v_to_yojson: 'b -> Yojson.Safe.t) (h: ('a, 'b) H.t): Yojson.Safe.t =
+  let lst = H.fold (fun k v acc -> (k_to_string k, v_to_yojson v) :: acc) h [] in
+  `Assoc lst
+
+let rec collect (x: ('a, 'b) result list): ('a list, 'b) result = match x with
+  | [] -> Ok []
+  | Ok x :: xs -> begin
+      match collect xs with
+      | Ok ys -> Ok (x :: ys)
+      | Error e -> Error e
+  end
+  | Error e :: xs -> Error e 
+
+let hashtbl_of_yojson (k_of_string: string -> 'a Ppx_deriving_yojson_runtime.error_or) (v_of_yojson: Yojson.Safe.t -> 'b Ppx_deriving_yojson_runtime.error_or) (json: Yojson.Safe.t): ('a, 'b) H.t Ppx_deriving_yojson_runtime.error_or =
+  match json with
+  | `Assoc lst -> begin
+    match lst |> List.map (fun (k, v) ->
+      match (k_of_string k, v_of_yojson v) with
+      | (Ok k, Ok v) -> Ok (k, v)
+      | (Error e, _) -> Error e
+      | (_, Error e) -> Error e
+    ) |> collect with 
+    Ok lst -> Ok (lst |> List.to_seq |> H.of_seq)
+  | Error e -> Error e
+    end
+  | _ -> Error "Expected an object for hashtbl"
 
 type model = {
-  typeinfo: (basictyp, basictypinfo) H.t;
+  typeinfo: (basictyp, basictypinfo) H.t [@to_yojson hashtbl_to_yojson basictyp_to_string basictypinfo_to_yojson] [@of_yojson hashtbl_of_yojson basictyp_of_string basictypinfo_of_yojson];
   misc: modelmisc;
   gcc_ver: compilerver;
   clang_ver: compilerver option;
-}
+} [@@deriving yojson]

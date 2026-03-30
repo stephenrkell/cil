@@ -50,3 +50,6 @@ type model = {
 }
 
 val allBasicTyps : basictyp list
+
+val model_to_yojson : model -> Yojson.Safe.t
+val model_of_yojson : Yojson.Safe.t -> model Ppx_deriving_yojson_runtime.error_or
