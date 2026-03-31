@@ -332,14 +332,3 @@ let generateModel (c: C.t) (cc: string) (c_flags: string list): MC.model =
     clang_ver = clangVerGen.parse out;
   }
 
-let () =
-  let cc = ref "cc" in
-  let c_flags = ref [] in
-  let args = Arg.[
-      ("--cc", Set_string cc, "");
-      ("-m", String (fun s -> c_flags := ("-m" ^ s) :: !c_flags), "");
-    ]
-  in
-    C.main ~name:"model" ~args (fun c ->
-      Printf.printf "%s" (generateModel c !cc !c_flags |> MC.model_to_yojson |> Yojson.Safe.to_string)
-    )

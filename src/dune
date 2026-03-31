@@ -12,30 +12,37 @@
   (public_name goblint-cil)
   (name goblintCil)
   (libraries yojson zarith unix str stdlib-shims modelCommon)
-  (modules (:standard \ main mainFeature ciloptions modelConfigure modelCommon))
+  (modules (:standard \ main mainFeature ciloptions modelConfigure modelConfigureMain modelCommon))
 )
 
-; for Cilly.pm
-(executable
+(library
  (name modelConfigure)
+ (package goblint-cil)
  (modules modelConfigure)
  (libraries yojson dune-configurator modelCommon)
 )
 
 ; for Cilly.pm
+(executable
+ (name modelConfigureMain)
+ (modules modelConfigureMain)
+ (libraries yojson dune-configurator modelCommon modelConfigure)
+)
+
+; for Cilly.pm
 (rule
  (target gcc32model)
- (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 32))))
+ (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc} -m 32))))
 
 ; for Cilly.pm
 (rule
  (target gcc64model)
- (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 64))))
+ (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc} -m 64))))
 
 ; for Cilly.pm
 (rule
  (target defaultmodel)
- (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc}))))
+ (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc}))))
 
 (ocamllex formatlex)
 (ocamlyacc formatparse)
