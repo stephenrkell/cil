@@ -32,12 +32,14 @@
 ; for Cilly.pm
 (rule
  (target gcc32model)
- (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc} -m 32))))
+ (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc} -m 32)))
+ (enabled_if (= %{architecture} "x86_64")))
 
 ; for Cilly.pm
 (rule
  (target gcc64model)
- (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc} -m 64))))
+ (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc} -m 64)))
+ (enabled_if (= %{architecture} "x86_64")))
 
 ; for Cilly.pm
 (rule
