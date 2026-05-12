@@ -3023,6 +3023,12 @@ let initGccBuiltins () : unit =
   H.add h "__builtin_coshf" (floatType, [ floatType ], false);
   H.add h "__builtin_coshl" (longDoubleType, [ longDoubleType ], false);
 
+  H.add h "__builtin_rotateleft32" (uintType, [uintType; uintType], false);
+  H.add h "__builtin_rotateright32" (uintType, [uintType; uintType], false);
+  H.add h "__builtin_rotateleft64" (ulongType, [ulongType; ulongType], false);
+  H.add h "__builtin_rotateright64" (ulongType, [ulongType; ulongType], false);
+
+
   H.add h "__builtin_clz" (intType, [ uintType ], false);
   H.add h "__builtin_clzl" (intType, [ ulongType ], false);
   H.add h "__builtin_clzll" (intType, [ ulongLongType ], false);
