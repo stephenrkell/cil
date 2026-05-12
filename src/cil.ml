@@ -3304,8 +3304,11 @@ let initGccBuiltins () : unit =
 
   (* Clang checked arithmetic (https://clang.llvm.org/docs/LanguageExtensions.html#checked-arithmetic-builtins) *)
   H.add h "__builtin_add_overflow" (boolType, [ ], true);
+    H.add h "__builtin_add_overflow_p" (boolType, [ (*longType; longType; longType*) ], true);
   H.add h "__builtin_sub_overflow" (boolType, [ ], true);
+  H.add h "__builtin_sub_overflow_p" (boolType, [ (*longType; longType; longType*) ], true);
   H.add h "__builtin_mul_overflow" (boolType, [ ], true);
+  H.add h "__builtin_mul_overflow_p" (boolType, [ (*longType; longType; longType*) ], true);
   H.add h "__builtin_uadd_overflow" (boolType, [ uintType; uintType; uintPtrType ], false);
   H.add h "__builtin_uaddl_overflow" (boolType, [ ulongType; ulongType; ulongPtrType ], false);
   H.add h "__builtin_uaddll_overflow" (boolType, [ ulongLongType; ulongLongType; ulongLongPtrType ], false);
