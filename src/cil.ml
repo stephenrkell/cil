@@ -3046,6 +3046,9 @@ let initGccBuiltins () : unit =
   H.add h "__builtin_trap" (voidType, [], false);
   H.add h "__builtin_unreachable" (voidType, [], false);
 
+  (* GNU C >= 4.6 *)
+  H.add h "__builtin_assume_aligned" (voidPtrType, [ voidConstPtrType ; longType ], true);
+
   H.add h "__builtin_fabs" (doubleType, [ doubleType ], false);
   H.add h "__builtin_fabsf" (floatType, [ floatType ], false);
   H.add h "__builtin_fabsl" (longDoubleType, [ longDoubleType ], false);
