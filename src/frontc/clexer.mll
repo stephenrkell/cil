@@ -225,6 +225,16 @@ let init_lexicon _ =
                          THREAD loc
                        else
                          IDENT ("__thread", loc));
+      ("thread_local", fun loc ->
+                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
+                         THREAD loc
+                       else
+                         IDENT ("__thread", loc));
+      ("_Thread_local", fun loc ->
+                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
+                         THREAD loc
+                       else
+                         IDENT ("__thread", loc));
       ("_Generic", fun loc -> GENERIC loc);
     ]
 
@@ -426,7 +436,7 @@ let wstr_to_warray wstr =
 let pragmaLine = ref false
 
 }
-
+fomzz
 let decdigit = ['0'-'9']
 let octdigit = ['0'-'7']
 let hexdigit = ['0'-'9' 'a'-'f' 'A'-'F']
