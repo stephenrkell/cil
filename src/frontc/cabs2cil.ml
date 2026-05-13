@@ -5741,7 +5741,7 @@ and doInit
       in
 
       setone so.soOff (if !insertImplicitCasts then
-                          makeCastT ~kind:Implicit ~e:oneinit' ~oldt:t' ~newt:so.soTyp (* C11 6.7.9.11 *)
+                          makeCastT ~kind:Implicit ~e:oneinit' ~oldt:t' ~newt:newt (* C11 6.7.9.11 *)
                        else oneinit');
       (* Move on *)
       advanceSubobj so;
