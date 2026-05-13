@@ -491,6 +491,7 @@ let no_parse_pragma =
              | "redefine_extname"
              | "TCS_align"
 	     | "mark"
+       | "omp"
 
 
 rule initial =
