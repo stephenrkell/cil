@@ -108,11 +108,13 @@ let () =
         let thread_is_keyword = not @@ c_test c !cc ~c_flags:!c_flags thread_is_keyword_code in
         let underscore_name = c_test c !cc ~c_flags:!c_flags underscore_name_code in
         let have_float128 = c_test c !cc ~c_flags:!c_flags (have_type "_Float128") in
+        let have_float128x = c_test c !cc ~c_flags:!c_flags (have_type "_Float128x") in
         let have_float64 = c_test c !cc ~c_flags:!c_flags (have_type "_Float64") in
         let have_float64x = c_test c !cc ~c_flags:!c_flags (have_type "_Float64x") in
         let have_float32 = c_test c !cc ~c_flags:!c_flags (have_type "_Float32") in
         let have_float32x = c_test c !cc ~c_flags:!c_flags (have_type "_Float32x") in
         let have_float16 = c_test c !cc ~c_flags:!c_flags (have_type "_Float16") in
+        let have_float16x = c_test c !cc ~c_flags:!c_flags (have_type "_Float16x") in
         let have_bf16 = c_test c !cc ~c_flags:!c_flags (have_type "__bf16") in
 
         C.C_define.gen_header_file c ~fname:!fname [
@@ -126,11 +128,13 @@ let () =
           ("THREAD_IS_KEYWORD_DEF", Switch thread_is_keyword);
           ("UNDERSCORE_NAME_DEF", Switch underscore_name);
           ("HAVE_FLOAT128_DEF", Switch have_float128);
+          ("HAVE_FLOAT128X_DEF", Switch have_float128x);
           ("HAVE_FLOAT64_DEF", Switch have_float64);
           ("HAVE_FLOAT64X_DEF", Switch have_float64x);
           ("HAVE_FLOAT32_DEF", Switch have_float32);
           ("HAVE_FLOAT32X_DEF", Switch have_float32x);
           ("HAVE_FLOAT16_DEF", Switch have_float16);
+          ("HAVE_FLOAT16X_DEF", Switch have_float16x);
           ("HAVE_BF16_DEF", Switch have_bf16);
 
           ("TYPE_SIZE_T", String (cil_check_integer_type c !cc "size_t"));

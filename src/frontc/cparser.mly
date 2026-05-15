@@ -261,11 +261,10 @@ let transformOffsetOf (speclist, dtype) member =
 %token <int64 list * Cabs.cabsloc> CST_WSTRING CST_STRING16 CST_STRING32 CST_U8STRING
 
 %token EOF
-%token<Cabs.cabsloc> CHAR INT BOOL DOUBLE FLOAT VOID INT64 INT32
-%token<Cabs.cabsloc> INT128 FLOAT128 COMPLEX /* C99 */
-%token<Cabs.cabsloc> FLOAT32 FLOAT64 /* FloatN */
-%token<Cabs.cabsloc> FLOAT32X FLOAT64X /* FloatNx */
-%token<Cabs.cabsloc> FLOAT16
+%token<Cabs.cabsloc> CHAR INT BOOL DOUBLE FLOAT VOID INT64 INT32 INT128
+%token<Cabs.cabsloc> COMPLEX /* C99 */
+%token<Cabs.cabsloc> FLOAT16 FLOAT32 FLOAT64 FLOAT128 /* FloatN */
+%token<Cabs.cabsloc> FLOAT16X FLOAT32X FLOAT64X FLOAT128X /* FloatNx */
 %token<Cabs.cabsloc> BF16 /* Clang __bf16 */
 %token<Cabs.cabsloc> GENERIC NORETURN /* C11 */
 %token<Cabs.cabsloc> AUTOTYPE /* GCC */
@@ -1104,12 +1103,14 @@ type_spec:   /* ISO 6.7.2 */
 |   INT64           { Tint64, $1 }
 |   INT128          { Tint128, $1 }
 |   FLOAT           { Tfloat, $1 }
+|   FLOAT16         { Tfloat16, $1 }
 |   FLOAT32         { Tfloat32, $1 }
 |   FLOAT64         { Tfloat64, $1 }
 |   FLOAT128        { Tfloat128, $1 }
+|   FLOAT16X        { Tfloat16x, $1 }
 |   FLOAT32X        { Tfloat32x, $1 }
 |   FLOAT64X        { Tfloat64x, $1 }
-|   FLOAT16         { Tfloat16, $1 }
+|   FLOAT128X       { Tfloat128x, $1 }
 |   BF16            { Tbf16, $1 }
 |   DOUBLE          { Tdouble, $1 }
 |   AUTOTYPE        { Tauto, $1 }
