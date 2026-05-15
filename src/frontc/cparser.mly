@@ -1534,6 +1534,10 @@ primary_attr:
                                                attribute for functions,
                                                synonim for noreturn **)*/
 |   VOLATILE                             { VARIABLE ("__noreturn__") }
+                                            /*(** _Noreturn may appear in
+                                               attribute lists when stdnoreturn.h
+                                               defines noreturn as _Noreturn **)*/
+|   NORETURN                             { VARIABLE "noreturn" }
 ;
 
 postfix_attr:
