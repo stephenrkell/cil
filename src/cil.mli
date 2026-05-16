@@ -49,6 +49,9 @@ open Cilint
 (** Call this function to perform some initialization. *)
 val initCIL: unit -> unit
 
+(** Initialize CIL with a specific compiler model *)
+val initCILFromModel : ModelCommon.model -> unit
+
 (** Called by frontc to initialize CIL after initializing the model from macro definitions *)
 val initCILLate: unit -> unit
 

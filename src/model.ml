@@ -155,6 +155,41 @@ let uninitModel: model = {
   clang_ver = None;
 }
 
+let gcc10x64Model: model = {
+  typeinfo = (let h = H.create 16 in
+    let add t sizeof alignof = H.add h t { sizeof; alignof } in
+    add Str 0 1;
+    add Int 4 4;
+    add Float32x 8 8;
+    add Short 2 2;
+    add Float64x 16 16;
+    add LongLong 8 8;
+    add Ptr 8 8;
+    add Float128 16 16;
+    add Void 1 1;
+    add Long 8 8;
+    add Double 8 8;
+    add LongDouble 16 16;
+    add Fun 1 1;
+    add Bool 1 1;
+    add Float 4 4;
+    h);
+
+  misc = {
+    char_is_unsigned = false;
+    little_endian = true;
+    thread_is_keyword = true;
+    builtin_va_list = true;
+    alignof_aligned = 16;
+    stdc_ver = 201710;
+    size_type = "long unsigned int";
+    wchar_type = "int";
+  };
+
+  gcc_ver = cver 10 5 0;
+  clang_ver = None;
+}
+
 let theModel: model ref = ref uninitModel
 
 let sizeOf (k: basictyp): int = (H.find !theModel.typeinfo k).sizeof
