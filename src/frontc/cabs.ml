@@ -67,12 +67,15 @@ type typeSpecifier = (* Merge all specifiers into one type *)
   | Tint64 (* TODO needed? *)
   | Tint128 (* TODO needed? *)
   | Tfloat
+  | Tfloat16
   | Tfloat32
   | Tfloat64
   | Tfloat128 (* TODO needed? *)
+  | Tfloat16x
   | Tfloat32x
   | Tfloat64x
-  | Tfloat16
+  | Tfloat128x
+  | Tbf16
   | Tdouble
   | Tsigned
   | Tsizet    (* used temporarily to translate offsetof() *)
@@ -185,6 +188,7 @@ and definition =
  | ONLYTYPEDEF of specifier * cabsloc
  | GLOBASM of string * cabsloc
  | PRAGMA of expression * cabsloc
+ | MACDEF of string * string * cabsloc
  | LINKAGE of string * cabsloc * definition list (* extern "C" { ... } *)
  (* toplevel form transformer, from the first definition to the *)
  (* second group of definitions *)

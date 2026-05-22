@@ -170,12 +170,15 @@ and print_type_spec = function
   | Tint64 -> print "__int64 "
   | Tint128 -> print "__int128 "
   | Tfloat -> print "float "
-  | Tfloat32 -> print "_Float32"
-  | Tfloat64 -> print "_Float64"
-  | Tfloat128 -> print "__float128"
-  | Tfloat32x -> print "_Float32x"
-  | Tfloat64x -> print "_Float64x"
   | Tfloat16 -> print "_Float16"
+  | Tfloat16x -> print "_Float16x"
+  | Tfloat32 -> print "_Float32"
+  | Tfloat32x -> print "_Float32x"
+  | Tfloat64 -> print "_Float64"
+  | Tfloat64x -> print "_Float64x"
+  | Tfloat128 -> print "__float128"
+  | Tfloat128x -> print "__float128x"
+  | Tbf16 -> print "__bf16"
   | Tdouble -> print "double "
   | Tsigned -> printu "signed"
   | Tunsigned -> print "unsigned "
@@ -929,6 +932,11 @@ and print_def def =
         | None -> ()
       end;
       print ");";
+
+  | MACDEF (name, body, loc) ->
+      setLoc(loc);
+      print ("#define " ^ name ^ " " ^ body);
+      force_new_line ()
 
 (* sm: print a comment if the printComments flag is set *)
 and comprint (str : string) : unit =

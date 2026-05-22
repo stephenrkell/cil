@@ -137,13 +137,16 @@ let init_lexicon _ =
       ("char", fun loc -> CHAR loc);
       ("int", fun loc -> INT loc);
       ("float", fun loc -> FLOAT loc);
-      ("__float128", fun loc -> FLOAT128 loc);
-      ("_Float128", fun loc -> FLOAT128 loc);
-      ("_Float32", fun loc -> FLOAT32 loc);
-      ("_Float64", fun loc -> FLOAT64 loc);
-      ("_Float32x", fun loc -> FLOAT32X loc);
-      ("_Float64x", fun loc -> FLOAT64X loc);
-      ("_Float16", fun loc -> FLOAT16 loc);
+      ("_Float16", fun loc -> if !Machdep.theMachine.Machdep.have_float16 then FLOAT16 loc else IDENT ("_Float16", loc));
+      ("_Float16x", fun loc -> if !Machdep.theMachine.Machdep.have_float16x then FLOAT16X loc else IDENT ("_Float16x", loc));
+      ("_Float32", fun loc -> if !Machdep.theMachine.Machdep.have_float32 then FLOAT32 loc else IDENT ("_Float32", loc));
+      ("_Float32x", fun loc -> if !Machdep.theMachine.Machdep.have_float32x then FLOAT32X loc else IDENT ("_Float32x", loc));
+      ("_Float64", fun loc -> if !Machdep.theMachine.Machdep.have_float64 then FLOAT64 loc else IDENT ("_Float64", loc));
+      ("_Float64x", fun loc -> if !Machdep.theMachine.Machdep.have_float64x then FLOAT64X loc else IDENT ("_Float64x", loc));
+      ("_Float128", fun loc -> if !Machdep.theMachine.Machdep.have_float128 then FLOAT128 loc else IDENT ("_Float128", loc));
+      ("__float128", fun loc -> if !Machdep.theMachine.Machdep.have_float128 then FLOAT128 loc else IDENT ("__float128", loc));
+      ("_Float128x,", fun loc -> if !Machdep.theMachine.Machdep.have_float128x then FLOAT128X loc else IDENT ("_Float128x", loc));
+      ("__bf16", fun loc -> if !Machdep.theMachine.Machdep.have_bf16 then BF16 loc else IDENT ("__bf16", loc));
       ("double", fun loc -> DOUBLE loc);
       ("void", fun loc -> VOID loc);
       ("enum", fun loc -> ENUM loc);
@@ -207,6 +210,8 @@ let init_lexicon _ =
       ("__int32", fun loc -> INT loc);
       ("__int64", fun _ -> INT64 (currentLoc ()));
       ("__int128", fun _ -> INT128 (currentLoc ()));
+      (* GCC non-standard __int128 aliases (not typedefs!) *)
+      ("__int128_t", fun _ -> INT128 (currentLoc ()));
       ("__declspec", fun loc -> DECLSPEC loc);
       ("__forceinline", fun loc -> INLINE loc); (* !! we turn forceinline
                                                    into inline *)
@@ -216,9 +221,20 @@ let init_lexicon _ =
        fun _ -> NAMED_TYPE ("__builtin_va_list", currentLoc ()));
       ("__builtin_va_arg", fun loc -> BUILTIN_VA_ARG loc);
       ("__builtin_types_compatible_p", fun loc -> BUILTIN_TYPES_COMPAT loc);
+      ("__builtin_convertvector", fun loc -> BUILTIN_CONVVEC loc);
       ("__builtin_offsetof", fun loc -> BUILTIN_OFFSETOF loc);
       (* On some versions of GCC __thread is a regular identifier *)
       ("__thread", fun loc ->
+                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
+                         THREAD loc
+                       else
+                         IDENT ("__thread", loc));
+      ("thread_local", fun loc ->
+                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
+                         THREAD loc
+                       else
+                         IDENT ("__thread", loc));
+      ("_Thread_local", fun loc ->
                       if !Machdep.theMachine.Machdep.__thread_is_keyword then
                          THREAD loc
                        else
@@ -419,12 +435,11 @@ let wstr_to_warray wstr =
   !res
 *)
 
-(* Pragmas get explicit end-of-line tokens.
-   Elsewhere they are silently discarded as whitespace. *)
-let pragmaLine = ref false
+(* Pragmas and (if present) defines get explicit end-of-line tokens.
+ * Elsewhere they are silently discarded as whitespace. *)
+let hashLine = ref false
 
 }
-
 let decdigit = ['0'-'9']
 let octdigit = ['0'-'7']
 let hexdigit = ['0'-'9' 'a'-'f' 'A'-'F']
@@ -470,7 +485,9 @@ let hexquad = hexdigit hexdigit hexdigit hexdigit
 let universal_escape = '\\' ('u' hexquad | 'U' hexquad hexquad)
 let ident = (letter|'_'|'$'|universal_escape)(letter|decdigit|'_'|'$'|universal_escape)*
 
-(* Pragmas that are not parsed by CIL.  We lex them as PRAGMA_LINE tokens *)
+(* Pragmas that are not parsed by CIL.  We lex them as PRAGMA_UNPARSED tokens.
+ * (The pragmas that we do parse have to look, roughly, like an attribute
+ * invocation, possibly with a trailing semicolon; see PRAGMA in cparser.mly.) *)
 let no_parse_pragma =
                "warning" | "GCC" | "STDC" | "clang"
              (* Solaris-style pragmas:  *)
@@ -478,6 +495,7 @@ let no_parse_pragma =
              | "redefine_extname"
              | "TCS_align"
 	     | "mark"
+       | "omp"
 
 
 rule initial =
@@ -495,10 +513,10 @@ rule initial =
                                            }
 |		blank			{ addWhite lexbuf; initial lexbuf}
 |               '\n'                    { E.newline ();
-                                          if !pragmaLine then
+                                          if !hashLine then
                                             begin
-                                              pragmaLine := false;
-                                              PRAGMA_EOL
+                                              hashLine := false;
+                                              HASH_EOL
                                             end
                                           else begin
                                             addWhite lexbuf;
@@ -671,9 +689,12 @@ and hash = parse
                    we parse them as a whole line. *)
 | "pragma" blank (no_parse_pragma as pragmaName)
                 { let here = currentLoc () in
-                  PRAGMA_LINE (pragmaName ^ pragma lexbuf, here)
+                  PRAGMA_UNPARSED (pragmaName ^ pragma lexbuf, here)
                 }
-| "pragma"      { pragmaLine := true; PRAGMA (currentLoc ()) }
+| "pragma"      { hashLine := true; PRAGMA (currentLoc ()) }
+| "define" blank (ident as macName) {  let here = currentLoc () in
+                  DEFINE_UNPARSED (macName, macdef lexbuf, here) }
+
 | _	        { addWhite lexbuf; endline lexbuf}
 
 and file lineno =  parse
@@ -693,8 +714,12 @@ and endline = parse
 
 and pragma = parse
    '\n'                 { E.newline (); "" }
-|   _                   { let cur = Lexing.lexeme lexbuf in
-                          cur ^ (pragma lexbuf) }
+|   _                   { let cur = Lexing.lexeme lexbuf in 
+                          cur ^ (pragma lexbuf) }  
+and macdef = parse
+   '\n'                 { E.newline (); "" }
+|   _                   { let cur = Lexing.lexeme lexbuf in 
+                          cur ^ (macdef lexbuf) }  
 
 and str = parse
         '"'             {[]} (* no nul terminiation in CST_STRING '"' *)

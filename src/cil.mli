@@ -297,6 +297,7 @@ and fkind =
   | FLongDouble         (** [long double] *)
   | FFloat128           (** [float128] *)
   | FFloat16            (** [_Float16] *)
+  | FBf16               (** [__bf16] *)
   | FComplexFloat       (** [float _Complex] *)
   | FComplexDouble      (** [double _Complex] *)
   | FComplexLongDouble  (** [long double _Complex]*)
@@ -1481,6 +1482,16 @@ exception LenOfArray
     as when there is no length or the length is not a constant. *)
 val lenOfArray: exp option -> int
 
+(** If the type is a vector type, return the base type, size of the vector 
+    (in bytes) and length of vector (in number of elements) *)
+val vectorInfo: typ -> (typ * int * int) option
+
+(** True if the argument is a vector type *)
+val isVectorType: typ -> bool
+
+(** Given a vector type, return its base type *)
+val baseTypeOfVector: typ -> typ
+
 (** Return a named fieldinfo in compinfo, or raise Not_found *)
 val getCompField: compinfo -> string -> fieldinfo
 
@@ -1793,7 +1804,7 @@ val mkFor: start:stmt list -> guard:exp -> next: stmt list ->
 
 (** Various classes of attributes *)
 type attributeClass =
-    AttrName (** Attribute of a name. *)
+    AttrName of bool (** Attribute of a name. *)
   | AttrFunType  (** Attribute of a function type. *)
   | AttrType  (** Attribute of a type *)
 

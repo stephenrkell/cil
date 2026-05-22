@@ -351,7 +351,8 @@ let genv : (string, envdata * location) H.t = H.create 307
     hash table easily *)
 type undoScope =
     UndoRemoveFromEnv of string
-  | UndoResetAlphaCounter of location AL.alphaTableData ref *
+  | UndoResetAlphaCounter of string *
+                             location AL.alphaTableData ref *
                              location AL.alphaTableData
   | UndoRemoveFromAlphaTable of string
 
@@ -426,14 +427,29 @@ let newAlphaName (globalscope: bool) (* The name should have global scope *)
         let prefix = AL.getAlphaPrefix ~lookupname:lookupname in
         try
           let countref = H.find alphaTable prefix in
-          s := (UndoResetAlphaCounter (countref, !countref)) :: !s
+          s := (UndoResetAlphaCounter (prefix, countref, !countref)) :: !s
         with Not_found ->
           s := (UndoRemoveFromAlphaTable prefix) :: !s
     end
     | _ :: rest -> findEnclosingFun rest
   in
   if not globalscope then
-    findEnclosingFun !scopes;
+    findEnclosingFun !scopes
+  else (
+    let rec checkScopes = (function
+      [s] ->
+        let prefix = AL.getAlphaPrefix ~lookupname:lookupname in
+        s := List.filter (function
+          UndoResetAlphaCounter (p, _, _) when p = prefix -> false
+        | UndoRemoveFromAlphaTable p when p = prefix -> false
+        | _ -> true
+        ) !s
+      | _ :: rest -> checkScopes rest
+      | _ -> ()
+    )
+    in  
+    checkScopes !scopes
+  );
   let newname, oldloc =
            AL.newAlphaName ~alphaTable:alphaTable ~undolist:None ~lookupname:lookupname ~data:!currentLoc in
   stripKind kind newname, oldloc
@@ -448,6 +464,75 @@ let gnu_body_result : (A.statement * ((exp * typ) option ref)) ref
 let currentReturnType : typ ref = ref (TVoid([]))
 let currentFunctionFDEC: fundec ref = ref dummyFunDec
 
+
+(* We want the same struct definition, in the same header, to always get the
+ * same anonymous name. So we canonicalize filenames to equalise "x.h" with
+ * "./x.h", say.
+ * Ideally we would canonicalize more strongly. Using the canonical absolute
+ * path, eliminating symlinks and ".." and so on, isn't right: it exposes
+ * details of the build filesystem that the compiler doesn't want to know,
+ * since it would generate debuginfo that is peculiar to the build system
+ * e.g. if the build developer symlinked a source tree into the "right place").
+ * So for now, do something weaker: we just ensure relative paths are always
+ * implicit, i.e. never begin with ".". And the same for "./" embedded in the
+ * middle -- we want get rid of those too. *)
+let rec canonicalizeFilename fn =
+    let expectedPrefix = Filename.current_dir_name ^ Filename.dir_sep in
+    let expectedPrefixLen = String.length expectedPrefix in
+    if Filename.is_relative fn && not (Filename.is_implicit fn)
+        (* "Explicit" also includes "../", which we leave alone. *)
+        && not (
+            let parentPrefixLength = (String.length Filename.dir_sep
+                + String.length Filename.parent_dir_name) in
+            String.length fn >= parentPrefixLength &&
+                String.sub fn 0 parentPrefixLength
+                 = Filename.parent_dir_name ^ Filename.dir_sep)
+    then (* "Explicit case" -- means it begins with "./" or the system's
+          * equivalent, which we want to get rid of. *)
+        let matches = try (expectedPrefix = String.sub fn 0 expectedPrefixLen)
+            with Invalid_argument(_) -> false
+        in
+        if not matches then failwith ("did not understand path: " ^ fn)
+        else (* it begins with something else *)
+        canonicalizeFilename (
+            String.sub fn expectedPrefixLen (String.length fn - expectedPrefixLen)
+        )
+    else (* it's absolute or a non-implicit relative or "../"something.
+          * We don't do anything about ../ components for now. *)
+        (* The first component is okay, but what about "./" in the middle?
+         * We can't use String.index or split_on_char directly because
+         * dir_sep is allowed to be more than one char. I probably should just
+         * have bailed that case... oh well. *)
+        if fn= "" then ""
+        else
+        let sepLength = String.length Filename.dir_sep in
+        let rec sepOffset fn off =
+            let sepFirstChar = String.get Filename.dir_sep 0 in
+            let firstCharPosFromStartOff = String.index_from fn off sepFirstChar
+            in
+            if String.sub fn firstCharPosFromStartOff sepLength = Filename.dir_sep
+            then (* match *) firstCharPosFromStartOff
+            else (* keep looking for sep; earliest it could start is +1 *)
+            sepOffset fn (firstCharPosFromStartOff + 1)
+        in
+        try
+        (* if we're absolute, search from *after* the initial "/" *)
+        let searchStartOffset = if Filename.is_relative fn then 0 else sepLength in
+        let firstSepOffset = sepOffset fn searchStartOffset in
+        let rest = String.sub fn (firstSepOffset + sepLength)
+            ((String.length fn) - firstSepOffset - sepLength)
+        in
+        let rec stripLeadingSeparators s =
+            if String.length s >= sepLength
+                && String.sub s 0 sepLength = Filename.dir_sep
+            then let rest = (String.sub s sepLength (String.length s - sepLength))
+                in stripLeadingSeparators rest
+            else s
+        in
+        let strippedRest = stripLeadingSeparators rest in
+        Filename.concat (String.sub fn 0 firstSepOffset) (canonicalizeFilename strippedRest)
+        with Not_found -> (* did not find sep offset *) fn
+          |  Invalid_argument(_) -> (* could not find sep, e.g. empty string *) fn 
 
 (* Generate unique ids for structs, with a best-effort to base them on the
    structure of the type, so that the same anonymous struct in different
@@ -468,10 +553,13 @@ let newStructId id =
   structIds := id' :: !structIds ;
   id'
 let anonStructName (k: string) (suggested: string) (context: 'a) =
-  let id = newStructId (Hashtbl.hash_param 100 1000 context) in
+  let fileCanonical = canonicalizeFilename !currentLoc.file in
+  let id = newStructId (Hashtbl.hash_param 100 1000
+  (fileCanonical, !currentLoc.line)) in
+  (* let _ = output_string Pervasives.stderr ("At " ^ !currentLoc.file ^ " (canonicalized: " ^
+    fileCanonical ^ ") generated a new struct id: " ^ (string_of_int id) ^ "\n") in *)
   "__anon" ^ k ^ (if suggested <> "" then "_"  ^ suggested else "")
   ^ "_" ^ (string_of_int id)
-
 
 let constrExprId = ref 0
 
@@ -502,7 +590,7 @@ let exitScope () =
     | UndoRemoveFromEnv n :: t ->
         H.remove env n; loop t
     | UndoRemoveFromAlphaTable n :: t -> H.remove alphaTable n; loop t
-    | UndoResetAlphaCounter (vref, oldv) :: t ->
+    | UndoResetAlphaCounter (_, vref, oldv) :: t ->
         vref := oldv;
         loop t
   in
@@ -668,6 +756,30 @@ end
 (* Const-fold any expressions that appear as array lengths in this type *)
 let constFoldType (t:typ) : typ =
   visitCilType constFoldTypeVisitor t
+
+(* Transform any expressions in an initializer. FIXME: we might prefer to
+ * use a visitor and visitCilInit, but that  *)
+let rec rewriteInitExprs (f: exp->exp) (i:init) : init =
+  match i with
+      SingleInit e -> SingleInit (f e)
+    | CompoundInit (t, oiList) -> CompoundInit (t,
+        List.map (fun (offs, i) -> (offs, rewriteInitExprs f i) ) oiList)
+
+(* Rewrite SizeOfE / AlignOfE to use the type of the expression only. This is
+ * useful when moving such expressions out of local binding contexts, e.g. when
+ * we turn a static local into a static global... an initializer referencing the
+ * size of alignment of a local will not work, but using its type works fine. *)
+let eliminateSizeOfAlignOfExpVisitor = object (self)
+  inherit nopCilVisitor
+  method! vexpr e: exp visitAction =
+    match e with
+      SizeOfE e' -> ChangeTo (SizeOf (typeOf e'))
+    | AlignOfE e' -> ChangeTo (AlignOf (typeOf e'))
+    | _ -> DoChildren
+end
+let eliminateSizeOfAlignOfExpr (e:exp) : exp =
+    visitCilExpr eliminateSizeOfAlignOfExpVisitor e
+
 
 let typeSigNoAttrs: typ -> typsig = typeSigWithAttrs (fun _ -> [])
 
@@ -1402,6 +1514,9 @@ let arithmeticConversion    (* c.f. ISO 6.3.1.8 *)
     | FComplexFloat16, other -> t1
     | other, FComplexFloat16 -> t2
     | FFloat16, FFloat16 -> t1
+    | FBf16, FBf16 -> t1
+    | FBf16, FFloat16
+    | FFloat16, FBf16 -> E.s (E.bug "arithmeticConversion: invalid combination of _Float16 and __bf16")
   in
   match unrollType t1, unrollType t2 with
   | TFloat(fkind1, _), TFloat(fkind2, _) -> resultingFType fkind1 t1 fkind2 t2
@@ -1671,6 +1786,7 @@ let cabsTypeAddAttributes a0 t =
 			    "byte" -> 1
 			  | "word" -> !Machdep.theMachine.Machdep.sizeof_int
 			  | "pointer" -> !Machdep.theMachine.Machdep.sizeof_ptr
+			  | "unwind_word" -> !Machdep.theMachine.Machdep.sizeof_ptr (* FIXME: always ptrsized? *)
 			  | "QI" -> 1
 			  | "HI" -> 2
 			  | "SI" -> 4
@@ -2156,9 +2272,10 @@ let rec collectInitializer
     (thistype: typ) : (init * typ) =
   if this = NoInitPre then (makeZeroInit (patchArraySizeZero thistype)), patchArraySizeZero thistype
   else
-    match unrollType thistype, this with
-    | _ , SinglePre e -> SingleInit e, thistype
-    | TArray (bt, leno, at), CompoundPre (pMaxIdx, pArray) ->
+    let t = unrollType thistype in
+    match t, this, vectorInfo t with
+    | _ , SinglePre e, _ -> SingleInit e, thistype
+    | TArray (bt, leno, at), CompoundPre (pMaxIdx, pArray), _ ->
         let (len: int), newtype =
           (* normal case: use array's declared length, newtype=thistype *)
           match leno with
@@ -2194,7 +2311,7 @@ let rec collectInitializer
 
         CompoundInit (newtype, collect [] !pMaxIdx), newtype
 
-    | TComp (comp, _), CompoundPre (pMaxIdx, pArray) when comp.cstruct ->
+    | TComp (comp, _), CompoundPre (pMaxIdx, pArray), _ when comp.cstruct ->
         let rec collect (idx: int) = function
             [] -> []
           | f :: restf ->
@@ -2211,7 +2328,7 @@ let rec collectInitializer
         in
         CompoundInit (thistype, collect 0 comp.cfields), thistype
 
-    | TComp (comp, _), CompoundPre (pMaxIdx, pArray) when not comp.cstruct ->
+    | TComp (comp, _), CompoundPre (pMaxIdx, pArray), _ when not comp.cstruct ->
         (* Find the field to initialize *)
         let rec findField (idx: int) = function
             [] -> E.s (bug "collectInitializer: union")
@@ -2223,6 +2340,22 @@ let rec collectInitializer
           | _ -> E.s (error "Can initialize only one field for union")
         in
         CompoundInit (thistype, [ findField 0 comp.cfields ]), thistype
+
+    | _, CompoundPre (pMaxIdx, pArray), Some(bt, _, len) ->
+        if !pMaxIdx >= len then
+          E.s (E.bug "collectInitializer: too many initializers(%d >= %d)\n"
+                 !pMaxIdx len);
+        (* Missing initializers must be set to zero but this is not done here.
+           See assignInit. *)
+        let rec collect (acc: (offset * init) list) (idx: int) =
+          if idx = -1 then acc
+          else
+            let thisi = fst (collectInitializer isfield isconst !pArray.(idx) bt)
+            in
+            collect ((Index(integer idx, NoOffset), thisi) :: acc) (idx - 1)
+        in
+
+        CompoundInit (t, collect [] !pMaxIdx), t
 
     | _ -> E.s (unimp "collectInitializer")
 
@@ -2242,6 +2375,9 @@ type stackElem =
                                                use Int.max_int  *)
   | InComp  of offset * compinfo * fieldinfo list (* offset of parent,
                                                    base comp, current fields *)
+  | InVector of offset * typ * int * int ref (* offset of parent,
+                                                 base type, length,
+                                                 current index *)
 
 
 (* A subobject is given by its address. The address is read from the end of
@@ -2304,6 +2440,16 @@ and normalSubobj (so: subobj) : unit =
         so.soTyp <- fst.ftype;
         so.soOff <- addOffset (Field(fst, NoOffset)) parOff
       end
+            (* The vector is over *)
+  | InVector (parOff, bt, leno, current) :: rest ->
+      if leno = !current then begin (* The vector is over *)
+        if debugInit then ignore (E.log "Past the end of vector\n");
+        so.stack <- rest;
+        advanceSubobj so
+      end else begin
+        so.soTyp <- bt;
+        so.soOff <- addOffset (Index(integer !current, NoOffset)) parOff
+      end
 
   (* Advance to the next subobject. Always apply to a normalized object *)
 and advanceSubobj (so: subobj) : unit =
@@ -2323,6 +2469,12 @@ and advanceSubobj (so: subobj) : unit =
         ignore (E.log "Advancing past .%s\n" (List.hd nextflds).fname);
       let flds' = try List.tl nextflds with _ -> E.s (bug "advanceSubobj") in
       so.stack <- InComp(parOff, comp, flds') :: rest;
+      normalSubobj so
+    
+  | InVector (parOff, bt, leno, current) :: rest ->
+      if debugInit then ignore (E.log "  Advancing to [%d]\n" (!current + 1));
+      (* so.stack <- InVector (parOff, bt, leno, current + 1) :: rest; *)
+      incr current;
       normalSubobj so
 
 
@@ -2596,6 +2748,23 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     | [A.Tunsigned; A.Tint128] -> TInt(IUInt128, [])
 
     | [A.Tfloat] -> TFloat(FFloat, [])
+    | [A.Tfloat16] -> if !Machdep.theMachine.Machdep.sizeof_float16 = 2 then
+        TFloat(FFloat16, [])
+      else
+        E.s (error "float16 only supported on machines where it is an alias for a conventional type")
+    | [A.Tfloat16x] -> if !Machdep.theMachine.Machdep.sizeof_float16x = !Machdep.theMachine.Machdep.sizeof_float &&
+        !Machdep.theMachine.Machdep.alignof_float16x = !Machdep.theMachine.Machdep.alignof_float
+      then
+        TFloat(FFloat, [])
+      else if !Machdep.theMachine.Machdep.sizeof_float16x = !Machdep.theMachine.Machdep.sizeof_double &&
+        !Machdep.theMachine.Machdep.alignof_float16x = !Machdep.theMachine.Machdep.alignof_double
+      then
+        TFloat(FDouble, [])
+      else
+        E.s (error "float16x only supported on machines where it is an alias for a conventional type: size: %i align: %i "
+          !Machdep.theMachine.Machdep.sizeof_float16x
+          !Machdep.theMachine.Machdep.alignof_float16x
+          )
     | [A.Tfloat32] ->
       if !Machdep.theMachine.Machdep.sizeof_float = 4 then
         TFloat(FFloat, [])
@@ -2616,7 +2785,6 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
           !Machdep.theMachine.Machdep.alignof_float32x
           )
 
-    | [A.Tdouble] -> TFloat(FDouble, [])
     | [A.Tfloat64] ->
       if !Machdep.theMachine.Machdep.sizeof_double = 8 then
         TFloat(FDouble, [])
@@ -2641,9 +2809,35 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
           !Machdep.theMachine.Machdep.alignof_float64x
           )
 
+    
+    | [A.Tfloat128] -> if !Machdep.theMachine.Machdep.sizeof_float128 = 16 then
+        TFloat(FFloat128, [])
+      else
+        E.s (error "float128 only supported on machines where it is an alias for a conventional type")
+    | [A.Tfloat128x] -> if !Machdep.theMachine.Machdep.sizeof_float128x = !Machdep.theMachine.Machdep.sizeof_float &&
+        !Machdep.theMachine.Machdep.alignof_float128x = !Machdep.theMachine.Machdep.alignof_float
+      then
+        TFloat(FFloat, [])
+      else if !Machdep.theMachine.Machdep.sizeof_float128x = !Machdep.theMachine.Machdep.sizeof_double &&
+        !Machdep.theMachine.Machdep.alignof_float128x = !Machdep.theMachine.Machdep.alignof_double
+      then
+        TFloat(FDouble, [])
+      else if !Machdep.theMachine.Machdep.sizeof_float128x = !Machdep.theMachine.Machdep.sizeof_longdouble &&
+        !Machdep.theMachine.Machdep.alignof_float128x = !Machdep.theMachine.Machdep.alignof_longdouble
+      then
+        TFloat(FLongDouble, [])
+      else if !Machdep.theMachine.Machdep.sizeof_float128x = !Machdep.theMachine.Machdep.sizeof_float128 &&
+        !Machdep.theMachine.Machdep.alignof_float128x = !Machdep.theMachine.Machdep.alignof_float128
+      then
+        TFloat(FFloat128, [])
+      else
+        E.s (error "float128x only supported on machines where it is an alias for a conventional type: size: %i align: %i "
+          !Machdep.theMachine.Machdep.sizeof_float128x
+          !Machdep.theMachine.Machdep.alignof_float128x
+          )
+    | [A.Tdouble] -> TFloat(FDouble, [])
     | [A.Tlong; A.Tdouble] -> TFloat(FLongDouble, [])
-    | [A.Tfloat128] -> TFloat(FFloat128, [])
-    | [A.Tfloat16] -> TFloat(FFloat16, [])
+    | [A.Tbf16] -> TFloat(FBf16, [])
      (* Now the other type specifiers *)
     | [A.Tdefault] -> E.s (error "Default outside generic associations")
     | [A.Tnamed n] -> begin
@@ -2767,7 +2961,8 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
                   Some n ->
 		                let ik = updateEnum n in
 		                if !lowerConstants then kintegerCilint ik n else e'
-                | _ -> E.s (error "Constant initializer %a not an integer" d_exp e')
+                | _ -> e' (* let the compiler sort it out if we can't constant-eval
+                             (e.g. possibly due to shifting out of bounds) *)
               in
               processName kname attrs e'' (convLoc cloc) rest
         in
@@ -2866,7 +3061,7 @@ and makeVarInfoCabs
                 (n,ndt,a)
       : varinfo =
   let vtype, nattr =
-    doType AttrName
+    doType (AttrName false)
       bt (A.PARENTYPE(attrs, ndt, a)) in
   if inline && not (isFunctionType vtype) then
     ignore (error "inline for a non-function: %s" n);
@@ -3034,7 +3229,7 @@ and cabsPartitionAttributes
               (try H.find attributeHash an with Not_found -> default)
         in
         match kind with
-          AttrName -> loop (a::n, f, t) rest
+          AttrName _ -> loop (a::n, f, t) rest
         | AttrFunType ->
             loop (n, a::f, t) rest
         | AttrType -> loop (n, f, a::t) rest
@@ -3345,7 +3540,7 @@ and makeCompType (isstruct: bool)
       if sto <> NoStorage || inl then
         E.s (error "Storage or inline not allowed for fields");
       let ftype, nattr =
-        doType AttrName bt (A.PARENTYPE(attrs, ndt, a)) in
+        doType (AttrName false) bt (A.PARENTYPE(attrs, ndt, a)) in
       (* check for fields whose type is an undefined struct.  This rules
          out circularity:
              struct C1 { struct C2 c2; };          //This line is now an error.
@@ -3908,7 +4103,8 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
           | FDouble
           | FLongDouble
           | FFloat128
-          | FFloat16 -> 8
+          | FFloat16
+          | FBf16 -> 8
           | FComplexFloat
           | FComplexDouble
           | FComplexLongDouble
@@ -4529,6 +4725,18 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
         (match !pf with
           | Lval(Var fv, NoOffset) ->
             begin
+              if fv.vname = "__builtin_convertvector" then
+                begin
+                  match !pargs with
+                    | [ e; SizeOf t] -> begin
+                      resType' := t;
+                      match vectorInfo (typeOf e), vectorInfo t with
+                      | Some (_, sz1, _), Some (_, sz2, _) -> if sz1 <> sz2 then
+                          ignore (warn "Incompatible vector sizes in call to builtin_convertvector")
+                      | _ -> ignore (warn "Invalid types in call to builtin_convertvector")
+                    end
+                    | _ -> ignore (warn "Invalid call to builtin_convertvector");
+                end
               (* Most atomic builtins are overloaded: check the type of the
                 first argument and fix the return type accordingly for those
                 annotated with "overloaded" in src/cil.ml.
@@ -4538,7 +4746,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                 http://gcc.gnu.org/onlinedocs/gcc/_005f_005fsync-Builtins.html#g_t_005f_005fsync-Builtins
                 http://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html
               *)
-              if !resType' = TVoid[Attr("overloaded",[])] then
+              else if !resType' = TVoid[Attr("overloaded",[])] then
                 if fv.vname = "__builtin_tgmath" then
                   match !pargs with
                   | ptr :: _ ->
@@ -4599,7 +4807,7 @@ and doExp (asconst: bool)   (* This expression is used as a constant *)
                     | ptr :: _ ->
                       begin
                         match typeOf ptr with
-                        | TPtr (vtype, _) -> resType' := vtype
+                        | TPtr (vtype, _) -> resType' := typeRemoveAttributes ["atomic"] (unrollType vtype)
                         | _ -> ignore (warn "Invalid call to %s" fv.vname)
                       end
                     | _ -> ignore (warn "Invalid call to %s" fv.vname)
@@ -5341,7 +5549,7 @@ and doInitializer
   if debugInit then
     ignore (E.log "Finished the initializer for %s\n  init=%a\n  typ=%a\n  acc=%a\n"
            vi.vname d_init init d_type typ' d_chunk acc);
-  acc, init, typ''
+  acc, rewriteInitExprs eliminateSizeOfAlignOfExpr init, typ''
 
 
 
@@ -5397,11 +5605,12 @@ and doInit
           Cprint.print_init_expression (A.COMPOUND_INIT [(what, ie)]));
     ignore (E.log "\n");
   end;
-  match unrollType so.soTyp, allinitl with
-    _, [] -> acc, [] (* No more initializers return *)
+  let t = unrollType so.soTyp in
+  match t, allinitl, vectorInfo t with
+    _, [], _ -> acc, [] (* No more initializers return *)
 
         (* No more subobjects *)
-  | _, (A.NEXT_INIT, _) :: _ when so.eof -> acc, allinitl
+  | _, (A.NEXT_INIT, _) :: _, _ when so.eof -> acc, allinitl
 
 
         (* If we are at an array of characters and the initializer is a
@@ -5413,7 +5622,7 @@ and doInit
        A.COMPOUND_INIT
          [(A.NEXT_INIT,
            A.SINGLE_INIT(A.CONSTANT
-                           (A.CONST_STRING (s,enc))))])) :: restil
+                           (A.CONST_STRING (s,enc))))])) :: restil, _
     when (match unrollType bt with
             TInt((IChar|IUChar|ISChar), _) -> true
           | TInt _ ->
@@ -5465,7 +5674,7 @@ and doInit
        A.COMPOUND_INIT
          [(A.NEXT_INIT,
            A.SINGLE_INIT(A.CONSTANT
-                           (A.CONST_WSTRING (s,enc))))])) :: restil
+                           (A.CONST_WSTRING (s,enc))))])) :: restil, _
     when(let bt' = unrollType bt in
          match bt' with
            (* compare bt to wchar_t, ignoring signed vs. unsigned *)
@@ -5524,7 +5733,7 @@ and doInit
 
       (* If we are at an array and we see a single initializer then it must
          be one for the first element *)
-  | TArray(bt, leno, al), (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil  ->
+  | TArray(bt, leno, al), (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil, _  ->
       (* Grab the length if there is one *)
       let leno = integerArrayLength leno in
       so.stack <- InArray(so.soOff, bt, leno, ref 0) :: so.stack;
@@ -5535,7 +5744,7 @@ and doInit
     (* If we are at a composite and we see a single initializer of the same
        type as the composite then grab it all. If the type is not the same
        then we must go on and try to initialize the fields *)
-  | TComp (comp, _), (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil ->
+  | TComp (comp, _), (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil, _ ->
       let se, oneinit', t' = doExp isconst oneinit (AExp None) in
       if (match unrollType t' with
              TComp (comp', _) when comp'.ckey = comp.ckey -> true
@@ -5554,14 +5763,26 @@ and doInit
       end
 
      (* A scalar with a single initializer *)
-  | _, (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil ->
+  | _, (A.NEXT_INIT, A.SINGLE_INIT oneinit) :: restil, _ ->
       let se, oneinit', t' = doExp isconst oneinit (AExp(Some so.soTyp)) in
 (*
       ignore (E.log "oneinit'=%a, t'=%a, so.soTyp=%a\n"
            d_exp oneinit' d_type t' d_type so.soTyp);
 *)
+      (* drop the atomic attribute if the lhs type is atomic, otherwise Clang might not 
+          be happy about the initializer element not being a compile-time constant:
+            error: initializer element is not a compile-time constant
+            1 | unsigned int _Atomic a = (unsigned int _Atomic )1;
+              |                          ^~~~~~~~~~~~~~~~~~~~~~~~
+      *)
+      let newt = if hasAttribute "atomic" (typeAttrsOuter (unrollType so.soTyp)) then 
+        typeRemoveAttributes ["atomic"] so.soTyp
+      else
+        so.soTyp
+      in
+
       setone so.soOff (if !insertImplicitCasts then
-                          makeCastT ~kind:Implicit ~e:oneinit' ~oldt:t' ~newt:so.soTyp (* C11 6.7.9.11 *)
+                          makeCastT ~kind:Implicit ~e:oneinit' ~oldt:t' ~newt:newt (* C11 6.7.9.11 *)
                        else oneinit');
       (* Move on *)
       advanceSubobj so;
@@ -5570,7 +5791,7 @@ and doInit
 
      (* An array with a compound initializer. The initializer is for the
         array elements *)
-  | TArray (bt, leno, _), (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil ->
+  | TArray (bt, leno, _), (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil, _ ->
       (* Create a separate object for the array *)
       let so' = makeSubobj so.host so.soTyp so.soOff in
       (* Go inside the array *)
@@ -5585,13 +5806,29 @@ and doInit
       (* Continue *)
       let res = doInit isconst setone so acc' restil in
       res
+     (* An vector with a compound initializer. The initializer is for the
+        vector elements *)
+  | t, (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil, Some(bt, _ , leno) ->
+      (* Create a separate object for the vector *)
+      let so' = makeSubobj so.host so.soTyp so.soOff in
+      (* Go inside the vector *)
+      so'.stack <- [InVector(so'.curOff, bt, leno, ref 0)];
+      normalSubobj so';
+      let acc', initl' = doInit isconst setone so' acc initl in
+      if initl' <> [] then
+        ignore (warn "Too many initializers for vector %t" whoami);
+      (* Advance past the vector *)
+      advanceSubobj so;
+      (* Continue *)
+      let res = doInit isconst setone so acc' restil in
+      res
 
    (* We have a designator that tells us to select the matching union field.
       This is to support a GCC extension *)
   | TComp(ci, _) as targ, [(A.NEXT_INIT,
                     A.COMPOUND_INIT [(A.INFIELD_INIT ("___matching_field",
                                                      A.NEXT_INIT),
-                                      A.SINGLE_INIT oneinit)])]
+                                      A.SINGLE_INIT oneinit)])], _
                       when not ci.cstruct ->
       (* Do the expression to find its type *)
       let _, _, t' = doExp isconst oneinit (AExp None) in
@@ -5617,7 +5854,7 @@ and doInit
 
 
         (* A structure with a composite initializer. We initialize the fields*)
-  | TComp (comp, _), (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil ->
+  | TComp (comp, _), (A.NEXT_INIT, A.COMPOUND_INIT initl) :: restil, _ ->
       let initl' =
         (* Handle empty initializers (nested inside arrays):
             { {3}, {}, {5}, {}, {} }
@@ -5643,18 +5880,18 @@ and doInit
 
         (* A scalar with a initializer surrounded by braces *)
   | _, (A.NEXT_INIT, A.COMPOUND_INIT [(A.NEXT_INIT,
-                                       A.SINGLE_INIT oneinit)]) :: restil ->
+                                       A.SINGLE_INIT oneinit)]) :: restil, _ ->
       let se, oneinit', t' = doExp isconst oneinit (AExp(Some so.soTyp)) in
       setone so.soOff (makeCastT ~kind:Implicit ~e:oneinit' ~oldt:t' ~newt:so.soTyp); (* C11 6.7.9.11 *)
       (* Move on *)
       advanceSubobj so;
       doInit isconst setone so (acc @@ se) restil
 
-  | t, (A.NEXT_INIT, _) :: _ ->
+  | t, (A.NEXT_INIT, _) :: _, _ ->
       E.s (unimp "doInit: unexpected NEXT_INIT for %a\n" d_type t);
 
    (* We have a designator *)
-  | _, (what, ie) :: restil when what != A.NEXT_INIT ->
+  | _, (what, ie) :: restil, _ when what != A.NEXT_INIT ->
       let rec unrollDesignatorForNestedAnonymous (comp: compinfo) (designator: string) (whatnext: initwhat) =
         if List.exists (fun fld -> fld.fname = designator) comp.cfields then
           (true, Some(A.INFIELD_INIT (designator, whatnext)))
@@ -5773,7 +6010,7 @@ and doInit
       in
       expandRange (fun x -> x) what
 
-  | t, (what, ie) :: _ ->
+  | t, (what, ie) :: _, _ ->
       E.s (bug "doInit: cases for t=%a" d_type t)
 
 
@@ -6042,30 +6279,6 @@ and createLocal ?allow_var_decl:(allow_var_decl=true) ((_, sto, _, _) as specs)
       end
     end
 
-and doAliasFun vtype (thisname:string) (othername:string)
-  (sname:single_name) (loc: cabsloc) : unit =
-  (* This prototype declares that name is an alias for
-     othername, which must be defined in this file *)
-(*   E.log "%s is alias for %s at %a\n" thisname othername  *)
-(*     d_loc !currentLoc; *)
-  let rt, formals, isva, _ = splitFunctionType vtype in
-  if isva then E.s (error "%a: alias unsupported with varargs."
-                      d_loc !currentLoc);
-  let args = Util.list_map
-               (fun (n,_,_) -> A.VARIABLE n)
-               (argsToList formals) in
-  let call = A.CALL (A.VARIABLE othername, args) in
-  let stmt = if isVoidType rt then A.COMPUTATION(call, loc)
-                              else A.RETURN(call, loc, loc)
-  in
-  let body = { A.blabels = []; A.battrs = []; A.bstmts = [stmt] } in
-  let fdef = A.FUNDEF (sname, body, loc, loc) in
-  ignore (doDecl true false fdef); (* doAliasFun only called for isglobal by guard *)
-  (* get the new function *)
-  let v,_ = try lookupGlobalVar thisname
-            with Not_found -> E.s (bug "error in doDecl") in
-  v.vattr <- dropAttribute "alias" v.vattr
-
 
 (* Do one declaration *)
 and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
@@ -6095,26 +6308,14 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
         if isglobal then begin
           let spec_res = match spec_res with Some s -> s | _ -> failwith "Option.get" in
           let bt,_,_,attrs = spec_res in
-          let vtype, nattr = doType AttrName bt (A.PARENTYPE(attrs, ndt, a)) in
-          (match filterAttributes "alias" nattr with
-             [] -> (* ordinary prototype. *)
-               ignore (createGlobal spec_res name)
-              (*  E.log "%s is not aliased\n" name *)
-           | [Attr("alias", [AStr othername])] ->
-               if not (isFunctionType vtype) then begin
-                 ignore (warn
-                   "%a: CIL only supports attribute((alias)) for functions.\n"
-                   d_loc !currentLoc);
-                 ignore (createGlobal spec_res name)
-               end else
-                 doAliasFun vtype n othername (s, (n,ndt,a,l)) loc
-           | _ -> E.s (error "Bad alias attribute at %a" d_loc !currentLoc)
-          );
-          acc
-        end else
-          match spec_res with
-          | Some spec_res -> acc @@ createLocal spec_res name
-          | None -> acc @@ createAutoLocal name
+          let _, _ = 
+            doType (AttrName false) bt (A.PARENTYPE(attrs, ndt, a)) in
+            ignore (createGlobal spec_res name);
+            acc
+        end else 
+          acc @@ (match spec_res with
+                  | Some s -> createLocal s name
+                  | None -> createAutoLocal name)
       in
       let res = List.fold_left doOneDeclarator empty nl in
 (*
@@ -6153,7 +6354,6 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
           in
           cabsPushGlobal (GPragma (a'', !currentLoc));
           empty
-
       | _ -> E.s (error "Too many attributes in pragma")
   end
   | A.TRANSFORMER (_, _, _) -> E.s (E.bug "TRANSFORMER in cabs2cil input")
@@ -6232,7 +6432,7 @@ and doDecl (isglobal: bool) (isstmt: bool) : A.definition -> chunk = function
               !currentFunctionFDEC.svar.vinline <- inl;
 
               let ftyp, funattr =
-                doType AttrName bt (A.PARENTYPE(attrs, dt, a)) in
+                doType (AttrName false) bt (A.PARENTYPE(attrs, dt, a)) in
               !currentFunctionFDEC.svar.vtype <- ftyp;
               !currentFunctionFDEC.svar.vattr <- funattr;
 

@@ -15,7 +15,7 @@ BEGIN {
     $App::Cilly::CilCompiler::use_debug =
          grep(/--bytecode/, @ARGV) ||
          grep(/--ocamldebug/, @ARGV) ||
-        ($App::Cilly::CilCompiler::mtime_native < $App::Cilly::CilCompiler::mtime_byte);
+        (!grep(/--native/, @ARGV) && $App::Cilly::CilCompiler::mtime_native < $App::Cilly::CilCompiler::mtime_byte);
     $App::Cilly::CilCompiler::compiler =
         $App::Cilly::CilCompiler::base .
             ($App::Cilly::CilCompiler::use_debug ? ".byte" : ".native");

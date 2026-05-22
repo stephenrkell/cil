@@ -87,10 +87,72 @@ typedef int bool;
 #define UNDERSCORE_NAME "false"
 #endif
 
+#ifdef HAVE_FLOAT128_DEF
+#define HAVE_FLOAT128 "true"
+#else
+#define HAVE_FLOAT128 "false"
+#endif
+
+#ifdef HAVE_FLOAT64_DEF
+#define HAVE_FLOAT64 "true"
+#else
+#define HAVE_FLOAT64 "false"
+#endif
+
+#ifdef HAVE_FLOAT64X_DEF
+#define HAVE_FLOAT64X "true"
+#else
+#define HAVE_FLOAT64X "false"
+#endif
+
+#ifdef HAVE_FLOAT32_DEF
+#define HAVE_FLOAT32 "true"
+#else
+#define HAVE_FLOAT32 "false"
+#endif
+
+#ifdef HAVE_FLOAT32X_DEF
+#define HAVE_FLOAT32X "true"
+#else
+#define HAVE_FLOAT32X "false"
+#endif
+
 #ifdef HAVE_FLOAT16_DEF
 #define HAVE_FLOAT16 "true"
 #else
 #define HAVE_FLOAT16 "false"
+#endif
+
+#ifdef HAVE_FLOAT16X_DEF
+#define HAVE_FLOAT16X "true"
+#else
+#define HAVE_FLOAT16X "false"
+#endif
+
+#ifdef HAVE_FLOAT128X_DEF
+#define HAVE_FLOAT128X "true"
+#else
+#define HAVE_FLOAT128X "false"
+#endif
+
+#ifdef HAVE_FLOAT16_DEF
+#define HAVE_FLOAT16COMPLEX "true"
+#else
+#define HAVE_FLOAT16COMPLEX "false"
+#endif
+
+#ifdef HAVE_FLOAT128_DEF
+#define HAVE_FLOAT128COMPLEX "true"
+#else
+#define HAVE_FLOAT128COMPLEX "false"
+#endif
+
+#define HAVE_FLOATCOMPLEX "true"
+
+#ifdef HAVE_BF16_DEF
+#define HAVE_BF16 "true"
+#else
+#define HAVE_BF16 "false"
 #endif
 
 #endif
@@ -113,8 +175,13 @@ int main(int argc, char **argv)
 {
   int env = argc == 2 && !strcmp(argv[1], "--env");
   int alignof_short, alignof_int, alignof_long, alignof_ptr, alignof_enum,
-    alignof_float, alignof_float32x, alignof_float64x, alignof_double, alignof_longdouble, alignof_float128, alignof_float16,
-    alignof_floatcomplex, alignof_doublecomplex, alignof_longdoublecomplex, alignof_float128complex, alignof_float16complex,
+    alignof_float, 
+    alignof_float16, alignof_float16x,  alignof_float16complex,
+    alignof_float32, alignof_float32x,
+    alignof_float64,alignof_float64x,
+    alignof_float128, alignof_float128x, alignof_float128complex,
+    alignof_double, alignof_longdouble, alignof_bf16,
+    alignof_floatcomplex, alignof_doublecomplex, alignof_longdoublecomplex,
     sizeof_fun,
     alignof_fun, alignof_str, alignof_aligned, alignof_longlong,
     little_endian, char_is_unsigned, alignof_bool;
@@ -191,6 +258,7 @@ int main(int argc, char **argv)
     alignof_float = (intptr_t)(&((struct floatstruct*)0)->f);
   }
 
+#ifdef HAVE_FLOAT32X_DEF
   // The alignment of a _Float32x
   {
     struct floatstruct {
@@ -199,8 +267,22 @@ int main(int argc, char **argv)
     };
     alignof_float32x = (intptr_t)(&((struct floatstruct*)0)->f);
   }
+#endif
 
-#if __HAVE_FLOAT64X
+#ifdef HAVE_FLOAT32_DEF
+  // The alignment of a _Float32
+  {
+    struct floatstruct {
+      char c;
+      _Float32 f;
+    };
+    alignof_float32 = (intptr_t)(&((struct floatstruct*)0)->f);
+  }
+#else
+  alignof_float32 = 0;
+#endif
+
+#ifdef HAVE_FLOAT64X_DEF
   // The alignment of a _Float64x
   {
     struct floatstruct {
@@ -209,6 +291,19 @@ int main(int argc, char **argv)
     };
     alignof_float64x = (intptr_t)(&((struct floatstruct*)0)->f);
   }
+#endif
+
+#ifdef HAVE_FLOAT64_DEF
+  // The alignment of a _Float64
+  {
+    struct floatstruct {
+      char c;
+      _Float64 f;
+    };
+    alignof_float64 = (intptr_t)(&((struct floatstruct*)0)->f);
+  }
+#else
+  alignof_float64 = 0;
 #endif
 
   // The alignment of double
@@ -229,6 +324,7 @@ int main(int argc, char **argv)
     alignof_longdouble = (intptr_t)(&((struct s1*)0)->ld);
   }
 
+#ifdef HAVE_FLOAT128_DEF
   // The alignment of float128
   {
     struct s1 {
@@ -237,6 +333,22 @@ int main(int argc, char **argv)
     };
     alignof_float128 = (intptr_t)(&((struct s1*)0)->ld);
   }
+#else
+  alignof_float128 = 0;
+#endif
+
+#ifdef HAVE_FLOAT128X_DEF
+  // The alignment of _Float128x
+  {
+    struct s1 {
+      char c;
+      _Float128x ld;
+    };
+    alignof_float128x = (intptr_t)(&((struct s1*)0)->ld);
+  }
+#else
+  alignof_float128x = 0;
+#endif
 
 #ifdef HAVE_FLOAT16_DEF
   // The alignment of float16
@@ -249,6 +361,32 @@ int main(int argc, char **argv)
   }
 #else
   alignof_float16 = 0;
+#endif
+
+#ifdef HAVE_FLOAT16X_DEF
+  // The alignment of _Float16x
+  {
+    struct s1 {
+      char c;
+      _Float16x ld;
+    };
+    alignof_float16x = (intptr_t)(&((struct s1*)0)->ld);
+  }
+#else
+  alignof_float16x = 0;
+#endif
+
+#ifdef HAVE_BF16_DEF
+  // The alignment of __bf16
+  {
+    struct s1 {
+      char c;
+      __bf16 ld;
+    };
+    alignof_bf16 = (intptr_t)(&((struct s1*)0)->ld);
+  }
+#else
+  alignof_bf16 = 0;
 #endif
 
   // The alignment of a float complex
@@ -278,6 +416,7 @@ int main(int argc, char **argv)
     alignof_longdoublecomplex = (intptr_t)(&((struct s1*)0)->ld);
   }
 
+#ifdef HAVE_FLOAT128_DEF
   // The alignment of float128 complex
   {
     struct s1 {
@@ -286,6 +425,9 @@ int main(int argc, char **argv)
     };
     alignof_float128complex = (intptr_t)(&((struct s1*)0)->ld);
   }
+#else
+  alignof_float128complex = 0;
+#endif
 
 #ifdef HAVE_FLOAT16_DEF
   // The alignment of float16 complex
@@ -337,32 +479,49 @@ int main(int argc, char **argv)
     {
       fprintf(stderr, "Generating CIL_MACHINE machine dependency information string (for CIL)\n");
       printf("short=%d,%d int=%d,%d long=%d,%d long_long=%d,%d pointer=%d,%d "
-	     "alignof_enum=%d float=%d,%d float32x=%d,%d float64x=%d,%d double=%d,%d long_double=%d,%d float128=%d,%d float16=%d,%d float_complex=%d,%d double_complex=%d,%d long_double_complex=%d,%d float128_complex=%d,%d float16_complex=%d,%d void=%d "
+	     "alignof_enum=%d float=%d,%d float32x=%d,%d float64x=%d,%d double=%d,%d long_double=%d,%d float128=%d,%d float16=%d,%d bf16=%d,%d float_complex=%d,%d double_complex=%d,%d long_double_complex=%d,%d float128_complex=%d,%d float16_complex=%d,%d void=%d "
 	     "bool=%d,%d fun=%d,%d alignof_string=%d max_alignment=%d size_t=%s "
 	     "wchar_t=%s char16_t=%s char32_t=%s char_signed=%s "
 	     "big_endian=%s __thread_is_keyword=%s __builtin_va_list=%s "
-	     "underscore_name=%s have_float16=%s\n",
+	     "underscore_name=%s have_bf16=%s have_float16=%s have_float32=%s have_float32x=%s have_float64=%s have_float64x=%s have_float128=%s\n",
 	     (int)sizeof(short), alignof_short, (int)sizeof(int), alignof_int,
 	     (int)sizeof(long), alignof_long, (int)sizeof(long long), alignof_longlong,
 	     (int)sizeof(int *), alignof_ptr,
 	     alignof_enum,
+#ifdef HAVE_FLOAT32X_DEF
 	     (int)sizeof(_Float32x), alignof_float32x,
-#if __HAVE_FLOAT64X
+#else
+             0, 0,
+#endif
+#ifdef HAVE_FLOAT64X_DEF
 	     (int)sizeof(_Float64x), alignof_float64x,
 #else
              0, 0,
 #endif
 	     (int)sizeof(float), alignof_float, (int)sizeof(double), alignof_double,
 	     (int)sizeof(long double), alignof_longdouble,
-      (int)sizeof(_Float128), alignof_float128,
+#ifdef HAVE_FLOAT128_DEF
+       (int)sizeof(_Float128), alignof_float128,
+#else
+       0, 0,
+#endif
 #ifdef HAVE_FLOAT16_DEF
        (int)sizeof(_Float16), alignof_float16,
 #else
        0, 0,
 #endif
+#ifdef HAVE_BF16_DEF
+       (int)sizeof(__bf16), alignof_bf16,
+#else
+       0, 0,
+#endif
        (int)sizeof(float _Complex), alignof_floatcomplex, (int)sizeof(double _Complex), alignof_doublecomplex,
 	     (int)sizeof(long double _Complex), alignof_longdoublecomplex,
+#ifdef HAVE_FLOAT128_DEF
        (int)sizeof(_Float128 _Complex), alignof_float128complex,
+#else
+       0, 0,
+#endif
 #ifdef HAVE_FLOAT16_DEF
        (int)sizeof(_Float16 _Complex), alignof_float16complex,
 #else
@@ -374,7 +533,7 @@ int main(int argc, char **argv)
 	     underscore(TYPE_SIZE_T), underscore(TYPE_WCHAR_T), underscore(TYPE_CHAR16_T), underscore(TYPE_CHAR32_T),
 	     char_is_unsigned ? "false" : "true",
 	     little_endian ? "false" : "true",
-	     THREAD_IS_KEYWORD, HAVE_BUILTIN_VA_LIST, UNDERSCORE_NAME, HAVE_FLOAT16);
+	     THREAD_IS_KEYWORD, HAVE_BUILTIN_VA_LIST, UNDERSCORE_NAME, HAVE_BF16, HAVE_FLOAT16, HAVE_FLOAT32, HAVE_FLOAT32X, HAVE_FLOAT64, HAVE_FLOAT64X, HAVE_FLOAT128);
     }
   else
     {
@@ -393,29 +552,55 @@ int main(int argc, char **argv)
       printf("\t sizeof_longlong            = %d;\n", (int)sizeof(LONGLONG));
       printf("\t sizeof_ptr                 = %d;\n", (int)sizeof(int *));
       printf("\t sizeof_float               = %d;\n", (int)sizeof(float));
+#ifdef HAVE_FLOAT16_DEF
+      printf("\t sizeof_float16             = %d;\n", (int)sizeof(_Float16));
+      printf("\t sizeof_float16complex      = %d;\n", (int)sizeof(_Float16 _Complex));
+#else
+      printf("\t sizeof_float16             = %d;\n", 0);
+      printf("\t sizeof_float16complex      = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT16X_DEF
+      printf("\t sizeof_float16x            = %d;\n", (int)sizeof(_Float16x));
+#else
+      printf("\t sizeof_float16x            = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT32_DEF
+      printf("\t sizeof_float32             = %d;\n", (int)sizeof(float));
       printf("\t sizeof_float32x            = %d;\n", (int)sizeof(_Float32x));
-#if __HAVE_FLOAT64X
+#else
+      printf("\t sizeof_float32             = %d;\n", 0);
+      printf("\t sizeof_float32x            = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT64_DEF
+      printf("\t sizeof_float64             = %d;\n", (int)sizeof(double));
       printf("\t sizeof_float64x            = %d;\n", (int)sizeof(_Float64x));
 #else
+      printf("\t sizeof_float64             = %d;\n", 0);
       printf("\t sizeof_float64x            = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT128_DEF
+      printf("\t sizeof_float128            = %d;\n", (int)sizeof(_Float128));
+      printf("\t sizeof_float128complex     = %d;\n", (int)sizeof(_Float128 _Complex));
+#else
+      printf("\t sizeof_float128            = %d;\n", 0);
+      printf("\t sizeof_float128complex     = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT128X_DEF
+      printf("\t sizeof_float128x           = %d;\n", (int)sizeof(_Float128x));
+#else
+      printf("\t sizeof_float128x           = %d;\n", 0);
 #endif
       printf("\t sizeof_double              = %d;\n", (int)sizeof(double));
       printf("\t sizeof_longdouble          = %d;\n", (int)sizeof(long double));
-      printf("\t sizeof_float128            = %d;\n", (int)sizeof(_Float128));
-#ifdef HAVE_FLOAT16_DEF
-      printf("\t sizeof_float16             = %d;\n", (int)sizeof(_Float16));
+#ifdef HAVE_BF16_DEF
+      printf("\t sizeof_bf16                = %d;\n", (int)sizeof(__bf16));
 #else
-      printf("\t sizeof_float16             = %d;\n", 0);
+      printf("\t sizeof_bf16                = %d;\n", 0);
 #endif
       printf("\t sizeof_floatcomplex        = %d;\n", (int)sizeof(float _Complex));
       printf("\t sizeof_doublecomplex       = %d;\n", (int)sizeof(double _Complex));
       printf("\t sizeof_longdoublecomplex   = %d;\n", (int)sizeof(long double _Complex));
-      printf("\t sizeof_float128complex     = %d;\n", (int)sizeof(_Float128 _Complex));
-#ifdef HAVE_FLOAT16_DEF
-      printf("\t sizeof_float16complex      = %d;\n", (int)sizeof(_Float16 _Complex));
-#else
-      printf("\t sizeof_float16complex      = %d;\n", 0);
-#endif
+
       printf("\t sizeof_void                = %d;\n", (int)sizeof(void));
       printf("\t sizeof_fun                 = %d;\n", (int)sizeof_fun);
       printf("\t size_t                     = \"%s\";\n", TYPE_SIZE_T);
@@ -429,30 +614,62 @@ int main(int argc, char **argv)
       printf("\t alignof_longlong           = %d;\n", alignof_longlong);
       printf("\t alignof_ptr                = %d;\n", alignof_ptr);
       printf("\t alignof_enum               = %d;\n", alignof_enum);
-      printf("\t alignof_float              = %d;\n", alignof_float);
-      printf("\t alignof_float32x           = %d;\n", alignof_float32x);
-#if __HAVE_FLOAT64X
-      printf("\t alignof_float64x           = %d;\n", alignof_float64x);
+#ifdef HAVE_FLOAT16_DEF
+      printf("\t alignof_float16complex     = %d;\n", alignof_float16complex);
 #else
-      printf("\t alignof_float64x           = %d;\n", 0);
+      printf("\t alignof_float16complex     = %d;\n", 0);
 #endif
-      printf("\t alignof_double             = %d;\n", alignof_double);
-      printf("\t alignof_longdouble         = %d;\n", alignof_longdouble);
-      printf("\t alignof_float128           = %d;\n", alignof_float128);
+
 #ifdef HAVE_FLOAT16_DEF
       printf("\t alignof_float16            = %d;\n", alignof_float16);
 #else
       printf("\t alignof_float16            = %d;\n", 0);
 #endif
+#ifdef HAVE_FLOAT16X_DEF
+      printf("\t alignof_float16x           = %d;\n", alignof_float16x);
+#else
+      printf("\t alignof_float16x           = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT32_DEF
+      printf("\t alignof_float              = %d;\n", alignof_float);
+      printf("\t alignof_float32            = %d;\n", alignof_float32);
+      printf("\t alignof_float32x           = %d;\n", alignof_float32x);
+#else
+      printf("\t alignof_float              = %d;\n", 0);
+      printf("\t alignof_float32            = %d;\n", 0);
+      printf("\t alignof_float32x           = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT64_DEF
+      printf("\t alignof_float64            = %d;\n", alignof_float64);
+#else
+      printf("\t alignof_float64            = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT64X_DEF
+      printf("\t alignof_float64x           = %d;\n", alignof_float64x);
+#else
+      printf("\t alignof_float64x           = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT128_DEF
+      printf("\t alignof_float128           = %d;\n", alignof_float128);
+#else
+      printf("\t alignof_float128           = %d;\n", 0);
+#endif
+#ifdef HAVE_FLOAT128X_DEF
+      printf("\t alignof_float128x          = %d;\n", alignof_float128x);
+#else
+      printf("\t alignof_float128x          = %d;\n", 0);
+#endif
+      printf("\t alignof_double             = %d;\n", alignof_double);
+      printf("\t alignof_longdouble         = %d;\n", alignof_longdouble);
+#ifdef HAVE_BF16_DEF
+      printf("\t alignof_bf16               = %d;\n", alignof_bf16);
+#else
+      printf("\t alignof_bf16               = %d;\n", 0);
+#endif
       printf("\t alignof_floatcomplex       = %d;\n", alignof_floatcomplex);
       printf("\t alignof_doublecomplex      = %d;\n", alignof_doublecomplex);
       printf("\t alignof_longdoublecomplex  = %d;\n", alignof_longdoublecomplex);
       printf("\t alignof_float128complex    = %d;\n", alignof_float128complex);
-#ifdef HAVE_FLOAT16_DEF
-      printf("\t alignof_float16complex     = %d;\n", alignof_float16complex);
-#else
-      printf("\t alignof_float16complex     = %d;\n", alignof_float16complex);
-#endif
       printf("\t alignof_str                = %d;\n", alignof_str);
       printf("\t alignof_fun                = %d;\n", alignof_fun);
       printf("\t alignof_aligned            = %d;\n", alignof_aligned);
@@ -461,7 +678,18 @@ int main(int argc, char **argv)
       printf("\t __builtin_va_list          = %s;\n", HAVE_BUILTIN_VA_LIST);
       printf("\t __thread_is_keyword        = %s;\n", THREAD_IS_KEYWORD);
       printf("\t little_endian              = %s;\n", little_endian ? "true" : "false");
+      printf("\t have_bf16                  = %s;\n", HAVE_BF16);
       printf("\t have_float16               = %s;\n", HAVE_FLOAT16);
+      printf("\t have_float16x              = %s;\n", HAVE_FLOAT16X);
+      printf("\t have_float32               = %s;\n", HAVE_FLOAT32);
+      printf("\t have_float32x              = %s;\n", HAVE_FLOAT32X);
+      printf("\t have_float64               = %s;\n", HAVE_FLOAT64);
+      printf("\t have_float64x              = %s;\n", HAVE_FLOAT64X);
+      printf("\t have_float128              = %s;\n", HAVE_FLOAT128);
+      printf("\t have_float128x             = %s;\n", HAVE_FLOAT128X);
+      printf("\t have_float16complex        = %s;\n", HAVE_FLOAT16COMPLEX);
+      printf("\t have_float128complex       = %s;\n", HAVE_FLOAT128COMPLEX);
+      printf("\t have_floatcomplex          = %s;\n", HAVE_FLOATCOMPLEX);
     }
   return 0;
 }

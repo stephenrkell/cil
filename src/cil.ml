@@ -310,6 +310,7 @@ and fkind =
   | FLongDouble         (** [long double] *)
   | FFloat128           (** [float128] *)
   | FFloat16            (** [_Float16] *)
+  | FBf16               (** [__bf16] *)
   | FComplexFloat       (** [float _Complex] *)
   | FComplexDouble      (** [double _Complex] *)
   | FComplexLongDouble  (** [long double _Complex]*)
@@ -1297,6 +1298,8 @@ let intType = TInt(IInt,[])
 let uintType = TInt(IUInt,[])
 let longType = TInt(ILong,[])
 let ulongType = TInt(IULong,[])
+let longLongType = TInt(ILongLong,[])
+let ulongLongType = TInt(IULongLong,[])
 let charType = TInt(IChar, [])
 let boolType = TInt(IBool, [])
 
@@ -1307,6 +1310,10 @@ let stringLiteralType = charPtrType
 let voidPtrType = TPtr(voidType, [])
 let intPtrType = TPtr(intType, [])
 let uintPtrType = TPtr(uintType, [])
+let longPtrType = TPtr(longType, [])
+let ulongPtrType = TPtr(ulongType, [])
+let longLongPtrType = TPtr(longLongType, [])
+let ulongLongPtrType = TPtr(ulongLongType, [])
 let boolPtrType = TPtr(boolType, [])
 
 let doubleType = TFloat(FDouble, [])
@@ -1430,7 +1437,7 @@ let hasAttribute s al =
 
 
 type attributeClass =
-    AttrName  (* Attribute of a name. *)
+    AttrName of bool  (* Attribute of a name. *)
   | AttrFunType  (* Attribute of a function type. *)
   | AttrType  (* Attribute of a type *)
 
@@ -1440,22 +1447,22 @@ type attributeClass =
    conversion *)
 let attributeHash: (string, attributeClass) H.t =
   let table = H.create 13 in
-  List.iter (fun a -> H.add table a AttrName)
+  List.iter (fun a -> H.add table a (AttrName false))
     [ "section"; "constructor"; "destructor"; "unused"; "used"; "weak";
-      "no_instrument_function"; "alias"; "no_check_memory_usage";
+      "no_instrument_function"; "alias"; "no_check_memory_usage"; "visibility";
       "exception"; "model"; (* "restrict"; *)
       "aconst"; "__asm__" (* Gcc uses this to specify the name to be used in
                              assembly for a global  *)];
 
   (* MSVC declspec attributes that are also supported by GCC *)
-  List.iter (fun a -> H.add table a AttrName)
+  List.iter (fun a -> H.add table a (AttrName true))
     [ "thread"; "naked"; "dllimport"; "dllexport";
       "selectany"; "nothrow"; "property";  "noreturn"; "align" ];
 
   List.iter (fun a -> H.add table a AttrFunType)
     [ "format"; "regparm"; "longcall";
-      "noinline"; "always_inline"; "gnu_inline"; "leaf";
-      "artificial"; "warn_unused_result"; "nonnull";
+      "noinline"; "always_inline"; "gnu_inline"; "leaf"; "cold"; "alloc_size";
+      "artificial"; "warn_unused_result"; "nonnull"; "pure"; "no_sanitize"
     ];
 
   List.iter (fun a -> H.add table a AttrFunType)
@@ -1475,7 +1482,7 @@ let partitionAttributes
       [] -> n, f, t
     | (Attr(an, _) as a) :: rest ->
         match (try H.find attributeHash an with Not_found -> default) with
-          AttrName -> loop (addAttribute a n, f, t) rest
+          AttrName _ -> loop (addAttribute a n, f, t) rest
         | AttrFunType ->
             loop (n, addAttribute a f, t) rest
         | AttrType -> loop (n, f, addAttribute a t) rest
@@ -1674,6 +1681,7 @@ let typeOfRealAndImagComponents t =
       | FLongDouble -> FLongDouble (* [long double] *)
       | FFloat128 -> FFloat128
       | FFloat16 -> FFloat16
+      | FBf16 -> FBf16
       | FComplexFloat -> FFloat
       | FComplexDouble -> FDouble
       | FComplexLongDouble -> FLongDouble
@@ -1690,6 +1698,7 @@ let getComplexFkind = function
   | FLongDouble -> FComplexLongDouble
   | FFloat128 -> FComplexFloat128
   | FFloat16 -> FComplexFloat16
+  | FBf16 -> E.s (E.bug "complex type for __bf16 is not supported")
   | FComplexFloat -> FComplexFloat
   | FComplexDouble -> FComplexDouble
   | FComplexLongDouble -> FComplexLongDouble
@@ -1768,6 +1777,7 @@ let d_fkind () = function
   | FLongDouble -> text "long double"
   | FFloat128 -> text "_Float128"
   | FFloat16 -> text "_Float16"
+  | FBf16 -> text "__bf16"
   | FComplexFloat -> text "_Complex float"
   | FComplexDouble -> text "_Complex double"
   | FComplexLongDouble -> text "_Complex long double"
@@ -1870,6 +1880,7 @@ let d_const () c =
        | FLongDouble -> chr 'L'
        | FFloat128 -> text "F128"
        | FFloat16 -> text "F16"
+       | FBf16 -> nil (* Clang doesn't define a suffix for __bf16 *)
        | FComplexFloat -> text "iF"
        | FComplexDouble -> chr 'i'
        | FComplexLongDouble -> text "iL"
@@ -1945,6 +1956,17 @@ let getParenthLevelAttrParam (a: attrparam) =
   | AAssign _ -> assignLevel
 
 
+(* Separate out the storage-modifier name attributes *)
+let separateStorageModifiers (al: attribute list) =
+  let isstoragemod (Attr(an, _): attribute) : bool =
+    try
+      match H.find attributeHash an with
+        AttrName issm -> issm
+      | _ -> false
+    with Not_found -> false
+  in List.partition isstoragemod al
+
+
 let isIntegralType t =
   match unrollType t with
     (TInt _ | TEnum _) -> true
@@ -1968,6 +1990,20 @@ let isFunctionType t =
   match unrollType t with
     TFun _ -> true
   | _ -> false
+
+let dropVectorAttributes (attrs: attributes) : attributes = 
+  dropAttributes ["__vector_size__"; "vector_size"] attrs
+
+let baseTypeOfVector (t: typ): typ =
+  match unrollType t with
+    | TInt(ik, attrs) -> TInt(ik, dropVectorAttributes attrs)
+    | TFloat(fk, attrs) -> TFloat(fk, dropVectorAttributes attrs)
+    | _ -> E.s (E.bug "baseTypeOfVector: not a vector type")
+
+let isVectorType (t: typ) : bool =
+  match unrollType t with
+    TInt(_, attrs) | TFloat(_, attrs) -> hasAttribute "__vector_size__" attrs || hasAttribute "vector_size" attrs
+    | _ -> false
 
 (**** Compute the type of an expression ****)
 let rec typeOf (e: exp) : typ =
@@ -2017,7 +2053,7 @@ and typeOfLval = function
 and typeOffset basetyp =
   let blendAttributes baseAttrs =
     let (_, _, contageous) =
-      partitionAttributes ~default:AttrName baseAttrs in
+      partitionAttributes ~default:(AttrName false) baseAttrs in
     typeAddAttributes contageous
   in
   function
@@ -2027,6 +2063,7 @@ and typeOffset basetyp =
         TArray (t, _, baseAttrs) ->
 	  let elementType = typeOffset t o in
 	  blendAttributes baseAttrs elementType
+      | t when isVectorType t -> baseTypeOfVector t 
       | t -> E.s (E.bug "typeOffset: Index on a non-array")
   end
   | Field (fi, o) ->
@@ -2125,6 +2162,7 @@ let floatKindForSize (s:int) =
   else if s = !M.theMachine.M.sizeof_longdouble then FLongDouble
   else if s = !M.theMachine.M.sizeof_float128 then FFloat128
   else if s = !M.theMachine.M.sizeof_float16 then FFloat16
+  else if s = !M.theMachine.M.sizeof_bf16 then FBf16
   else raise Not_found
 
 (* Represents an integer as for a given kind.  Returns a flag saying
@@ -2285,6 +2323,7 @@ let rec alignOf_int t =
     | TFloat(FLongDouble, _) -> !M.theMachine.M.alignof_longdouble
     | TFloat(FFloat128, _) -> !M.theMachine.M.alignof_float128
     | TFloat(FFloat16, _) -> !M.theMachine.M.alignof_float16
+    | TFloat(FBf16, _) -> !M.theMachine.M.alignof_bf16
     | TFloat(FComplexFloat, _) -> !M.theMachine.M.alignof_floatcomplex
     | TFloat(FComplexDouble, _) -> !M.theMachine.M.alignof_doublecomplex
     | TFloat(FComplexLongDouble, _) -> !M.theMachine.M.alignof_longdoublecomplex
@@ -2356,9 +2395,12 @@ and intOfAttrparam (a:attrparam) : int option =
   let rec doit a : int =
     match a with
       AInt(n) -> n
-    | ABinOp(Shiftlt, a1, a2) -> (doit a1) lsl (doit a2)
+    | ABinOp(PlusA, a1, a2) -> (doit a1) + (doit a2)
+    | ABinOp(MinusA, a1, a2) -> (doit a1) - (doit a2)
     | ABinOp(Mult, a1, a2) -> (doit a1) * (doit a2)
     | ABinOp(Div, a1, a2) -> (doit a1) / (doit a2)
+    | ABinOp(Mod, a1, a2) -> (doit a1) mod (doit a2)
+    | ABinOp(Shiftlt, a1, a2) -> (doit a1) lsl (doit a2)
     | ASizeOf(t) ->
         let bs = bitsSizeOf t in
         bs / 8
@@ -2435,17 +2477,31 @@ and offsetOfFieldAcc ~(fi: fieldinfo)
                      ~(sofar: offsetAcc) : offsetAcc =
   offsetOfFieldAcc_GCC fi sofar
 
+and getVectorSizeFromAttributes (a: attributes) : int option =
+    match List.find_opt (fun (Attr(an', _)) -> an' = "__vector_size__" || an' = "vector_size") a with
+    | Some(Attr(_, [x])) -> intOfAttrparam x
+    | _ -> None
+
+and vectorSizeOfType (t: typ) : int option =
+  match unrollType t with
+  | TInt(_, a) | TFloat(_, a) -> getVectorSizeFromAttributes a
+  | _ -> None
+
 (* The size of a type, in bits. If a struct or array, then trailing padding is
    added *)
 and bitsSizeOf t =
   if not !initCIL_called then
     E.s (E.error "You did not call Cil.initCIL before using the CIL library");
+  match vectorSizeOfType t with
+  | Some vsize -> vsize * 8
+  | None ->
   match t with
   | TInt (ik,_) -> 8 * (bytesSizeOfInt ik)
   | TFloat(FDouble, _) -> 8 * !M.theMachine.M.sizeof_double
   | TFloat(FLongDouble, _) -> 8 * !M.theMachine.M.sizeof_longdouble
   | TFloat(FFloat128, _) -> 8 * !M.theMachine.M.sizeof_float128
   | TFloat(FFloat16, _) -> 8 * !M.theMachine.M.sizeof_float16
+  | TFloat(FBf16, _) -> 8 * !M.theMachine.M.sizeof_bf16
   | TFloat(FFloat, _) -> 8 * !M.theMachine.M.sizeof_float
   | TFloat(FComplexDouble, _) ->  8 * !M.theMachine.M.sizeof_doublecomplex
   | TFloat(FComplexLongDouble, _) -> 8 * !M.theMachine.M.sizeof_longdoublecomplex
@@ -2773,6 +2829,12 @@ let isArrayType t =
     TArray _ -> true
   | _ -> false
 
+let vectorInfo (v: typ): (typ * int * int) option =
+  match unrollType v with
+  | TInt(ik, attrs) -> getVectorSizeFromAttributes attrs |> Option.map (fun sz -> let bt = TInt(ik, dropVectorAttributes attrs) in (bt, sz, 8 * sz / (bitsSizeOf bt)))
+  | TFloat(ik, attrs) -> getVectorSizeFromAttributes attrs |> Option.map (fun sz -> let bt = TFloat(ik, dropVectorAttributes attrs) in (bt, sz, 8 * sz / (bitsSizeOf bt)))  
+  | _ -> None
+
 (** 6.3.2.3 subsection 3
     An integer constant expr with value 0, or such an expr cast to void *, is called a null pointer constant. *)
 let isNullPtrConstant e =
@@ -2983,6 +3045,12 @@ let initGccBuiltins () : unit =
   H.add h "__builtin_coshf" (floatType, [ floatType ], false);
   H.add h "__builtin_coshl" (longDoubleType, [ longDoubleType ], false);
 
+  H.add h "__builtin_rotateleft32" (uintType, [uintType; uintType], false);
+  H.add h "__builtin_rotateright32" (uintType, [uintType; uintType], false);
+  H.add h "__builtin_rotateleft64" (ulongType, [ulongType; ulongType], false);
+  H.add h "__builtin_rotateright64" (ulongType, [ulongType; ulongType], false);
+
+
   H.add h "__builtin_clz" (intType, [ uintType ], false);
   H.add h "__builtin_clzl" (intType, [ ulongType ], false);
   H.add h "__builtin_clzll" (intType, [ ulongLongType ], false);
@@ -2999,6 +3067,9 @@ let initGccBuiltins () : unit =
 
   H.add h "__builtin_trap" (voidType, [], false);
   H.add h "__builtin_unreachable" (voidType, [], false);
+
+  (* GNU C >= 4.6 *)
+  H.add h "__builtin_assume_aligned" (voidPtrType, [ voidConstPtrType ; longType ], true);
 
   H.add h "__builtin_fabs" (doubleType, [ doubleType ], false);
   H.add h "__builtin_fabsf" (floatType, [ floatType ], false);
@@ -3019,9 +3090,13 @@ let initGccBuiltins () : unit =
   H.add h "__builtin_inf" (doubleType, [], false);
   H.add h "__builtin_inff" (floatType, [], false);
   H.add h "__builtin_infl" (longDoubleType, [], false);
+  H.add h "__builtin_isfinite" (boolType, [], true);
+  H.add h "__builtin_isinf_sign" (boolType, [], true);
+  H.add h "__builtin_isnan" (boolType, [], true);
   H.add h "__builtin_memcpy" (voidPtrType, [ voidPtrType; voidConstPtrType; sizeType ], false);
   H.add h "__builtin_memchr" (voidPtrType, [voidConstPtrType; intType; ulongType], false);
   H.add h "__builtin_mempcpy" (voidPtrType, [ voidPtrType; voidConstPtrType; sizeType ], false);
+  H.add h "__builtin_memmove" (voidPtrType, [ voidPtrType; voidConstPtrType; sizeType ], false);
   H.add h "__builtin_memset" (voidPtrType,
                               [ voidPtrType; intType; intType ], false);
   H.add h "__builtin_bcopy" (voidType, [ voidConstPtrType; voidPtrType; sizeType ], false);
@@ -3064,6 +3139,7 @@ let initGccBuiltins () : unit =
   H.add h "__builtin_nansl" (longDoubleType, [ charConstPtrType ], false);
   H.add h "__builtin_next_arg" ((if hasbva then TBuiltin_va_list [] else voidPtrType), [], false) (* When we parse builtin_next_arg we drop the argument *);
   H.add h "__builtin_object_size" (sizeType, [ voidPtrType; intType ], false);
+  H.add h "__builtin_dynamic_object_size" (sizeType, [ voidPtrType; intType ], false);
 
   H.add h "__builtin_parity" (intType, [ uintType ], false);
   H.add h "__builtin_parityl" (intType, [ ulongType ], false);
@@ -3105,12 +3181,14 @@ let initGccBuiltins () : unit =
   H.add h "__builtin_strncmp" (intType, [ charConstPtrType; charConstPtrType; sizeType ], false);
   H.add h "__builtin_strncpy" (charPtrType, [ charPtrType; charConstPtrType; sizeType ], false);
   H.add h "__builtin_strspn" (sizeType, [ charConstPtrType; charConstPtrType ], false);
+  H.add h "__builtin_strstr" (charPtrType, [ charConstPtrType; charConstPtrType ], false);
   H.add h "__builtin_strpbrk" (charPtrType, [ charConstPtrType; charConstPtrType ], false);
   (* When we parse builtin_types_compatible_p, we change its interface *)
   H.add h "__builtin_types_compatible_p"
                             (intType, [ !typeOfSizeOf;(* Sizeof the type *)
                                         !typeOfSizeOf (* Sizeof the type *) ],
                                false);
+  H.add h "__builtin_convertvector" (TVoid[Attr("overloaded",[])], [ ], true);
   H.add h "__builtin_tan" (doubleType, [ doubleType ], false);
   H.add h "__builtin_tanf" (floatType, [ floatType ], false);
   H.add h "__builtin_tanl" (longDoubleType, [ longDoubleType ], false);
@@ -3209,6 +3287,47 @@ let initGccBuiltins () : unit =
   H.add h "__atomic_always_lock_free" (boolType, [sizeType; voidPtrType], false);
   H.add h "__atomic_is_lock_free" (boolType, [sizeType; voidPtrType], false);
   H.add h "__atomic_feraiseexcept" (voidType, [intType], false);
+
+  (* Clang atomics *)
+  H.add h "__c11_atomic_thread_fence" (voidType, [intType], false);
+  H.add h "__c11_atomic_signal_fence" (voidType, [intType], false);
+  H.add h "__c11_atomic_is_lock_free" (boolType, [sizeType], false);
+  H.add h "__c11_atomic_compare_exchange_strong" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_compare_exchange_weak" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_exchange" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_add" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_and" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_or" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_sub" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_fetch_xor" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_load" (TVoid[Attr("overloaded",[])], [ ], true);
+  H.add h "__c11_atomic_store" (TVoid[Attr("overloaded",[])], [ ], true);
+
+  (* Clang checked arithmetic (https://clang.llvm.org/docs/LanguageExtensions.html#checked-arithmetic-builtins) *)
+  H.add h "__builtin_add_overflow" (boolType, [ ], true);
+    H.add h "__builtin_add_overflow_p" (boolType, [ (*longType; longType; longType*) ], true);
+  H.add h "__builtin_sub_overflow" (boolType, [ ], true);
+  H.add h "__builtin_sub_overflow_p" (boolType, [ (*longType; longType; longType*) ], true);
+  H.add h "__builtin_mul_overflow" (boolType, [ ], true);
+  H.add h "__builtin_mul_overflow_p" (boolType, [ (*longType; longType; longType*) ], true);
+  H.add h "__builtin_uadd_overflow" (boolType, [ uintType; uintType; uintPtrType ], false);
+  H.add h "__builtin_uaddl_overflow" (boolType, [ ulongType; ulongType; ulongPtrType ], false);
+  H.add h "__builtin_uaddll_overflow" (boolType, [ ulongLongType; ulongLongType; ulongLongPtrType ], false);
+  H.add h "__builtin_usub_overflow" (boolType, [ uintType; uintType; uintPtrType ], false);
+  H.add h "__builtin_usubl_overflow" (boolType, [ ulongType; ulongType; ulongPtrType ], false);
+  H.add h "__builtin_usubll_overflow" (boolType, [ ulongLongType; ulongLongType; ulongLongPtrType ], false);
+  H.add h "__builtin_umul_overflow" (boolType, [ uintType; uintType; uintPtrType ], false);
+  H.add h "__builtin_umull_overflow" (boolType, [ ulongType; ulongType; ulongPtrType ], false);
+  H.add h "__builtin_umulll_overflow" (boolType, [ ulongLongType; ulongLongType; ulongLongPtrType ], false);
+  H.add h "__builtin_sadd_overflow" (boolType, [ intType; intType; intPtrType ], false);
+  H.add h "__builtin_saddl_overflow" (boolType, [ longType; longType; longPtrType ], false);
+  H.add h "__builtin_saddll_overflow" (boolType, [ longLongType; longLongType; longLongPtrType ], false);
+  H.add h "__builtin_ssub_overflow" (boolType, [ intType; intType; intPtrType ], false);
+  H.add h "__builtin_ssubl_overflow" (boolType, [ longType; longType; longPtrType ], false);
+  H.add h "__builtin_ssubll_overflow" (boolType, [ longLongType; longLongType; longLongPtrType ], false);
+  H.add h "__builtin_smul_overflow" (boolType, [ intType; intType; intPtrType ], false);
+  H.add h "__builtin_smull_overflow" (boolType, [ longType; longType; longPtrType ], false);
+  H.add h "__builtin_smulll_overflow" (boolType, [ longLongType; longLongType; longLongPtrType ], false);
 
   if hasbva then begin
     H.add h "__builtin_va_end" (voidType, [ TBuiltin_va_list [] ], false);
@@ -3369,12 +3488,14 @@ class defaultCilPrinterClass : cilPrinter = object (self)
 
   (* variable declaration *)
   method pVDecl () (v:varinfo) =
+    let stom, rest = separateStorageModifiers v.vattr in
     (* First the storage modifiers *)
     text (if v.vinline then "__inline " else "")
       ++ d_storage () v.vstorage
+      ++ (self#pAttrs () stom)
       ++ (self#pType (Some (text v.vname)) () v.vtype)
       ++ text " "
-      ++ self#pAttrs () v.vattr
+      ++ self#pAttrs () rest
 
   (*** L-VALUES ***)
   method pLval () (lv:lval) =  (* lval (base is 1st field)  *)
@@ -3712,6 +3833,21 @@ class defaultCilPrinterClass : cilPrinter = object (self)
     | Call(_, Lval(Var vi, NoOffset), _, l, el)
         when vi.vname = "__builtin_types_compatible_p" && not !printCilAsIs ->
         E.s (bug "__builtin_types_compatible_p: cabs2cil should have added sizeof to the arguments.")
+
+    | Call(dest, Lval(Var vi, NoOffset), [e; SizeOf t], l, el)
+        when vi.vname = "__builtin_convertvector" && not !printCilAsIs ->
+        self#pLineDirective l
+          (* Print the destination *)
+        ++ (match dest with
+              None -> nil
+            | Some lv -> self#pLval () lv ++ text " = ")
+          (* Now the call itself *)
+        ++ dprintf "%s(%a, %a)" vi.vname
+             self#pExp e (self#pType None) t
+        ++ text printInstrTerminator
+    | Call(_, Lval(Var vi, NoOffset), _, l, el)
+        when vi.vname = "__builtin_convertvector" && not !printCilAsIs ->
+        E.s (bug "__builtin_convertvector: cabs2cil should have added sizeof to the arguments.")
 
     | Call(dest,e,args,l,el) ->
         let rec patchTypeNotVLA t =
@@ -5707,7 +5843,8 @@ class constFoldVisitorClass (machdep: bool) : cilVisitor = object
          See the comments for these above. *)
       Call(_,(Lval (Var vi,NoOffset)),_,_,_)
         when ((vi.vname = "__builtin_va_arg")
-              || (vi.vname = "__builtin_types_compatible_p")) ->
+              || (vi.vname = "__builtin_types_compatible_p")
+              || (vi.vname = "__builtin_convertvector")) ->
           SkipChildren
     | _ -> DoChildren
   method! vexpr (e: exp) =
@@ -6304,7 +6441,7 @@ let foldLeftCompound
 
       | _ -> E.s (unimp "foldLeftCompound: TArray with initializer and no length")
     end
-
+  
   | TComp (comp, _) ->
       let getTypeOffset = function
           Field(f, NoOffset) -> f.ftype
@@ -6312,8 +6449,30 @@ let foldLeftCompound
       in
       List.fold_left
         (fun acc (o, i) -> doinit o i (getTypeOffset o) acc) acc initl
-
-  | _ -> E.s (E.unimp "Type of Compound is not array or struct or union")
+  | t -> begin
+    match vectorInfo t with
+    | Some (bt, _, len_vec) -> 
+      (* Scan the existing initializer *)
+      let part =
+        List.fold_left (fun acc (o, i) -> doinit o i bt acc) acc initl in
+      (* See how many more we have to do *)
+      if not implicit then
+        part
+      else
+        let len_init = List.length initl in
+        if len_vec > len_init then
+          let zi = makeZeroInit bt in
+          let rec loop acc i =
+            if i >= len_vec then acc
+            else
+              loop (doinit (Index(integer i, NoOffset)) zi bt acc)
+                    (i + 1)
+          in
+          loop part (len_init + 1)
+        else
+          part
+    | None -> E.s (E.unimp "Type of Compound is not array or struct or union or vector")
+  end
 
 
 

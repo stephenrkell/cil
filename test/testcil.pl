@@ -182,6 +182,7 @@ addTest("test/asm3 _GNUCC=1");
 addTest("test/asm4 _GNUCC=1");
 addTest("test/asm_emptyclobberallowed _GNUCC=1");
 addTest("testobj/asm5 _GNUCC=1");
+addTest("testobj/asm-clobber-concat _GNUCC=1");
 
 addTest("testrun/offsetof");
 addTest("testrun/offsetof1");
@@ -210,9 +211,8 @@ addTest("testrun/percentm");
 addTest("testrun/percent400");
 addTest("testrun/do_while_cont");
 addTest("testrun/caserange _GNUCC=1");
-
 addTest("testrun/attr-in-decllist");
-
+addTest("testrun/alias");
 addTest("test/attr2 _GNUCC=1");
 addTest("test/attr3 _GNUCC=1");
 addTest("testrun/attr4 _GNUCC=1");
@@ -371,10 +371,11 @@ addTest("test/scope4");
 addTest("testrun/scope5 _GNUCC=1");
 addTest("testrun/scope6");
 addTest("testrun/scope8");
-addTest("testrun/scope9 ");
-addTest("testrun/scope10 ");
-addTest("testrun/scope11 ");
-addTest("test/scope12 ");
+addTest("testrun/scope9");
+addTest("testrun/scope10");
+addTest("testrun/scope11");
+addTest("test/scope12");
+addTest("test/scope13");
 addTest("test/voidstar");
 addTest("testrun/memcpy1");
 addTest("testrun/land_expr");
@@ -509,8 +510,6 @@ addTest("testrungcc/enum3 _GNUCC=1");
 addTest("testrungcc/enum3a _GNUCC=1");
 addTest("testrungcc/enum3b _GNUCC=1");
 addTest("testrungcc/enum3c _GNUCC=1");
-addBadComment("testrungcc/enum3c",
-                        "Limitation. CIL constant folder doesn't consider x << y constant if y is strange (negative or bigger than #bits in x's type)");
 addTest("testrungcc/enum3d _GNUCC=1");
 addTest("testrungcc/enum3e _GNUCC=1");
 addTest("testrungcc/enum3f _GNUCC=1");
@@ -560,12 +559,14 @@ addTest("testrun/builtin4 ");
 addTest("test/builtin5 ");
 addTest("test/builtin6 ");
 addTest("testrun/builtin_clzll ");
+addTest("test/builtin7 ");
 addTest("test/sync-1 _GNUCC=1");
 addTest("test/sync-2 _GNUCC=1");
 addTest("test/sync-3 _GNUCC=1");
 addTest("testrun/comparisons");
 addTest("testrun/assign");
-
+addTest("test/vector_compound_init");
+addTest("testrun/preempt-builtin");    
 
 
 
@@ -704,6 +705,7 @@ addTest("testrun/compound2");
 addTest("testrun/large_unsigned_long");
 
 addTest("test/shell-escape SHELL_ESCAPE=1");
+addTest("testpipe/simple");
 
 # c99 readiness tests
 addTest("testrunc99/c99-bool");
@@ -741,6 +743,7 @@ addTest("testrunc11/c11-extendedFloat");
 addTest("testrunc11/c11-noreturn");
 addTest("testrunc11/c11-atomic");
 addTest("testrunc11/c11-atomic-store");
+addTest("testrunc11/c11-atomic-init");
 addTest("testrunc11/c11-static-assert");
 addTestFail("testrunc11/c11-static-assert-fail1", "Global _Static_assert fails");
 addTestFail("testrunc11/c11-static-assert-fail2", "Local _Static_assert fails");

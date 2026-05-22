@@ -14,15 +14,15 @@
 
 (rule
  (target machdep-config.h)
- (action (run ./machdepConfigure.exe)))
+ (action (run ./machdepConfigure.exe --cc %{read-lines:../bin/real-gcc})))
 
 (rule
  (target machdep32-config.h)
- (action (run ./machdepConfigure.exe -m 32)))
+ (action (run ./machdepConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 32)))
 
 (rule
  (target machdep64-config.h)
- (action (run ./machdepConfigure.exe -m 64)))
+ (action (run ./machdepConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 64)))
 
 (rule
  (deps machdep-config.h machdep-ml.c)
@@ -37,12 +37,12 @@
 (rule
  (deps machdep32-config.h machdep-ml.c)
  (target machdep32)
- (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 32))))
+ (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 32))))
 
 (rule
  (deps machdep64-config.h machdep-ml.c)
  (target machdep64)
- (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 64))))
+ (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 64))))
 
 ; for Cilly.pm
 (executable
@@ -54,13 +54,13 @@
 (rule
  (deps machdep32-config.h machdep-ml.c)
  (target gcc32model)
- (action (with-stdout-to %{target} (run ./modelConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 32))))
+ (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 32))))
 
 ; for Cilly.pm
 (rule
  (deps machdep64-config.h machdep-ml.c)
  (target gcc64model)
- (action (with-stdout-to %{target} (run ./modelConfigure.exe --real-gcc %{read-lines:../bin/real-gcc} -m 64))))
+ (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 64))))
 
 (rule
  (deps machdep32 machdep64)
