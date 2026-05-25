@@ -1,32 +1,25 @@
 (include_subdirs unqualified)
 
 (library
-  (name modelCommon)
-  (package goblint-cil)
-  (modules modelCommon)
-  (libraries yojson ppx_deriving_yojson.runtime)
-  (preprocess (pps ppx_enumerate ppx_deriving.show ppx_deriving_yojson))
-)
-
-(library
   (public_name goblint-cil)
   (name goblintCil)
-  (libraries yojson zarith unix str stdlib-shims modelCommon)
-  (modules (:standard \ main mainFeature ciloptions modelConfigure modelConfigureMain modelCommon))
+  (libraries yojson zarith unix str stdlib-shims)
+  (modules (:standard \ main mainFeature ciloptions modelConfigure modelConfigureMain))
+  (preprocess (pps ppx_enumerate ppx_deriving.show ppx_deriving_yojson))
 )
 
 (library
  (name modelConfigure)
  (package goblint-cil)
  (modules modelConfigure)
- (libraries yojson dune-configurator modelCommon)
+ (libraries goblint-cil yojson dune-configurator)
 )
 
 ; for Cilly.pm
 (executable
  (name modelConfigureMain)
  (modules modelConfigureMain)
- (libraries yojson dune-configurator modelCommon modelConfigure)
+ (libraries goblint-cil yojson dune-configurator modelConfigure)
 )
 
 ; for Cilly.pm
@@ -53,7 +46,7 @@
  (name main)
  (modules main mainFeature ciloptions)
  (modes native)
- (libraries goblint-cil dynlink findlib yojson ppx_deriving_yojson.runtime modelCommon)
+ (libraries goblint-cil dynlink findlib yojson ppx_deriving_yojson.runtime)
  (flags :standard -linkall))
 
 (env

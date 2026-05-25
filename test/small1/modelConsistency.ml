@@ -1,5 +1,4 @@
 open GoblintCil
-open ModelCommon
 open ModelConfigure
 open Configurator.V1
 
@@ -23,7 +22,7 @@ let compilersToTest = [
   "clang-20";
 ]
 
-let getModelFromMacroDefs (c: C.t) (cc: string) (c_flags: string list) : ModelCommon.model =
+let getModelFromMacroDefs (c: C.t) (cc: string) (c_flags: string list) : Model.model =
   let tempfile = Filename.temp_file "modeltest" ".i" in
   let compiler_ok = C.Process.run_ok c cc (c_flags @ ["-Wp,-dD"; "-xc"; "-E"; "/dev/null"; "-o"; tempfile]) in
     if not compiler_ok then begin
@@ -63,8 +62,8 @@ let () =
             let model2 = getModelFromMacroDefs c cc cflags in
             if model1 <> model2 then begin
               Printf.printf "Model inconsistent for %s %s\n" cc (String.concat " " cflags);
-              Printf.printf "Model 1 = %s\n\n" (model1 |> ModelCommon.model_to_yojson |> Yojson.Safe.to_string);
-              Printf.printf "Model 2 = %s\n\n" (model2 |> ModelCommon.model_to_yojson |> Yojson.Safe.to_string);
+              Printf.printf "Model 1 = %s\n\n" (model1 |> Model.model_to_yojson |> Yojson.Safe.to_string);
+              Printf.printf "Model 2 = %s\n\n" (model2 |> Model.model_to_yojson |> Yojson.Safe.to_string);
               raise (Failure "Model inconsistent")
             end else
               Printf.printf "Model consistent for %s %s\n" cc (String.concat " " cflags);

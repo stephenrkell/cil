@@ -1,4 +1,4 @@
+open GoblintCil
 module C = Configurator.V1
-module MC = ModelCommon
 
-val generateModel : C.t -> string -> string list -> MC.model
+val generateModel : C.t -> string -> string list -> Model.model

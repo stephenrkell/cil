@@ -1,3 +1,4 @@
+open GoblintCil
 module C = Configurator.V1
 
 let () =
@@ -9,5 +10,5 @@ let () =
     ]
   in
     C.main ~name:"model" ~args (fun c ->
-      Printf.printf "%s" (ModelConfigure.generateModel c !cc !c_flags |> ModelCommon.model_to_yojson |> Yojson.Safe.to_string)
+      Printf.printf "%s" (ModelConfigure.generateModel c !cc !c_flags |> Model.model_to_yojson |> Yojson.Safe.to_string)
     )

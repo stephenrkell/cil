@@ -1,5 +1,6 @@
+open GoblintCil
 module C = Configurator.V1
-module MC = ModelCommon
+module M = Model
 module H = Hashtbl
 
 type itemty = Int | Str
@@ -125,8 +126,8 @@ let parseOutput (items: item list) (out: string): (string, itemval) Hashtbl.t =
 
 let typeinfoGen = {
   gen = {
-    test_gen = (fun () -> MC.allBasicTyps |>
-      List.filter_map (fun ty -> let m = MC.metaOfBasicType ty in
+    test_gen = (fun () -> M.allBasicTyps |>
+      List.filter_map (fun ty -> let m = M.metaOfBasicType ty in
         if m.optional then
           Some {
             name = "HAVE_" ^ (identForName false (Option.get m.c_type));
@@ -135,9 +136,9 @@ let typeinfoGen = {
         else None
       ));
     prog_gen = (fun () ->
-      MC.allBasicTyps |> List.concat_map (fun ty -> 
-        let m = MC.metaOfBasicType ty in 
-        let ident: string = MC.nameOfBasicType ty in
+      M.allBasicTyps |> List.concat_map (fun ty -> 
+        let m = M.metaOfBasicType ty in 
+        let ident: string = M.nameOfBasicType ty in
         let specsForSizeAndAlignment ?(sizeof_override: int option = None) ?(use_alignof: bool = false) (ident: string) (pre_cond: string option) (expr: string): item list = 
           let sizeof_expr = (match sizeof_override with Some n -> string_of_int n | None -> Format.sprintf "sizeof(%s)" expr) in
           [
@@ -173,12 +174,12 @@ let typeinfoGen = {
     );
   };
   parse = (fun tbl ->
-    MC.allBasicTyps |> List.filter_map (fun ty ->
-      let ident = MC.nameOfBasicType ty in
+    M.allBasicTyps |> List.filter_map (fun ty ->
+      let ident = M.nameOfBasicType ty in
       if H.find tbl ("have_" ^ ident) |> unwrapIntVal > 0 then
         let sizeof = H.find tbl ("sizeof_" ^ ident) |> unwrapIntVal in
         let alignof = H.find tbl ("alignof_" ^ ident) |> unwrapIntVal in
-        Some (ty, {MC.sizeof; alignof})
+        Some (ty, {M.sizeof; alignof})
       else None
     ) |> List.to_seq |> H.of_seq
   );
@@ -268,7 +269,7 @@ let gccVerGen = {
       ]);
   };
   parse = (fun tbl -> {
-      MC.major = H.find tbl "gcc_major" |> unwrapIntVal;
+      M.major = H.find tbl "gcc_major" |> unwrapIntVal;
       minor = H.find tbl "gcc_minor" |> unwrapIntVal;
       patch = H.find tbl "gcc_patch" |> unwrapIntVal;
     });
@@ -287,7 +288,7 @@ let clangVerGen = {
   parse = (fun tbl ->
     if H.find tbl "is_clang" |> unwrapIntVal > 0 then
       Some {
-        MC.major = H.find tbl "clang_major" |> unwrapIntVal;
+        M.major = H.find tbl "clang_major" |> unwrapIntVal;
         minor = H.find tbl "clang_minor" |> unwrapIntVal;
         patch = H.find tbl "clang_patch" |> unwrapIntVal;
       }
@@ -295,7 +296,7 @@ let clangVerGen = {
   );
 }
 
-let generateModel (c: C.t) (cc: string) (c_flags: string list): MC.model = 
+let generateModel (c: C.t) (cc: string) (c_flags: string list): M.model = 
   let allGens: gen list = [
     typeinfoGen.gen;
     charIsUnsignedGen.gen;

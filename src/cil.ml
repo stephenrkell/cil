@@ -7082,7 +7082,7 @@ let initCIL () =
     end;
   end
 
-let initCILFromModel (m: ModelCommon.model) =
+let initCILFromModel (m: Model.model) =
   if not !cilInitialized then begin
     M.modelSource := MFixed m;
     initCIL ()

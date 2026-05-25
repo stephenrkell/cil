@@ -50,7 +50,7 @@ open Cilint
 val initCIL: unit -> unit
 
 (** Initialize CIL with a specific compiler model *)
-val initCILFromModel : ModelCommon.model -> unit
+val initCILFromModel : Model.model -> unit
 
 (** Called by frontc to initialize CIL after initializing the model from macro definitions *)
 val initCILLate: unit -> unit
