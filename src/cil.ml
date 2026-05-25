@@ -2991,6 +2991,7 @@ let initGccBuiltins () : unit =
   H.add h "__builtin___snprintf_chk" (intType, [ charPtrType; sizeType; intType; sizeType; charConstPtrType ], true);
   H.add h "__builtin___sprintf_chk" (intType, [ charPtrType; intType; sizeType; charConstPtrType ], true);
   H.add h "__builtin___stpcpy_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType ], false);
+  H.add h "__builtin___stpncpy_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType ], false);
   H.add h "__builtin___strcat_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType ], false);
   H.add h "__builtin___strcpy_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType ], false);
   H.add h "__builtin___strncat_chk" (charPtrType, [ charPtrType; charConstPtrType; sizeType; sizeType ], false);
@@ -3490,12 +3491,37 @@ class defaultCilPrinterClass : cilPrinter = object (self)
   method pVDecl () (v:varinfo) =
     let stom, rest = separateStorageModifiers v.vattr in
     (* First the storage modifiers *)
-    text (if v.vinline then "__inline " else "")
-      ++ d_storage () v.vstorage
-      ++ (self#pAttrs () stom)
-      ++ (self#pType (Some (text v.vname)) () v.vtype)
-      ++ text " "
-      ++ self#pAttrs () rest
+    let allButAttrs =
+      text (if v.vinline then "__inline " else "")
+        ++ d_storage () v.vstorage
+        ++ (self#pAttrs () stom)
+        ++ (self#pType (Some (text v.vname)) () v.vtype)
+        ++ text " "
+    in
+    (* Another quirk is that attributes like '__malloc__', that use
+     * an identifier to reference a definition or declaration elsewhere,
+     * cannot be used in a function declaration to refer to itself.
+     * The workaround is to declare the function twice. Our default
+     * behaviour would attempt to merge these, so would generate code that
+     * the compiler chokes on. Instead we detect self-reference and special-case
+     * it. *)
+    let findSelfRefAttrs (v:varinfo) : attribute list =
+        List.filter (function Attr(_name, params) ->
+           List.fold_left (fun acc -> fun param -> acc || match param with
+                       ACons(ident, _) when ident = v.vname -> true
+                      | _ -> false
+                    ) false params
+        ) v.vattr
+    in
+    let selfRefAttrs = findSelfRefAttrs v in
+    match selfRefAttrs with
+        [] -> allButAttrs ++ self#pAttrs () rest
+      | _ ->
+          (* temporarily filter out the problematic attribute... *)
+          let tempAttrs = List.filter (fun a -> not (List.mem a selfRefAttrs)) v.vattr in
+          let origAttrs = v.vattr in
+          let firstDef = (v.vattr <- tempAttrs; self#pVDecl () v) in
+          (v.vattr <- origAttrs; firstDef ++ text ";\n" ++ allButAttrs ++ self#pAttrs () rest)
 
   (*** L-VALUES ***)
   method pLval () (lv:lval) =  (* lval (base is 1st field)  *)

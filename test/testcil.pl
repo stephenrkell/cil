@@ -225,6 +225,7 @@ addTest("test/attr10 _GNUCC=1");
 addTest("test/attr11 _GNUCC=1");
 addTest("test/attr12 _GNUCC=1");
 addTest("test/attr13 _GNUCC=1");
+addTest("test/self-reference");
 addTest("test/attr-multiplication");
 # addTest("test/attr-assign"); # TODO: only on OSX, Linux GCC errors on introduced
 # addTest("test/attr-enumerator"); # TODO: only on OSX, Linux GCC errors on introduced

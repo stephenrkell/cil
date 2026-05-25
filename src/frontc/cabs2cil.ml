@@ -2748,23 +2748,6 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
     | [A.Tunsigned; A.Tint128] -> TInt(IUInt128, [])
 
     | [A.Tfloat] -> TFloat(FFloat, [])
-    | [A.Tfloat16] -> if !Machdep.theMachine.Machdep.sizeof_float16 = 2 then
-        TFloat(FFloat16, [])
-      else
-        E.s (error "float16 only supported on machines where it is an alias for a conventional type")
-    | [A.Tfloat16x] -> if !Machdep.theMachine.Machdep.sizeof_float16x = !Machdep.theMachine.Machdep.sizeof_float &&
-        !Machdep.theMachine.Machdep.alignof_float16x = !Machdep.theMachine.Machdep.alignof_float
-      then
-        TFloat(FFloat, [])
-      else if !Machdep.theMachine.Machdep.sizeof_float16x = !Machdep.theMachine.Machdep.sizeof_double &&
-        !Machdep.theMachine.Machdep.alignof_float16x = !Machdep.theMachine.Machdep.alignof_double
-      then
-        TFloat(FDouble, [])
-      else
-        E.s (error "float16x only supported on machines where it is an alias for a conventional type: size: %i align: %i "
-          !Machdep.theMachine.Machdep.sizeof_float16x
-          !Machdep.theMachine.Machdep.alignof_float16x
-          )
     | [A.Tfloat32] ->
       if !Machdep.theMachine.Machdep.sizeof_float = 4 then
         TFloat(FFloat, [])
@@ -2785,6 +2768,7 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
           !Machdep.theMachine.Machdep.alignof_float32x
           )
 
+    | [A.Tdouble] -> TFloat(FDouble, [])
     | [A.Tfloat64] ->
       if !Machdep.theMachine.Machdep.sizeof_double = 8 then
         TFloat(FDouble, [])
@@ -2809,34 +2793,9 @@ let rec doSpecList (suggestedAnonName: string) (* This string will be part of
           !Machdep.theMachine.Machdep.alignof_float64x
           )
 
-    
-    | [A.Tfloat128] -> if !Machdep.theMachine.Machdep.sizeof_float128 = 16 then
-        TFloat(FFloat128, [])
-      else
-        E.s (error "float128 only supported on machines where it is an alias for a conventional type")
-    | [A.Tfloat128x] -> if !Machdep.theMachine.Machdep.sizeof_float128x = !Machdep.theMachine.Machdep.sizeof_float &&
-        !Machdep.theMachine.Machdep.alignof_float128x = !Machdep.theMachine.Machdep.alignof_float
-      then
-        TFloat(FFloat, [])
-      else if !Machdep.theMachine.Machdep.sizeof_float128x = !Machdep.theMachine.Machdep.sizeof_double &&
-        !Machdep.theMachine.Machdep.alignof_float128x = !Machdep.theMachine.Machdep.alignof_double
-      then
-        TFloat(FDouble, [])
-      else if !Machdep.theMachine.Machdep.sizeof_float128x = !Machdep.theMachine.Machdep.sizeof_longdouble &&
-        !Machdep.theMachine.Machdep.alignof_float128x = !Machdep.theMachine.Machdep.alignof_longdouble
-      then
-        TFloat(FLongDouble, [])
-      else if !Machdep.theMachine.Machdep.sizeof_float128x = !Machdep.theMachine.Machdep.sizeof_float128 &&
-        !Machdep.theMachine.Machdep.alignof_float128x = !Machdep.theMachine.Machdep.alignof_float128
-      then
-        TFloat(FFloat128, [])
-      else
-        E.s (error "float128x only supported on machines where it is an alias for a conventional type: size: %i align: %i "
-          !Machdep.theMachine.Machdep.sizeof_float128x
-          !Machdep.theMachine.Machdep.alignof_float128x
-          )
-    | [A.Tdouble] -> TFloat(FDouble, [])
     | [A.Tlong; A.Tdouble] -> TFloat(FLongDouble, [])
+    | [A.Tfloat128] -> TFloat(FFloat128, [])
+    | [A.Tfloat16] -> TFloat(FFloat16, [])
     | [A.Tbf16] -> TFloat(FBf16, [])
      (* Now the other type specifiers *)
     | [A.Tdefault] -> E.s (error "Default outside generic associations")

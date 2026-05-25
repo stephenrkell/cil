@@ -67,14 +67,12 @@ type typeSpecifier = (* Merge all specifiers into one type *)
   | Tint64 (* TODO needed? *)
   | Tint128 (* TODO needed? *)
   | Tfloat
-  | Tfloat16
   | Tfloat32
   | Tfloat64
   | Tfloat128 (* TODO needed? *)
-  | Tfloat16x
   | Tfloat32x
   | Tfloat64x
-  | Tfloat128x
+  | Tfloat16
   | Tbf16
   | Tdouble
   | Tsigned
