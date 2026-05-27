@@ -433,9 +433,9 @@ let wstr_to_warray wstr =
   !res
 *)
 
-(* Pragmas and (if present) defines get explicit end-of-line tokens.
- * Elsewhere they are silently discarded as whitespace. *)
-let hashLine = ref false
+(* Pragmas get explicit end-of-line tokens.
+   Elsewhere they are silently discarded as whitespace. *)
+let pragmaLine = ref false
 
 }
 let decdigit = ['0'-'9']
@@ -483,9 +483,7 @@ let hexquad = hexdigit hexdigit hexdigit hexdigit
 let universal_escape = '\\' ('u' hexquad | 'U' hexquad hexquad)
 let ident = (letter|'_'|'$'|universal_escape)(letter|decdigit|'_'|'$'|universal_escape)*
 
-(* Pragmas that are not parsed by CIL.  We lex them as PRAGMA_UNPARSED tokens.
- * (The pragmas that we do parse have to look, roughly, like an attribute
- * invocation, possibly with a trailing semicolon; see PRAGMA in cparser.mly.) *)
+(* Pragmas that are not parsed by CIL.  We lex them as PRAGMA_LINE tokens *)
 let no_parse_pragma =
                "warning" | "GCC" | "STDC" | "clang"
              (* Solaris-style pragmas:  *)
@@ -511,10 +509,10 @@ rule initial =
                                            }
 |		blank			{ addWhite lexbuf; initial lexbuf}
 |               '\n'                    { E.newline ();
-                                          if !hashLine then
+                                          if !pragmaLine then
                                             begin
-                                              hashLine := false;
-                                              HASH_EOL
+                                              pragmaLine := false;
+                                              PRAGMA_EOL
                                             end
                                           else begin
                                             addWhite lexbuf;
@@ -687,12 +685,9 @@ and hash = parse
                    we parse them as a whole line. *)
 | "pragma" blank (no_parse_pragma as pragmaName)
                 { let here = currentLoc () in
-                  PRAGMA_UNPARSED (pragmaName ^ pragma lexbuf, here)
+                  PRAGMA_LINE (pragmaName ^ pragma lexbuf, here)
                 }
-| "pragma"      { hashLine := true; PRAGMA (currentLoc ()) }
-| "define" blank (ident as macName) {  let here = currentLoc () in
-                  DEFINE_UNPARSED (macName, macdef lexbuf, here) }
-
+| "pragma"      { pragmaLine := true; PRAGMA (currentLoc ()) }
 | _	        { addWhite lexbuf; endline lexbuf}
 
 and file lineno =  parse
@@ -712,12 +707,8 @@ and endline = parse
 
 and pragma = parse
    '\n'                 { E.newline (); "" }
-|   _                   { let cur = Lexing.lexeme lexbuf in 
-                          cur ^ (pragma lexbuf) }  
-and macdef = parse
-   '\n'                 { E.newline (); "" }
-|   _                   { let cur = Lexing.lexeme lexbuf in 
-                          cur ^ (macdef lexbuf) }  
+|   _                   { let cur = Lexing.lexeme lexbuf in
+                          cur ^ (pragma lexbuf) }
 
 and str = parse
         '"'             {[]} (* no nul terminiation in CST_STRING '"' *)

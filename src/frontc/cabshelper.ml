@@ -75,7 +75,6 @@ let get_definitionloc (d : definition) : cabsloc =
   | ONLYTYPEDEF(_, l) -> l
   | GLOBASM(_, l) -> l
   | PRAGMA(_, l) -> l
-  | MACDEF(_, _, l) -> l
   | TRANSFORMER(_, _, l) -> l
   | EXPRTRANSFORMER(_, _, l) -> l
   | LINKAGE (_, l, _) -> l
