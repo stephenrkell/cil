@@ -19,4 +19,5 @@
 
 (rule
  (target real-gcc)
+ (deps (env_var CIL_CC))
  (action (run ./realGccConfigure.exe)))
