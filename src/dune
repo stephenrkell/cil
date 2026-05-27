@@ -72,11 +72,18 @@
 (ocamllex formatlex)
 (ocamlyacc formatparse)
 
+(library
+ (public_name goblint-cil.mainFeature)
+ (name mainFeature)
+ (modules mainFeature)
+ (libraries goblint-cil dynlink findlib str zarith)
+)
+
 (executable
  (name main)
- (modules main mainFeature ciloptions)
+ (modules main ciloptions)
  (modes native)
- (libraries goblint-cil dynlink findlib)
+ (libraries goblint-cil dynlink findlib mainFeature)
  (flags :standard -linkall))
 
 (env
