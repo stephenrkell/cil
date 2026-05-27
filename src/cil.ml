@@ -90,12 +90,7 @@ let useCaseRange = ref false
 
 let addReturnOnNoreturnFallthrough = ref false
 
-module M = Machdep
-(* Cil.initCil will set this to the current machine description.
-   Makefile.cil generates the file src/machdep.ml,
-   which contains the descriptions of gcc and msvc. *)
-let envMachine : M.mach option ref = ref None
-
+module M = Model
 
 let lowerConstants: bool ref = ref true
     (** Do lower constants (default true) *)
@@ -109,7 +104,6 @@ let insertImplicitCasts: bool ref = ref true
 
 let little_endian = ref true
 let char_is_unsigned = ref false
-let underscore_name = ref false
 
 type lineDirectiveStyle =
   | LineComment                (** Before every element, print the line
@@ -1338,7 +1332,7 @@ let char32Type = ref voidType
 let typeOfSizeOf = ref voidType
 let kindOfSizeOf = ref IUInt
 
-let initCIL_called = ref false
+let cilInitialized = ref false
 
 (** Returns true if and only if the given integer type is signed. *)
 let isSigned = function
@@ -1358,7 +1352,7 @@ let isSigned = function
   | IInt128 ->
       true
   | IChar ->
-      not !M.theMachine.M.char_is_unsigned
+      not !M.theModel.misc.char_is_unsigned
 
 let mkStmt (sk: stmtkind) : stmt =
   { skind = sk;
@@ -1797,11 +1791,11 @@ let mostNeg64BitInt : cilint = cilint_of_string "-0x8000000000000000"
 let bytesSizeOfInt (ik: ikind): int =
   match ik with
   | IChar | ISChar | IUChar -> 1
-  | IBool -> !M.theMachine.M.sizeof_bool
-  | IInt | IUInt -> !M.theMachine.M.sizeof_int
-  | IShort | IUShort -> !M.theMachine.M.sizeof_short
-  | ILong | IULong -> !M.theMachine.M.sizeof_long
-  | ILongLong | IULongLong -> !M.theMachine.M.sizeof_longlong
+  | IBool -> M.sizeOf Bool
+  | IInt | IUInt -> M.sizeOf Int
+  | IShort | IUShort -> M.sizeOf Short
+  | ILong | IULong -> M.sizeOf Long
+  | ILongLong | IULongLong -> M.sizeOf LongLong
   | IInt128 | IUInt128 -> 16
 
 (* constant *)
@@ -1819,8 +1813,8 @@ let d_const () c =
         | ILongLong -> "LL"
         | IULongLong -> "ULL"
         (* if long long is 128 bit we can use its suffix, otherwise unsupported by GCC, see https://github.com/goblint/cil/issues/41#issuecomment-893291878 *)
-        | IInt128  when !M.theMachine.M.sizeof_longlong = 16 -> "LL"
-        | IUInt128 when !M.theMachine.M.sizeof_longlong = 16 -> "ULL"
+        | IInt128  when M.sizeOf LongLong = 16 -> "LL"
+        | IUInt128 when M.sizeOf LongLong = 16 -> "ULL"
         | _ -> ""
           (* TODO warn/fail? *)
           (* E.s (E.bug "unknown/unsupported suffix") *)
@@ -2140,29 +2134,29 @@ let intKindForSize (s:int) (unsigned:bool) : ikind =
   if unsigned then
     (* Test the most common sizes first *)
     if s = 1 then IUChar
-    else if s = !M.theMachine.M.sizeof_int then IUInt
-    else if s = !M.theMachine.M.sizeof_long then IULong
-    else if s = !M.theMachine.M.sizeof_short then IUShort
-    else if s = !M.theMachine.M.sizeof_longlong then IULongLong
+    else if s = M.sizeOf Int then IUInt
+    else if s = M.sizeOf Long then IULong
+    else if s = M.sizeOf Short then IUShort
+    else if s = M.sizeOf LongLong then IULongLong
     else if s = 16 then IUInt128
     else raise Not_found
   else
     (* Test the most common sizes first *)
     if s = 1 then ISChar
-    else if s = !M.theMachine.M.sizeof_int then IInt
-    else if s = !M.theMachine.M.sizeof_long then ILong
-    else if s = !M.theMachine.M.sizeof_short then IShort
-    else if s = !M.theMachine.M.sizeof_longlong then ILongLong
+    else if s = M.sizeOf Int then IInt
+    else if s = M.sizeOf Long then ILong
+    else if s = M.sizeOf Short then IShort
+    else if s = M.sizeOf LongLong then ILongLong
     else if s = 16 then IInt128
     else raise Not_found
 
 let floatKindForSize (s:int) =
-  if s = !M.theMachine.M.sizeof_double then FDouble
-  else if s = !M.theMachine.M.sizeof_float then FFloat
-  else if s = !M.theMachine.M.sizeof_longdouble then FLongDouble
-  else if s = !M.theMachine.M.sizeof_float128 then FFloat128
-  else if s = !M.theMachine.M.sizeof_float16 then FFloat16
-  else if s = !M.theMachine.M.sizeof_bf16 then FBf16
+  if s = M.sizeOf Double then FDouble
+  else if s = M.sizeOf Float then FFloat
+  else if s = M.sizeOf LongDouble then FLongDouble
+  else if s = M.sizeOf Float128 then FFloat128
+  else if s = M.sizeOf Float16 then FFloat16
+  else if s = M.sizeOf Bf16 then FBf16
   else raise Not_found
 
 (* Represents an integer as for a given kind.  Returns a flag saying
@@ -2215,8 +2209,8 @@ let kinteger (k: ikind) (i: int) =
     the integer may get truncated. *)
 let integer (i: int) = kinteger IInt i
 
-let one       = integer 1
-let mone      = integer (-1)
+let one () = integer 1
+let mone () = integer (-1)
 
 (* True if the integer fits within the kind's range *)
 let fitsInInt (k: ikind) (i: cilint) : bool =
@@ -2311,27 +2305,27 @@ let rec alignOf_int t =
   let alignOfType () =
     match t with
     | TInt((IChar|ISChar|IUChar), _) -> 1
-    | TInt(IBool, _) -> !M.theMachine.M.alignof_bool
-    | TInt((IShort|IUShort), _) -> !M.theMachine.M.alignof_short
-    | TInt((IInt|IUInt), _) -> !M.theMachine.M.alignof_int
-    | TInt((ILong|IULong), _) -> !M.theMachine.M.alignof_long
-    | TInt((ILongLong|IULongLong), _) -> !M.theMachine.M.alignof_longlong
+    | TInt(IBool, _) -> M.alignOf Bool
+    | TInt((IShort|IUShort), _) -> M.alignOf Short
+    | TInt((IInt|IUInt), _) -> M.alignOf Int
+    | TInt((ILong|IULong), _) -> M.alignOf Long
+    | TInt((ILongLong|IULongLong), _) -> M.alignOf LongLong
     | TInt((IInt128|IUInt128), _) -> 16 (* not generated since not all architectures support 128bit ints and the value should be the same for those that do *)
     | TEnum(ei, _) -> alignOf_int (TInt(ei.ekind, []))
-    | TFloat(FFloat, _) -> !M.theMachine.M.alignof_float
-    | TFloat(FDouble, _) -> !M.theMachine.M.alignof_double
-    | TFloat(FLongDouble, _) -> !M.theMachine.M.alignof_longdouble
-    | TFloat(FFloat128, _) -> !M.theMachine.M.alignof_float128
-    | TFloat(FFloat16, _) -> !M.theMachine.M.alignof_float16
-    | TFloat(FBf16, _) -> !M.theMachine.M.alignof_bf16
-    | TFloat(FComplexFloat, _) -> !M.theMachine.M.alignof_floatcomplex
-    | TFloat(FComplexDouble, _) -> !M.theMachine.M.alignof_doublecomplex
-    | TFloat(FComplexLongDouble, _) -> !M.theMachine.M.alignof_longdoublecomplex
-    | TFloat(FComplexFloat128, _) -> !M.theMachine.M.alignof_float128complex
-    | TFloat(FComplexFloat16, _) -> !M.theMachine.M.alignof_float16complex
+    | TFloat(FFloat, _) -> M.alignOf Float
+    | TFloat(FDouble, _) -> M.alignOf Double
+    | TFloat(FLongDouble, _) -> M.alignOf LongDouble
+    | TFloat(FFloat128, _) -> M.alignOf Float128
+    | TFloat(FFloat16, _) -> M.alignOf Float16
+    | TFloat(FBf16, _) -> M.alignOf Bf16
+    | TFloat(FComplexFloat, _) -> M.alignOf Float
+    | TFloat(FComplexDouble, _) -> M.alignOf Double
+    | TFloat(FComplexLongDouble, _) -> M.alignOf LongDouble
+    | TFloat(FComplexFloat128, _) -> M.alignOf Float128
+    | TFloat(FComplexFloat16, _) -> M.alignOf Float16
     | TNamed (t, _) -> alignOf_int t.ttype
     | TArray (t, _, _) -> alignOf_int t
-    | TPtr _ | TBuiltin_va_list _ -> !M.theMachine.M.alignof_ptr
+    | TPtr _ | TBuiltin_va_list _ -> M.alignOf Ptr
 
     (* For composite types get the maximum alignment of any field inside *)
     | TComp (c, _) ->
@@ -2350,7 +2344,7 @@ let rec alignOf_int t =
              if f.fbitfield = Some 0 then sofar else
                max sofar (alignOfField f)) 1 fields
           (* These are some error cases *)
-    | TFun _ -> !M.theMachine.M.alignof_fun
+    | TFun _ -> M.alignOf Fun
     | TVoid _ as t -> raise (SizeOfError ("void", t))
   in
   match filterAttributes "aligned" (typeAttrs t) with
@@ -2378,7 +2372,7 @@ let rec alignOf_int t =
        if rest <> [] then
          ignore(warn "ignoring duplicate align attributes on %a"
                   (!pd_type) t);
-       !M.theMachine.M.alignof_aligned
+       !M.theModel.misc.alignof_aligned
   | at::_ ->
       ignore (warn "alignment attribute \"%a\" not understood on %a"
                 (!pd_attr) at (!pd_type) t);
@@ -2490,27 +2484,27 @@ and vectorSizeOfType (t: typ) : int option =
 (* The size of a type, in bits. If a struct or array, then trailing padding is
    added *)
 and bitsSizeOf t =
-  if not !initCIL_called then
+  if not !cilInitialized then
     E.s (E.error "You did not call Cil.initCIL before using the CIL library");
   match vectorSizeOfType t with
   | Some vsize -> vsize * 8
   | None ->
   match t with
   | TInt (ik,_) -> 8 * (bytesSizeOfInt ik)
-  | TFloat(FDouble, _) -> 8 * !M.theMachine.M.sizeof_double
-  | TFloat(FLongDouble, _) -> 8 * !M.theMachine.M.sizeof_longdouble
-  | TFloat(FFloat128, _) -> 8 * !M.theMachine.M.sizeof_float128
-  | TFloat(FFloat16, _) -> 8 * !M.theMachine.M.sizeof_float16
-  | TFloat(FBf16, _) -> 8 * !M.theMachine.M.sizeof_bf16
-  | TFloat(FFloat, _) -> 8 * !M.theMachine.M.sizeof_float
-  | TFloat(FComplexDouble, _) ->  8 * !M.theMachine.M.sizeof_doublecomplex
-  | TFloat(FComplexLongDouble, _) -> 8 * !M.theMachine.M.sizeof_longdoublecomplex
-  | TFloat(FComplexFloat128, _) -> 8 * !M.theMachine.M.sizeof_float128complex
-  | TFloat(FComplexFloat16, _) -> 8 * !M.theMachine.M.sizeof_float16complex
-  | TFloat(FComplexFloat, _) -> 8 * !M.theMachine.M.sizeof_floatcomplex
+  | TFloat(FDouble, _) -> 8 * M.sizeOf Double
+  | TFloat(FLongDouble, _) -> 8 * M.sizeOf LongDouble
+  | TFloat(FFloat128, _) -> 8 * M.sizeOf Float128
+  | TFloat(FFloat16, _) -> 8 * M.sizeOf Float16
+  | TFloat(FBf16, _) -> 8 * M.sizeOf Bf16
+  | TFloat(FFloat, _) -> 8 * M.sizeOf Float
+  | TFloat(FComplexDouble, _) ->  8 * M.sizeOf Double * 2
+  | TFloat(FComplexLongDouble, _) -> 8 * M.sizeOf LongDouble * 2
+  | TFloat(FComplexFloat128, _) -> 8 * M.sizeOf Float128 * 2
+  | TFloat(FComplexFloat16, _) -> 8 * M.sizeOf Float16 * 2
+  | TFloat(FComplexFloat, _) -> 8 * M.sizeOf Float * 2
   | TEnum (ei, _) -> bitsSizeOf (TInt(ei.ekind, []))
-  | TPtr _ -> 8 * !M.theMachine.M.sizeof_ptr
-  | TBuiltin_va_list _ -> 8 * !M.theMachine.M.sizeof_ptr
+  | TPtr _ -> 8 * M.sizeOf Ptr
+  | TBuiltin_va_list _ -> 8 * M.sizeOf Ptr
   | TNamed (t, _) -> bitsSizeOf t.ttype
   | TComp (comp, _) when comp.cfields == [] -> begin
       if not comp.cdefined then
@@ -2569,9 +2563,9 @@ and bitsSizeOf t =
   end
 
 
-  | TVoid _ -> 8 * !M.theMachine.M.sizeof_void
+  | TVoid _ -> 8 * M.sizeOf Void
   | TFun _ -> (* On GCC the size of a function is defined *)
-      8 * !M.theMachine.M.sizeof_fun
+      8 * M.sizeOf Fun
 
   | TArray (_, None, _) -> (* it seems that on GCC the size of such an
                               array is 0 *)
@@ -2658,7 +2652,7 @@ and constFold (machdep: bool) (e: exp) : exp =
             match unop with
               Neg -> const_if_not_overflow (UnOp(Neg,Const(CInt(i,ik,s)),tres)) tk (neg_cilint ic)
             | BNot -> const_if_not_overflow (UnOp(BNot,Const(CInt(i,ik,s)),tres)) tk (lognot_cilint ic)
-            | LNot -> if is_zero_cilint ic then one else zero
+            | LNot -> if is_zero_cilint ic then one () else zero
             end
         | e1c -> UnOp(unop, e1c, tres)
       with Not_found -> e
@@ -2680,7 +2674,7 @@ and constFold (machdep: bool) (e: exp) : exp =
          type. I know that for strings this is not true *)
       match e with
         Const (CStr _) ->
-          kinteger !kindOfSizeOf !M.theMachine.M.alignof_str
+          kinteger !kindOfSizeOf (M.alignOf Str)
             (* For an array, it is the alignment of the array ! *)
       | _ -> constFold machdep (AlignOf (typeOf e))
   end
@@ -2803,17 +2797,17 @@ and constFoldBinOp (machdep: bool) bop e1 e2 tres =
       | Shiftrt, Some z, _ when is_zero_cilint z -> collapse0 ()
       | Shiftrt, _, Some z when is_zero_cilint z -> collapse e1'
 
-      | Eq, Some i1, Some i2 -> if compare_cilint i1 i2 = 0 then one else zero
-      | Ne, Some i1, Some i2 -> if compare_cilint i1 i2 <> 0 then one else zero
-      | Le, Some i1, Some i2 -> if compare_cilint i1 i2 <= 0 then one else zero
-      | Ge, Some i1, Some i2 -> if compare_cilint i1 i2 >= 0 then one else zero
-      | Lt, Some i1, Some i2 -> if compare_cilint i1 i2 < 0 then one else zero
-      | Gt, Some i1, Some i2 -> if compare_cilint i1 i2 > 0 then one else zero
+      | Eq, Some i1, Some i2 -> if compare_cilint i1 i2 = 0 then one () else zero
+      | Ne, Some i1, Some i2 -> if compare_cilint i1 i2 <> 0 then one () else zero
+      | Le, Some i1, Some i2 -> if compare_cilint i1 i2 <= 0 then one () else zero
+      | Ge, Some i1, Some i2 -> if compare_cilint i1 i2 >= 0 then one () else zero
+      | Lt, Some i1, Some i2 -> if compare_cilint i1 i2 < 0 then one () else zero
+      | Gt, Some i1, Some i2 -> if compare_cilint i1 i2 > 0 then one () else zero
 
       | LAnd, Some i1, _  when !removeBranchingOnConstants -> if is_zero_cilint i1 then collapse0 () else collapse e2'
       | LAnd, _, Some i2 when !removeBranchingOnConstants -> if is_zero_cilint i2 then collapse0 () else collapse e1'
-      | LOr, Some i1, _ when !removeBranchingOnConstants -> if is_zero_cilint i1 then collapse e2' else one
-      | LOr, _, Some i2 when !removeBranchingOnConstants -> if is_zero_cilint i2 then collapse e1' else one
+      | LOr, Some i1, _ when !removeBranchingOnConstants -> if is_zero_cilint i1 then collapse e2' else one ()
+      | LOr, _, Some i2 when !removeBranchingOnConstants -> if is_zero_cilint i2 then collapse e1' else one ()
 
       | _ -> BinOp(bop, e1', e2', tres)
     in
@@ -2968,13 +2962,13 @@ let builtinFunctions : (string, typ * typ list * bool) H.t =
 
 (* Initialize the builtin functions after the machine has been initialized. *)
 let initGccBuiltins () : unit =
-  if not !initCIL_called then
+  if not !cilInitialized then
     E.s (bug "Call initCIL before initGccBuiltins");
   if H.length builtinFunctions <> 0 then
     E.s (bug "builtins already initialized.");
   let h = builtinFunctions in
   (* See if we have builtin_va_list *)
-  let hasbva = !M.theMachine.M.__builtin_va_list in
+  let hasbva = !M.theModel.misc.builtin_va_list in
   let ulongLongType = TInt(IULongLong, []) in
   let floatType = TFloat(FFloat, []) in
   let longDoubleType = TFloat (FLongDouble, []) in
@@ -7029,20 +7023,16 @@ let computeCFGInfo (f : fundec) (global_numbering : bool) : unit =
   f.sallstmts <- res;
   ()
 
-let initCIL () =
-  if not !initCIL_called then begin
-    (* Set the machine *)
-    begin
-      match !envMachine with
-        Some machine -> M.theMachine := machine
-      | None -> M.theMachine := M.gcc
-    end;
+let initFromModel () =
+  if not !cilInitialized then begin
+    if H.length !M.theModel.typeinfo = 0 then
+      E.s (E.error "initFromModel: model is empty. Cannot initialize CIL\n");
     (* Find the right ikind given the size *)
     let findIkindSz (unsigned: bool) (sz: int) : ikind =
       try
-	intKindForSize sz unsigned
+        intKindForSize sz unsigned
       with Not_found ->
-        E.s(E.unimp "initCIL: cannot find the right ikind for size %d\n" sz)
+        E.s(E.unimp "initFromModel: cannot find the right ikind for size %d\n" sz)
     in
     (* Find the right ikind given the name *)
     let findIkindName (name: string) : ikind =
@@ -7050,7 +7040,10 @@ let initCIL () =
       if name = "int" then IInt
       else if name = "unsigned int" then IUInt
       else if name = "long" then ILong
+      else if name = "long int" then ILong
       else if name = "unsigned long" then IULong
+      else if name = "unsigned long int" then IULong
+      else if name = "long unsigned int" then IULong
       else if name = "long long" then ILongLong
       else if name = "unsigned long long" then IULongLong
       else if name = "short" then IShort
@@ -7059,24 +7052,51 @@ let initCIL () =
       else if name = "unsigned char" then IUChar
       else if name = "__int128" then IInt128
       else if name = "unsigned __int128" then IUInt128
-      else E.s(E.unimp "initCIL: cannot find the right ikind for type %s\n" name)
+      else E.s(E.unimp "initFromModel: cannot find the right ikind for type %s\n" name)
     in
-    upointType := TInt(findIkindSz true !M.theMachine.M.sizeof_ptr, []);
-    ptrdiffType := TInt(findIkindSz false !M.theMachine.M.sizeof_ptr, []);
-    kindOfSizeOf := findIkindName !M.theMachine.M.size_t;
-    typeOfSizeOf := TInt(!kindOfSizeOf, []);
-    wcharKind := findIkindName !M.theMachine.M.wchar_t;
+    let sizeOfPtr = M.sizeOf Ptr in
+    let iKindSizeUnsigned = findIkindSz true sizeOfPtr in
+    upointType := TInt(iKindSizeUnsigned, []);
+    ptrdiffType := TInt(findIkindSz false sizeOfPtr, []);
+    kindOfSizeOf := iKindSizeUnsigned;
+    typeOfSizeOf := TInt(iKindSizeUnsigned, []);
+    wcharKind := findIkindName !M.theModel.misc.wchar_type;
     wcharType := TInt(!wcharKind, []);
-    char_is_unsigned := !M.theMachine.M.char_is_unsigned;
-    little_endian := !M.theMachine.M.little_endian;
-    underscore_name := !M.theMachine.M.underscore_name;
-(*     nextGlobalVID := 1; *)
-(*     nextCompinfoKey := 1; *)
+    char_is_unsigned := !M.theModel.misc.char_is_unsigned;
+    little_endian := !M.theModel.misc.little_endian;
+  (*     nextGlobalVID := 1; *)
+  (*     nextCompinfoKey := 1; *)
 
-    initCIL_called := true;
+    cilInitialized := true;
     initGccBuiltins ()
   end
 
+
+let initCIL () =
+  if not !cilInitialized then begin
+    (* Set the model *)
+    begin
+      match !M.modelSource with
+      | MFixed m -> M.theModel := m; initFromModel ()
+      | MMacroDefs -> ()
+    end;
+  end
+
+let initCILFromModel (m: Model.model) =
+  if not !cilInitialized then begin
+    M.modelSource := MFixed m;
+    initCIL ()
+  end
+
+let initCILLate () = 
+  if not !cilInitialized then begin
+    (* Set the model *)
+    begin
+      match !M.modelSource with
+      | MMacroDefs -> initFromModel ()
+      | _ -> ()
+    end;
+  end
 
 (* We want to bring all type declarations before the data declarations. This
    is needed for code of the following form:

@@ -49,6 +49,12 @@ open Cilint
 (** Call this function to perform some initialization. *)
 val initCIL: unit -> unit
 
+(** Initialize CIL with a specific compiler model *)
+val initCILFromModel : Model.model -> unit
+
+(** Called by frontc to initialize CIL after initializing the model from macro definitions *)
+val initCILLate: unit -> unit
+
 (** These are the CIL version numbers. A CIL version is a number of the form
    M.m.r (major, minor and release) *)
 val cilVersion: string
@@ -1403,6 +1409,9 @@ val typeOfSizeOf: typ ref
     Set when you call {!initCIL}.  *)
 val kindOfSizeOf: ikind ref
 
+(** Wheather the CIL is initialized *)
+val cilInitialized: bool ref
+
 (** Returns true if and only if the given integer type is signed. *)
 val isSigned: ikind -> bool
 
@@ -1639,10 +1648,10 @@ val typeOffset: typ -> offset -> typ
 val zero: exp
 
 (** 1 *)
-val one: exp
+val one: unit -> exp
 
 (** -1 *)
-val mone: exp
+val mone: unit -> exp
 
 
 (** Construct an integer of a given kind, from a cilint. If needed it
@@ -2657,11 +2666,6 @@ val char_is_unsigned: bool ref
 (** Whether the machine is little endian. Set after you call {!initCIL} *)
 val little_endian: bool ref
 
-(** Whether the compiler generates assembly labels by prepending "_" to the
-    identifier. That is, will function foo() have the label "foo", or "_foo"?
-    Set after you call {!initCIL} *)
-val underscore_name: bool ref
-
 (** Represents a location that cannot be determined *)
 val locUnknown: location
 
@@ -2746,9 +2750,6 @@ val d_formatarg: unit -> formatArg -> Pretty.doc
 
 (** Emit warnings when truncating integer constants (default true) *)
 val warnTruncate: bool ref
-
-(** Machine model specified via CIL_MACHINE environment variable *)
-val envMachine : Machdep.mach option ref
 
 (* ------------------------------------------------------------------------- *)
 (*                            DEPRECATED FUNCTIONS                           *)

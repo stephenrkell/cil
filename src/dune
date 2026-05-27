@@ -3,71 +3,41 @@
 (library
   (public_name goblint-cil)
   (name goblintCil)
-  (libraries zarith unix str stdlib-shims)
-  (modules (:standard \ main mainFeature ciloptions machdepConfigure machdepArchConfigure modelConfigure))
+  (libraries yojson zarith unix str stdlib-shims)
+  (modules (:standard \ main mainFeature ciloptions modelConfigure modelConfigureMain))
+  (preprocess (pps ppx_enumerate ppx_deriving.show ppx_deriving_yojson))
 )
 
-(executable
- (name machdepConfigure)
- (modules machdepConfigure)
- (libraries dune-configurator))
-
-(rule
- (target machdep-config.h)
- (action (run ./machdepConfigure.exe --cc %{read-lines:../bin/real-gcc})))
-
-(rule
- (target machdep32-config.h)
- (action (run ./machdepConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 32)))
-
-(rule
- (target machdep64-config.h)
- (action (run ./machdepConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 64)))
-
-(rule
- (deps machdep-config.h machdep-ml.c)
- (target machdep-ml.exe)
- (action (run %{read-lines:../bin/real-gcc} -D_GNUCC -include machdep-config.h machdep-ml.c -o %{target})))
-
-(executable
- (name machdepArchConfigure)
- (modules machdepArchConfigure)
- (libraries dune-configurator))
-
-(rule
- (deps machdep32-config.h machdep-ml.c)
- (target machdep32)
- (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 32))))
-
-(rule
- (deps machdep64-config.h machdep-ml.c)
- (target machdep64)
- (action (with-stdout-to %{target} (run ./machdepArchConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 64))))
-
-; for Cilly.pm
-(executable
+(library
  (name modelConfigure)
+ (package goblint-cil)
  (modules modelConfigure)
- (libraries dune-configurator))
+ (libraries goblint-cil yojson dune-configurator)
+)
+
+; for Cilly.pm
+(executable
+ (name modelConfigureMain)
+ (modules modelConfigureMain)
+ (libraries goblint-cil yojson dune-configurator modelConfigure)
+)
 
 ; for Cilly.pm
 (rule
- (deps machdep32-config.h machdep-ml.c)
  (target gcc32model)
- (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 32))))
+ (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc} -m 32)))
+ (enabled_if (= %{architecture} "x86_64")))
 
 ; for Cilly.pm
 (rule
- (deps machdep64-config.h machdep-ml.c)
  (target gcc64model)
- (action (with-stdout-to %{target} (run ./modelConfigure.exe --cc %{read-lines:../bin/real-gcc} -m 64))))
+ (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc} -m 64)))
+ (enabled_if (= %{architecture} "x86_64")))
 
+; for Cilly.pm
 (rule
- (deps machdep32 machdep64)
- (target machdep.ml)
- (action (run %{bin:cppo} -V OCAML:%{ocaml_version}
-              %{dep:machdep.cppo.ml} -x machdep:./%{dep:machdep-ml.exe}
-              -o %{target})))
+ (target defaultmodel)
+ (action (with-stdout-to %{target} (run ./modelConfigureMain.exe --cc %{read-lines:../bin/real-gcc}))))
 
 (ocamllex formatlex)
 (ocamlyacc formatparse)
@@ -76,7 +46,7 @@
  (name main)
  (modules main mainFeature ciloptions)
  (modes native)
- (libraries goblint-cil dynlink findlib)
+ (libraries goblint-cil dynlink findlib yojson ppx_deriving_yojson.runtime)
  (flags :standard -linkall))
 
 (env

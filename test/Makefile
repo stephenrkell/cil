@@ -279,8 +279,12 @@ else
 endif
 
 testrun/% : $(SMALL1)/%.ml
-	ocamlfind $(CAMLC) -I $(OBJDIR_DUNE) -I $(OBJDIR_MAKE) -package zarith unix.$(CMXA) str.$(CMXA) zarith.$(CMXA) \
-                 goblintCil.$(CMXA) \
+	ocamlfind $(CAMLC) -I $(OBJDIR_DUNE) \
+				 -I $(OBJDIR_MAKE) \
+				 -I $(OBJDIR_DUNE)/__private__/modelConfigure/.public_cmi  \
+				 -package zarith,unix,str,yojson,ppx_deriving_yojson.runtime,dune-configurator -linkpkg \
+				 goblintCil.$(CMXA) \
+				 __private__/modelConfigure/modelConfigure.$(CMXA) \
                  $(EXEOUT) $(basename $<).exe $<
 	$(basename $<).exe
 	echo SUCCESS

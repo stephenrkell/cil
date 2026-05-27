@@ -108,6 +108,8 @@ exception CabsOnly
 
 let resetErrors () = E.hadErrors := false
 
+let debugBuiltinMacros = false
+
 (* parse, and apply patching *)
 let rec parse_to_cabs fname =
 begin
@@ -191,6 +193,11 @@ and parse_to_cabs_inner (fname : string) =
     let cabs = Stats.time "parse" (Cparser.interpret (Whitetrack.wraplexer clexer)) lexbuf in
     Whitetrack.setFinalWhite (Clexer.get_white ());
     Clexer.finish ();
+    if debugBuiltinMacros then
+    Hashtbl.iter  (fun k v ->
+      E.log "Builtin macro: %s = %s\n" k v) Clexer.builtin_macro_defs
+    else ();
+    Cil.initCILLate ();
     (fname, cabs)
   with (Sys_error msg) -> begin
     ignore (E.log "Cannot open %s : %s\n" fname msg);

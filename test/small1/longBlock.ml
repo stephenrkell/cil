@@ -2,7 +2,7 @@ open GoblintCil
 
 ;;
 
-initCIL ();
+initCILFromModel Model.gcc10x64Model;
 
 let variable = makeGlobalVar "value" intType in
 

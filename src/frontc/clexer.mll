@@ -46,10 +46,13 @@ open Pretty
 exception InternalError of string
 module E = Errormsg
 module H = Hashtbl
+module M = Model
 
 let matchingParsOpen = ref 0
 
 let currentLoc () = Cabshelper.currentLoc ()
+
+let builtin_macro_defs : (string, string) H.t = H.create 128
 
 (* string -> unit *)
 let addComment c =
@@ -138,13 +141,13 @@ let init_lexicon _ =
       ("int", fun loc -> INT loc);
       ("float", fun loc -> FLOAT loc);
       ("__float128", fun loc -> FLOAT128 loc);
-      ("_Float128", fun loc -> if !Machdep.theMachine.Machdep.have_float128 then FLOAT128 loc else IDENT ("_Float128", loc));
-      ("_Float32", fun loc -> if !Machdep.theMachine.Machdep.have_float32 then FLOAT32 loc else IDENT ("_Float32", loc));
-      ("_Float64", fun loc -> if !Machdep.theMachine.Machdep.have_float64 then FLOAT64 loc else IDENT ("_Float64", loc));
-      ("_Float32x", fun loc -> if !Machdep.theMachine.Machdep.have_float32x then FLOAT32X loc else IDENT ("_Float32x", loc));
-      ("_Float64x", fun loc -> if !Machdep.theMachine.Machdep.have_float64x then FLOAT64X loc else IDENT ("_Float64x", loc));
-      ("_Float16", fun loc -> if !Machdep.theMachine.Machdep.have_float16 then FLOAT16 loc else IDENT ("_Float16", loc));
-      ("__bf16", fun loc -> if !Machdep.theMachine.Machdep.have_bf16 then BF16 loc else IDENT ("__bf16", loc));
+      ("_Float128", fun loc -> if M.typeExists Float128 then FLOAT128 loc else IDENT ("_Float128", loc));
+      ("_Float32", fun loc -> if M.typeExists Float32 then FLOAT32 loc else IDENT ("_Float32", loc));
+      ("_Float64", fun loc -> if M.typeExists Float64 then FLOAT64 loc else IDENT ("_Float64", loc));
+      ("_Float32x", fun loc -> if M.typeExists Float32x then FLOAT32X loc else IDENT ("_Float32x", loc));
+      ("_Float64x", fun loc -> if M.typeExists Float64x then FLOAT64X loc else IDENT ("_Float64x", loc));
+      ("_Float16", fun loc -> if M.typeExists Float16 then FLOAT16 loc else IDENT ("_Float16", loc));
+      ("__bf16", fun loc -> if M.typeExists Bf16 then BF16 loc else IDENT ("__bf16", loc));
       ("double", fun loc -> DOUBLE loc);
       ("void", fun loc -> VOID loc);
       ("enum", fun loc -> ENUM loc);
@@ -223,17 +226,17 @@ let init_lexicon _ =
       ("__builtin_offsetof", fun loc -> BUILTIN_OFFSETOF loc);
       (* On some versions of GCC __thread is a regular identifier *)
       ("__thread", fun loc ->
-                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
+                      if !Model.theModel.misc.thread_is_keyword then
                          THREAD loc
                        else
                          IDENT ("__thread", loc));
       ("thread_local", fun loc ->
-                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
+                      if !Model.theModel.misc.thread_is_keyword then
                          THREAD loc
                        else
                          IDENT ("__thread", loc));
       ("_Thread_local", fun loc ->
-                      if !Machdep.theMachine.Machdep.__thread_is_keyword then
+                      if !Model.theModel.misc.thread_is_keyword then
                          THREAD loc
                        else
                          IDENT ("__thread", loc));
@@ -298,6 +301,7 @@ let init ~(filename: string) : Lexing.lexbuf =
   Lexerhack.push_context := push_context;
   Lexerhack.pop_context := pop_context;
   Lexerhack.add_identifier := add_identifier;
+  H.clear builtin_macro_defs;
   E.startParsing filename
 
 let initFromString (s: string) : Lexing.lexbuf =
@@ -310,6 +314,7 @@ let initFromString (s: string) : Lexing.lexbuf =
   Lexerhack.push_context := push_context;
   Lexerhack.pop_context := pop_context;
   Lexerhack.add_identifier := add_identifier;
+  H.clear builtin_macro_defs;
   E.startParsingFromString s
 
 
@@ -433,8 +438,8 @@ let wstr_to_warray wstr =
   !res
 *)
 
-(* Pragmas and (if present) defines get explicit end-of-line tokens.
- * Elsewhere they are silently discarded as whitespace. *)
+(* Pragmas and defines get explicit end-of-line tokens.
+   Elsewhere they are silently discarded as whitespace. *)
 let hashLine = ref false
 
 }
@@ -483,9 +488,7 @@ let hexquad = hexdigit hexdigit hexdigit hexdigit
 let universal_escape = '\\' ('u' hexquad | 'U' hexquad hexquad)
 let ident = (letter|'_'|'$'|universal_escape)(letter|decdigit|'_'|'$'|universal_escape)*
 
-(* Pragmas that are not parsed by CIL.  We lex them as PRAGMA_UNPARSED tokens.
- * (The pragmas that we do parse have to look, roughly, like an attribute
- * invocation, possibly with a trailing semicolon; see PRAGMA in cparser.mly.) *)
+(* Pragmas that are not parsed by CIL.  We lex them as PRAGMA_LINE tokens *)
 let no_parse_pragma =
                "warning" | "GCC" | "STDC" | "clang"
              (* Solaris-style pragmas:  *)
@@ -687,12 +690,14 @@ and hash = parse
                    we parse them as a whole line. *)
 | "pragma" blank (no_parse_pragma as pragmaName)
                 { let here = currentLoc () in
-                  PRAGMA_UNPARSED (pragmaName ^ pragma lexbuf, here)
+                  PRAGMA_LINE (pragmaName ^ pragma lexbuf, here)
                 }
 | "pragma"      { hashLine := true; PRAGMA (currentLoc ()) }
-| "define" blank (ident as macName) {  let here = currentLoc () in
-                  DEFINE_UNPARSED (macName, macdef lexbuf, here) }
-
+| "define" blank (ident as macName) { let here = currentLoc () in
+                  let v = String.trim (macrodef lexbuf) in begin
+                  if here.filename = "<built-in>" then
+                    H.replace builtin_macro_defs macName v
+                  else (); initial lexbuf end }
 | _	        { addWhite lexbuf; endline lexbuf}
 
 and file lineno =  parse
@@ -700,6 +705,9 @@ and file lineno =  parse
 |	blank			{addWhite lexbuf; file lineno lexbuf}
 |	'"' ([^ '\012' '\t' '"']* as filename) '"' ((' ' ['1' -'4'])* as flags)
        { addWhite lexbuf;  (* '"' *)
+         if filename <> "<built-in>" && (currentLoc ()).filename = "<built-in>" && !Model.modelSource = MMacroDefs then begin
+           Model.initModelFromMacroDefs builtin_macro_defs
+         end;
          E.setCurrent ~file:(Some (filename, String.contains flags '3')) ~line:lineno;
 				 endline lexbuf}
 
@@ -712,13 +720,12 @@ and endline = parse
 
 and pragma = parse
    '\n'                 { E.newline (); "" }
-|   _                   { let cur = Lexing.lexeme lexbuf in 
-                          cur ^ (pragma lexbuf) }  
-and macdef = parse
+|   _                   { let cur = Lexing.lexeme lexbuf in
+                          cur ^ (pragma lexbuf) }
+and macrodef = parse
    '\n'                 { E.newline (); "" }
-|   _                   { let cur = Lexing.lexeme lexbuf in 
-                          cur ^ (macdef lexbuf) }  
-
+|   _                   { let cur = Lexing.lexeme lexbuf in
+                          cur ^ (macrodef lexbuf) }
 and str = parse
         '"'             {[]} (* no nul terminiation in CST_STRING '"' *)
 |	hex_escape	{addLexeme lexbuf; lex_hex_escape str lexbuf}

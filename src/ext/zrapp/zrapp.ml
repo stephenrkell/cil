@@ -7,7 +7,6 @@ open Liveness
 module E = Errormsg
 module H = Hashtbl
 module IH = Inthash
-module M = Machdep
 module U = Util
 module RD = Reachingdefs
 module UD = Usedef

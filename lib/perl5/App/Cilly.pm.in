@@ -60,8 +60,9 @@ use App::Cilly::TempFile;
 
 $App::Cilly::savedSourceExt = "_saved.c";
 
-$App::Cilly::m32model = "nogcc32model";
-$App::Cilly::m64model = "nogcc64model";
+$App::Cilly::defaultModel = 'noDefaultModel';
+$App::Cilly::m32model = 'nogcc32model';
+$App::Cilly::m64model = 'nogcc64model';
 
 our $VERSION;
 
@@ -91,6 +92,7 @@ sub new {
       SEPARATE => ! $::default_is_merge,
       LIBDIR => [],
       OPERATION => 'TOEXE', # This is the default for all compilers
+      DYNMODEL => 0, # if true, dynamically determine the compiler model from macro definitions
     };
 
     my $self = bless $ref, $class;
@@ -156,6 +158,27 @@ sub processArguments {
     if (defined($ENV{"CILLY_NOMERGE"})) {
       $self->{SEPARATE} = 1;
       if($self->{VERBOSE}) { print STDERR "Merging disabled by CILLY_NOMERGE\n"; }
+    }
+
+    if ($self->{DYNMODEL}) {
+        &mydebug("Dynamically determining compiler model from macro definitions\n");
+        push @{$self->{EARLY_PPARGS}}, '-dD';
+    }
+    else {
+        # -m32 is in PPARGS
+        if (grep { $_ eq '-m32' } @{$self->{PPARGS}}) {
+            $ENV{CIL_MACHINE} = $App::Cilly::m32model;
+            &mydebug("Using built-in m32 model\n");
+        }
+        elsif (grep { $_ eq '-m64' } @{$self->{PPARGS}}) {
+            $ENV{CIL_MACHINE} = $App::Cilly::m64model;
+            &mydebug("Using built-in m64 model\n");
+        }
+        else {
+            $ENV{CIL_MACHINE} = $App::Cilly::defaultModel;
+            &mydebug("Using built-in default model\n");
+        }
+        push @{$self->{CILARGS}}, "--envmachine"; 
     }
 
 #    print Dumper($self);
@@ -279,6 +302,9 @@ sub collectOneArgument {
     if($arg eq "--no-idashdot") {
         $self->{IDASHDOT} = 0; return 1;
     }
+    if($arg eq "--dynmodel") {
+        $self->{DYNMODEL} = 1; return 1;
+    }
 
     # sm: response file
     if($arg =~ m|-@(.+)$|) {
@@ -391,6 +417,8 @@ Options:
   --stdoutpp         For MSVC only, use the "preprocess to stdout" mode. This 
                      is for some versions of MSVC that do not support 
                      well the /P file
+  --dynmodel         Dynamically determine the compiler model from macro 
+                     definitions.
 
 EOF
     $self->helpMessage();
@@ -1720,17 +1748,9 @@ sub new {
 	    "-b" => { ONEMORE => 1, TYPE => 'ALLARGS' },
 
 	    # Machine Dependent Options
-	    "-m32\$" => { TYPE => 'ALLARGS',
-			  RUN => sub {
-			      push @{$stub->{CILARGS}}, "--envmachine";
-			      $ENV{CIL_MACHINE} = $App::Cilly::m32model;
-			  }},
-	    "-m64\$" => { TYPE => 'ALLARGS',
-			  RUN => sub {
-			      push @{$stub->{CILARGS}}, "--envmachine";
-			      $ENV{CIL_MACHINE} = $App::Cilly::m64model;
-			  }},
-            "-m" => { TYPE => 'ALLARGS', ONEMORE => 1 },
+	    "-m32\$" => { TYPE => 'ALLARGS' },
+	    "-m64\$" => { TYPE => 'ALLARGS' },
+        "-m" => { TYPE => 'ALLARGS', ONEMORE => 1 },
 	    "-pthread\$" => { TYPE => 'ALLARGS' },
 
 	    # mysterious options

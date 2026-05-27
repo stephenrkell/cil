@@ -216,7 +216,7 @@ let options : (string * Arg.spec * string) list =
    Arg.Unit (fun _ ->
      try
        let machineModel = Sys.getenv "CIL_MACHINE" in
-       Cil.envMachine := Some (Machdepenv.modelParse machineModel);
+       Model.modelSource := MFixed (Yojson.Safe.from_string machineModel |> Model.model_of_yojson |> Result.get_ok);
      with
        Not_found ->
 	 ignore (E.error "CIL_MACHINE environment variable is not set")
