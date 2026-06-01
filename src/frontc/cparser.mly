@@ -312,13 +312,9 @@ let transformOffsetOf (speclist, dtype) member =
 %token BLOCKATTRIBUTE
 %token<Cabs.cabsloc> BUILTIN_TYPES_COMPAT BUILTIN_OFFSETOF BUILTIN_CONVVEC
 %token<Cabs.cabsloc> DECLSPEC
-%token<string * Cabs.cabsloc> MSASM MSATTR
-%token<string * Cabs.cabsloc> HASH_LINE
-%token<string * Cabs.cabsloc> PRAGMA_UNPARSED
-%token<string * string * Cabs.cabsloc> DEFINE_UNPARSED /*(* srk: merge these? *)*/
+%token<string * Cabs.cabsloc> PRAGMA_LINE
 %token<Cabs.cabsloc> PRAGMA
-%token HASH_EOL
-%token<string * string * Cabs.cabsloc> MACRO_DEF /*(* srk: or these? *)*/
+%token PRAGMA_EOL
 
 /* sm: cabs tree transformation specification keywords */
 %token<Cabs.cabsloc> AT_TRANSFORM AT_TRANSFORMEXPR AT_SPECIFIER AT_EXPR
@@ -433,7 +429,6 @@ global:
 | ASM LPAREN const_raw_string RPAREN SEMICOLON
                                         { GLOBASM (fst $3, (*handleLoc*) $1) }
 | pragma                                { $1 }
-| define                                { $1 }
 /* (* Old-style function prototype. This should be somewhere else, like in
       "declaration". For now we keep it at global scope only because in local
       scope it looks too much like a function call  *) */
@@ -1487,27 +1482,19 @@ just_attributes:
 ;
 
 /** (* PRAGMAS and ATTRIBUTES *) ***/
-pragma: 
-| PRAGMA attr HASH_EOL		{ PRAGMA ($2, $1) }
-| PRAGMA attr SEMICOLON HASH_EOL	{ PRAGMA ($2, $1) }
-| PRAGMA_UNPARSED                           { PRAGMA (VARIABLE (fst $1), 
+pragma:
+| PRAGMA attr PRAGMA_EOL		{ PRAGMA ($2, $1) }
+| PRAGMA attr SEMICOLON PRAGMA_EOL	{ PRAGMA ($2, $1) }
+| PRAGMA_LINE                           { PRAGMA (VARIABLE (fst $1),
                                                   snd $1) }
 ;
 
-/** (* DEFINEs... what are the semantic attributes of DEFINE_UNPARSED?
-       For PRAGMA_UNPARSED we have only $1, i.e. the PRAGMA_UNPARSED token
-       itself, which gets annotated with a pair (pragmaName ^ pragma lexbuf, here).
-       So fst $1 is the pragmaName plus the stuff that gets appended, and
-          snd $1 is the location.
-       Since DEFINE_UNPARSED gets a triple, we can't use fst/snd.... *) ***/
-define: 
-| DEFINE_UNPARSED { MACDEF ((let (f, _, _) = $1 in f), (let (_, s, _) = $1 in s), (let (_, _, t) = $1 in t)) }
-;
-
-/* (* We want to allow certain strange things that occur in pragmas, so we 
-    * cannot use directly the language of expressions *) */ 
-primary_attr: 
-    IDENT				{ VARIABLE (fst $1) }
+/* (* We want to allow certain strange things that occur in pragmas, so we
+      cannot use directly the language of expressions *) */
+primary_attr:
+    IDENT				                        { VARIABLE (fst $1) }
+    /* (* This is just so code such as __attribute(_NoReturn) is not rejected, which may arise when combining GCC noreturn attribute and including C11 stdnoreturn.h *) */
+|   NORETURN                            { VARIABLE ("__noreturn__") }
     /*(* The NAMED_TYPE here creates conflicts with IDENT *)*/
 |   NAMED_TYPE				{ VARIABLE (fst $1) }
 |   LPAREN attr RPAREN                  { $2 }
